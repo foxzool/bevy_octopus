@@ -1,0 +1,9 @@
+[package]
+name = "bevy_com_shared"
+edition.workspace = true
+version.workspace = true
+
+
+[dependencies]
+bevy = { workspace = true }
+

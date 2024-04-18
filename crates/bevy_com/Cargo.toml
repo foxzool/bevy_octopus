@@ -1,0 +1,12 @@
+[package]
+name = "bevy_com"
+edition.workspace = true
+version.workspace = true
+
+
+[features]
+udp = ["bevy_udp_com"]
+
+[dependencies]
+bevy = { workspace = true }
+bevy_udp_com = { path = "../udp", optional = true }

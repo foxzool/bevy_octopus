@@ -122,6 +122,14 @@ name = "bevy_com"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_udp_com",
+]
+
+[[package]]
+name = "bevy_com_shared"
+version = "0.1.0"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]
@@ -368,6 +376,14 @@ dependencies = [
  "bevy_math",
  "bevy_reflect",
  "thiserror",
+]
+
+[[package]]
+name = "bevy_udp_com"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_com_shared",
 ]
 
 [[package]]
