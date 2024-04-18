@@ -5,5 +5,11 @@ version.workspace = true
 
 
 [dependencies]
+async-channel = "2.2.1"
+async-trait = "0.1.80"
 bevy = { workspace = true }
+futures-lite = "2.3.0"
+serde = { version = "1.0.198", features = ["derive"] }
+
+
 

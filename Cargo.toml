@@ -1,13 +1,40 @@
 [workspace]
 resolver = "2"
-members = ["crates/*"]
+members = [
+    "crates/*",
+    "examples/*"
+]
 
 [workspace.package]
-version = "0.1.0"
 edition = "2021"
+version = "0.1.0"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+
+
+[workspace.lints.clippy]
+type_complexity = "allow"
+doc_markdown = "warn"
+manual_let_else = "warn"
+undocumented_unsafe_blocks = "warn"
+redundant_else = "warn"
+match_same_arms = "warn"
+semicolon_if_nothing_returned = "warn"
+
+ptr_as_ptr = "warn"
+ptr_cast_constness = "warn"
+ref_as_ptr = "warn"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+missing_docs = "warn"
+unsafe_code = "deny"
+
 
 [workspace.dependencies]
-bevy = { version = "0.13.2", default-features = false }
+bevy = { version = "0.13.2", default-features = false, features = ["multi-threaded",] }
+
+
 
 [profile.release]
 strip = true

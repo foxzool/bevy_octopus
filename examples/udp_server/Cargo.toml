@@ -1,0 +1,15 @@
+[package]
+name = "udp_server"
+edition.workspace = true
+version.workspace = true
+readme.workspace = true
+license.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = { workspace = true }
+bevy_com = { path = "../../crates/bevy_com", features = ["udp"] }
+
+[lints]
+workspace = true

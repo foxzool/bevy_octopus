@@ -1,7 +1,10 @@
 /target
 **/*.rs.bk
+.DS_Store
 Cargo.lock
 .cargo/config
 .cargo/config.toml
 /.idea
 /.vscode
+/.vs
+/.fleet
