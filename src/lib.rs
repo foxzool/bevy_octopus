@@ -1,12 +1,79 @@
-
+use std::fmt::{Debug, Display};
 use async_channel::{unbounded, Receiver, Sender};
-
 use async_trait::async_trait;
 use bevy::prelude::Resource;
+use bytes::Bytes;
 use futures_lite::Stream;
+use serde::{Deserialize, Serialize};
 use crate::error::NetworkError;
+use crate::runtime::JoinHandle;
 
-use crate::NetworkPacket;
+pub mod plugin;
+pub mod prelude;
+pub mod resource;
+
+pub mod error;
+
+
+pub mod runtime;
+
+
+struct AsyncChannel<T> {
+    pub(crate) sender: Sender<T>,
+    pub(crate) receiver: Receiver<T>,
+}
+
+impl<T> AsyncChannel<T> {
+    fn new() -> Self {
+        let (sender, receiver) = unbounded();
+
+        Self { sender, receiver }
+    }
+}
+
+#[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]
+/// A [`ConnectionId`] denotes a single connection
+pub struct ConnectionId {
+    /// The key of the connection.
+    pub id: u32,
+}
+
+impl Display for ConnectionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("Connection with ID={0}", self.id))
+    }
+}
+
+struct Connection {
+    receive_task: Box<dyn JoinHandle>,
+    map_receive_task: Box<dyn JoinHandle>,
+    send_task: Box<dyn JoinHandle>,
+    send_message: Sender<Bytes>,
+}
+
+impl Connection {
+    fn stop(mut self) {
+        self.receive_task.abort();
+        self.send_task.abort();
+        self.map_receive_task.abort();
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+/// [`NetworkPacket`]s are untyped packets to be sent over the wire
+pub struct NetworkPacket {
+    kind: String,
+    data: Vec<u8>,
+}
+
+impl Debug for NetworkPacket {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NetworkPacket")
+            .field("kind", &self.kind)
+            .finish()
+    }
+}
+
 
 /// A trait used to drive the network. This is responsible
 /// for generating the futures that carryout the underlying app network logic.
@@ -65,3 +132,10 @@ pub trait NetworkProvider: 'static + Send + Sync {
     /// can be handled concurrently.
     fn split(combined: Self::Socket) -> (Self::ReadHalf, Self::WriteHalf);
 }
+
+
+pub trait NetworkServerNode {}
+
+
+#[cfg(feature = "udp")]
+pub mod udp;

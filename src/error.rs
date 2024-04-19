@@ -1,4 +1,5 @@
 use std::fmt::Display;
+
 use crate::ConnectionId;
 
 /// Internal errors used by Spicy
@@ -7,7 +8,7 @@ pub enum NetworkError {
     /// A default networking error returned when no other more specific type can be determined
     Error(String),
 
-    /// Error occured when accepting a new connection.
+    /// Error occurred when accepting a new connection.
     Accept(std::io::Error),
 
     /// Connection couldn't be found.
@@ -16,10 +17,10 @@ pub enum NetworkError {
     /// Failed to send across channel because it was closed.
     ChannelClosed(ConnectionId),
 
-    /// An error occured when trying to listen for connections.
+    /// An error occurred when trying to listen for connections.
     Listen(std::io::Error),
 
-    /// An error occured when trying to connect.
+    /// An error occurred when trying to connect.
     Connection(std::io::Error),
 
     /// Attempted to send data over a closed internal channel.
@@ -34,7 +35,7 @@ impl Display for NetworkError {
         match self {
             Self::Error(string) => f.write_fmt(format_args!("Network Error: {0}", string)),
             Self::Accept(e) => f.write_fmt(format_args!(
-                "An error occured when accepting a new connnection: {0}",
+                "An error occurred when accepting a new connection: {0}",
                 e
             )),
             Self::ConnectionNotFound(id) => {
@@ -44,11 +45,11 @@ impl Display for NetworkError {
                 f.write_fmt(format_args!("Connection closed with id: {0}", id))
             }
             Self::Listen(e) => f.write_fmt(format_args!(
-                "An error occured when trying to start listening for new connections: {0}",
+                "An error occurred when trying to start listening for new connections: {0}",
                 e
             )),
             Self::Connection(e) => f.write_fmt(format_args!(
-                "An error occured when trying to connect: {0}",
+                "An error occurred when trying to connect: {0}",
                 e
             )),
             Self::SendError => {

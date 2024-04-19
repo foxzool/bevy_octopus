@@ -1,38 +1,39 @@
-[workspace]
-resolver = "2"
-members = [
-    "crates/*",
-    "examples/*"
-]
-
-[workspace.package]
-edition = "2021"
+[package]
+name = "bevy_com"
 version = "0.1.0"
+authors = [
+    "ZoOL <zhooul@gmail.com>"
+]
+edition = "2021"
+description = "Event based networking library for Bevy"
 readme = "README.md"
+repository = "https://github.com/foxzool/bevy_com"
 license = "MIT OR Apache-2.0"
+categories = ["game-development", "network-programming"]
+autoexamples = false
+resolver = "2"
+
+[features]
+default = ["udp"]
+udp = []
 
 
-[workspace.lints.clippy]
-type_complexity = "allow"
-doc_markdown = "warn"
-manual_let_else = "warn"
-undocumented_unsafe_blocks = "warn"
-redundant_else = "warn"
-match_same_arms = "warn"
-semicolon_if_nothing_returned = "warn"
-
-ptr_as_ptr = "warn"
-ptr_cast_constness = "warn"
-ref_as_ptr = "warn"
-
-[workspace.lints.rust]
-unsafe_op_in_unsafe_fn = "warn"
-missing_docs = "warn"
-unsafe_code = "deny"
-
-
-[workspace.dependencies]
+[dependencies]
+async-net = "2.0.0"
+async-channel = "2.2.1"
+async-trait = "0.1.80"
 bevy = { version = "0.13.2", default-features = false, features = ["multi-threaded",] }
+bytes = "1.6.0"
+dashmap = { version = "5.5.3" }
+futures-lite = "2.3.0"
+serde = { version = "1.0.198", features = ["derive"] }
+
+
+
+[[example]]
+name = "udp-server"
+path = "examples/udp_server.rs"
+required-features = ["udp"]
 
 
 

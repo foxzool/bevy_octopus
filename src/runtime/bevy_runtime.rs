@@ -1,6 +1,6 @@
-use crate::Runtime;
 
-use super::JoinHandle;
+
+use super::{JoinHandle, Runtime};
 
 impl Runtime for bevy::tasks::TaskPool {
     type JoinHandle = Option<bevy::tasks::Task<()>>;
