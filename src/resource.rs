@@ -3,6 +3,5 @@ use bevy::utils::HashMap;
 
 #[derive(Resource, Default)]
 pub struct NetworkResource {
-    pub nodes: HashMap<&'static str, Entity>
+    pub nodes: HashMap<&'static str, Entity>,
 }
-

@@ -1,22 +1,24 @@
-use std::fmt::{Debug, Display};
+use crate::error::NetworkError;
+use crate::runtime::JoinHandle;
 use async_channel::{unbounded, Receiver, Sender};
 use async_trait::async_trait;
-use bevy::prelude::Resource;
+use bevy::prelude::{Event, Resource};
 use bytes::Bytes;
 use futures_lite::Stream;
 use serde::{Deserialize, Serialize};
-use crate::error::NetworkError;
-use crate::runtime::JoinHandle;
+use std::fmt::{Debug, Display};
+use std::net::SocketAddr;
 
+pub mod event;
 pub mod plugin;
 pub mod prelude;
 pub mod resource;
 
 pub mod error;
 
-
 pub mod runtime;
 
+pub type ChannelName = String;
 
 struct AsyncChannel<T> {
     pub(crate) sender: Sender<T>,
@@ -59,21 +61,19 @@ impl Connection {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-/// [`NetworkPacket`]s are untyped packets to be sent over the wire
-pub struct NetworkPacket {
-    kind: String,
-    data: Vec<u8>,
+/// [`NetworkRawPacket`]s are raw packets that are sent over the network.
+pub struct NetworkRawPacket {
+    pub from_addr: SocketAddr,
+    pub bytes: Bytes,
 }
 
-impl Debug for NetworkPacket {
+impl Debug for NetworkRawPacket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("NetworkPacket")
-            .field("kind", &self.kind)
+        f.debug_struct("NetworkRawPacket")
+            .field("from_addr", &self.from_addr)
             .finish()
     }
 }
-
 
 /// A trait used to drive the network. This is responsible
 /// for generating the futures that carryout the underlying app network logic.
@@ -117,14 +117,14 @@ pub trait NetworkProvider: 'static + Send + Sync {
     /// Recieves messages over the network, forwards them to Eventwork via a sender.
     async fn recv_loop(
         read_half: Self::ReadHalf,
-        messages: Sender<NetworkPacket>,
+        messages: Sender<NetworkRawPacket>,
         settings: Self::NetworkSettings,
     );
 
     /// Sends messages over the network, receives packages from Eventwork via receiver.
     async fn send_loop(
         write_half: Self::WriteHalf,
-        messages: Receiver<NetworkPacket>,
+        messages: Receiver<NetworkRawPacket>,
         settings: Self::NetworkSettings,
     );
 
@@ -132,10 +132,6 @@ pub trait NetworkProvider: 'static + Send + Sync {
     /// can be handled concurrently.
     fn split(combined: Self::Socket) -> (Self::ReadHalf, Self::WriteHalf);
 }
-
-
-pub trait NetworkServerNode {}
-
 
 #[cfg(feature = "udp")]
 pub mod udp;

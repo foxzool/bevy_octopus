@@ -30,16 +30,16 @@ pub trait JoinHandle: 'static + Send + Sync {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn run_async<F, RT: Runtime>(future: F, runtime: &RT) -> <RT as Runtime>::JoinHandle
-    where
-        F: Future<Output = ()> + Send + 'static,
+where
+    F: Future<Output = ()> + Send + 'static,
 {
     runtime.spawn(future)
 }
 
 #[cfg(target_arch = "wasm32")]
 pub fn run_async<F, RT: Runtime>(future: F, runtime: &RT) -> <RT as Runtime>::JoinHandle
-    where
-        F: Future<Output = ()> + 'static,
+where
+    F: Future<Output = ()> + 'static,
 {
     runtime.spawn_local(future)
 }
