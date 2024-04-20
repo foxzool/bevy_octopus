@@ -7,7 +7,8 @@ use bevy::log::LogPlugin;
 use bevy::prelude::*;
 
 use bevy_com::prelude::*;
-use bevy_com::udp::UdpServerNode;
+
+mod shared;
 
 fn main() {
     App::new()

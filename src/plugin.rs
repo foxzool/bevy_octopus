@@ -1,8 +1,6 @@
 use bevy::app::{App, Plugin};
-use bevy::tasks::TaskPoolBuilder;
 
 use crate::resource::NetworkResource;
-use crate::runtime::EventworkRuntime;
 
 pub struct BevyComPlugin;
 

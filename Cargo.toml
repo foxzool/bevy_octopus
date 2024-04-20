@@ -35,6 +35,11 @@ name = "udp-server"
 path = "examples/udp_server.rs"
 required-features = ["udp"]
 
+[[example]]
+name = "udp-client"
+path = "examples/udp_client.rs"
+required-features = ["udp"]
+
 
 
 [profile.release]

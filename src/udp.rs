@@ -111,33 +111,20 @@ impl UdpServerNode {
 
                 loop {
                     if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
-                        debug!("Stop UDP Server '{}' on {:?}", setting.name, setting.address);
+                        debug!(
+                            "Stop UDP Server '{}' on {:?}",
+                            setting.name, setting.address
+                        );
                         break;
                     }
 
                     if let Ok((len, from_addr)) = socket.recv_from(&mut buf).await {
-                        // Checks to see if the addr is in the connected_clients dashmap, and if
-                        // it isn't, it adds it
-                        // let mut conn_id = None;
-                        // let not_connected =
-                        //     !udp_connected_clients_clone.iter().any(|key_val| {
-                        //         let local_conn_id = key_val.key();
-                        //
-                        //         if local_conn_id.addr == recv_addr {
-                        //             conn_id = Some(*local_conn_id);
-                        //             true
-                        //         } else {
-                        //             false
-                        //         }
-                        //     });
-
                         let bytes = Bytes::copy_from_slice(&buf[..len]);
                         println!("Received {} bytes from {}", len, from_addr);
                         message_sender
                             .send(NetworkRawPacket { from_addr, bytes })
                             .await
                             .expect("Message channel has closed.");
-                        // message_sender.send(bytes).await.expect("Message channel has closed.")
                     }
                 }
             }
@@ -196,9 +183,58 @@ impl UdpServerNode {
     }
 }
 
-fn manage_udp_server(
-    mut q_servers: Query<(Entity, &mut UdpServerNode), Added<UdpServerNode>>,
-) {
+pub struct UdpClientSetting {
+    pub name: ChannelName,
+    pub address: Vec<SocketAddr>,
+    pub max_packet_size: usize,
+    pub auto_start: bool,
+}
+
+#[derive(Component)]
+pub struct UdpClientNode {
+    setting: UdpClientSetting,
+    message_channel: AsyncChannel<NetworkRawPacket>,
+    error_channel: AsyncChannel<NetworkError>,
+    cancel_flag: Arc<AtomicBool>,
+    running: bool,
+}
+
+impl UdpClientNode {
+    pub fn new(channel_name: impl ToString, addr: impl ToSocketAddrs) -> Self {
+        let setting = UdpClientSetting {
+            name: channel_name.to_string(),
+            address: addr.to_socket_addrs().unwrap().collect(),
+            max_packet_size: 65_507,
+            auto_start: true,
+        };
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let message_channel = AsyncChannel::<NetworkRawPacket>::new();
+        let error_channel = AsyncChannel::<NetworkError>::new();
+
+        Self {
+            message_channel,
+            error_channel,
+            setting,
+            running: false,
+            cancel_flag,
+        }
+    }
+
+    pub fn new_with_setting(setting: UdpClientSetting) -> Self {
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let message_channel = AsyncChannel::<NetworkRawPacket>::new();
+        let error_channel = AsyncChannel::<NetworkError>::new();
+        Self {
+            message_channel,
+            error_channel,
+            setting,
+            running: false,
+            cancel_flag,
+        }
+    }
+}
+
+fn manage_udp_server(mut q_servers: Query<(Entity, &mut UdpServerNode), Added<UdpServerNode>>) {
     for (_entity, mut server) in q_servers.iter_mut() {
         if server.setting.auto_start {
             server.start();
