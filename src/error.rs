@@ -28,6 +28,8 @@ pub enum NetworkError {
 
     /// Serialization error
     Serialization,
+    /// Deserialization error
+    DeserializeError,
 }
 
 impl Display for NetworkError {
@@ -56,6 +58,7 @@ impl Display for NetworkError {
                 f.write_fmt(format_args!("Attempted to send data over closed channel"))
             }
             Self::Serialization => f.write_fmt(format_args!("Failed to serialize")),
+            Self::DeserializeError => f.write_fmt(format_args!("Failed to deserialize")),
         }
     }
 }

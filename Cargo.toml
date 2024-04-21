@@ -20,7 +20,7 @@ udp = []
 
 [dependencies]
 async-net = "2.0.0"
-bevy = { version = "0.13.2", default-features = false, features = ["multi-threaded",] }
+bevy = { version = "0.13.2", default-features = false, features = ["multi-threaded", ] }
 bytes = "1.6.0"
 dashmap = { version = "5.5.3" }
 kanal = "0.1.0-pre8"
@@ -28,6 +28,8 @@ futures-lite = "2.3.0"
 serde = { version = "1.0.198", features = ["derive"] }
 
 
+[dev-dependencies]
+bincode = { version = "1.3.3" }
 
 [[example]]
 name = "udp-server"

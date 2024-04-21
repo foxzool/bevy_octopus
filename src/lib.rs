@@ -18,6 +18,9 @@ pub mod resource;
 
 pub mod error;
 
+mod system;
+mod network;
+
 pub mod runtime;
 
 pub mod component;
@@ -68,7 +71,7 @@ impl Connection {
 
 /// [`NetworkRawPacket`]s are raw packets that are sent over the network.
 pub struct NetworkRawPacket {
-    pub socket: SocketAddr,
+    pub socket: Option<SocketAddr>,
     pub bytes: Bytes,
 }
 
