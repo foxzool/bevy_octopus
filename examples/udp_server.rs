@@ -7,6 +7,7 @@ use bevy::log::LogPlugin;
 use bevy::prelude::*;
 
 use bevy_com::prelude::*;
+use bevy_com::udp::UdpNode;
 
 mod shared;
 
@@ -25,11 +26,13 @@ fn main() {
 }
 
 fn setup_servers(mut commands: Commands) {
-    commands.spawn(UdpServerNode::new("udp_server_1", "0.0.0.0:6001"));
-    commands.spawn(UdpServerNode::new("udp_server_2", "0.0.0.0:6002"));
+    commands.spawn(UdpNode::new("0.0.0.0:6001"));
+    commands.spawn(UdpNode::new("0.0.0.0:6002"));
+    // commands.spawn(UdpServerNode::new("udp_server_1", "0.0.0.0:6001"));
+    // commands.spawn(UdpServerNode::new("udp_server_2", "0.0.0.0:6002"));
 }
 
-fn close_and_restart(time: Res<Time>, mut q_server: Query<(Entity, &mut UdpServerNode)>) {
+fn close_and_restart(time: Res<Time>, mut q_server: Query<(Entity, &mut UdpNode)>) {
     if time.elapsed_seconds() > 2.0 && time.elapsed_seconds() < 3.0 {
         for (_e, mut server) in q_server.iter_mut() {
             if server.is_running() {
@@ -38,7 +41,7 @@ fn close_and_restart(time: Res<Time>, mut q_server: Query<(Entity, &mut UdpServe
         }
     }
 
-    if time.elapsed_seconds() > 3.0 {
+    if time.elapsed_seconds() > 4.0 {
         for (_e, mut server) in q_server.iter_mut() {
             if !server.is_running() {
                 server.start();

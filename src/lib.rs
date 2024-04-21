@@ -1,13 +1,15 @@
-use crate::error::NetworkError;
-use crate::runtime::JoinHandle;
-use async_channel::{unbounded, Receiver, Sender};
+use std::fmt::{Debug, Display};
+use std::net::SocketAddr;
+
+use async_channel::{Receiver, Sender, unbounded};
 use async_trait::async_trait;
 use bevy::prelude::{Event, Resource};
 use bytes::Bytes;
 use futures_lite::Stream;
 use serde::{Deserialize, Serialize};
-use std::fmt::{Debug, Display};
-use std::net::SocketAddr;
+
+use crate::error::NetworkError;
+use crate::runtime::JoinHandle;
 
 pub mod event;
 pub mod plugin;
@@ -17,6 +19,8 @@ pub mod resource;
 pub mod error;
 
 pub mod runtime;
+
+pub mod component;
 
 pub type ChannelName = String;
 
