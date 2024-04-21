@@ -1,14 +1,13 @@
 #![allow(missing_docs)]
 
-use std::net::Ipv4Addr;
-use std::time::Duration;
+use std::{net::Ipv4Addr, time::Duration};
 
-use bevy::app::ScheduleRunnerPlugin;
-use bevy::log::LogPlugin;
-use bevy::prelude::*;
+use bevy::{app::ScheduleRunnerPlugin, log::LogPlugin, prelude::*};
 
-use bevy_com::prelude::*;
-use bevy_com::udp::{MulticastV4Setting, UdpNode, UdpNodeBuilder};
+use bevy_com::{
+    prelude::*,
+    udp::{MulticastV4Setting, UdpNode, UdpNodeBuilder},
+};
 
 mod shared;
 

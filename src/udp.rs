@@ -1,21 +1,26 @@
-use std::fmt::Display;
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
-use std::thread::spawn;
+use std::{
+    fmt::Display,
+    net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
+    sync::{Arc, atomic::AtomicBool},
+    thread::spawn,
+};
 
 use async_net::{AsyncToSocketAddrs, UdpSocket};
-use bevy::prelude::*;
-use bevy::tasks::{AsyncComputeTaskPool, ComputeTaskPool, IoTaskPool, TaskPool, TaskPoolBuilder};
+use bevy::{
+    prelude::*,
+    tasks::{AsyncComputeTaskPool, ComputeTaskPool, IoTaskPool, TaskPool, TaskPoolBuilder},
+};
 use bytes::Bytes;
 use dashmap::DashMap;
 use futures_lite::future::block_on;
 use kanal::{AsyncReceiver, AsyncSender, Receiver, Sender};
 
-use crate::{AsyncChannel, ChannelName, Connection, ConnectionId, NetworkRawPacket};
-use crate::component::{ConnectTo, NetworkSetting};
-use crate::error::NetworkError;
-use crate::runtime::{JoinHandle, run_async};
+use crate::{
+    AsyncChannel,
+    ChannelName,
+    component::{ConnectTo, NetworkSetting},
+    Connection, ConnectionId, error::NetworkError, NetworkRawPacket, runtime::{JoinHandle, run_async},
+};
 
 pub struct UdpPlugin;
 

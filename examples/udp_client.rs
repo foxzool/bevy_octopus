@@ -1,14 +1,14 @@
-use std::net::Ipv4Addr;
-use std::time::Duration;
+use std::{net::Ipv4Addr, time::Duration};
 
-use bevy::app::ScheduleRunnerPlugin;
-use bevy::log::LogPlugin;
-use bevy::prelude::*;
-use bevy::time::common_conditions::on_timer;
+use bevy::{
+    app::ScheduleRunnerPlugin, log::LogPlugin, prelude::*, time::common_conditions::on_timer,
+};
 
-use bevy_com::component::ConnectTo;
-use bevy_com::prelude::*;
-use bevy_com::udp::{MulticastV4Setting, UdpNode, UdpNodeBuilder};
+use bevy_com::{
+    component::ConnectTo,
+    prelude::*,
+    udp::{MulticastV4Setting, UdpNode, UdpNodeBuilder},
+};
 
 mod shared;
 
@@ -101,10 +101,8 @@ fn send_broadcast_messages(q_client: Query<&UdpNode, With<BroadcastUdpMarker>>) 
     }
 }
 
-fn send_multicast_messages(
-    q_client: Query<(&UdpNode, &MulticastV4Setting), With<MulticastUdpMarker>>,
-) {
-    for (client, setting) in q_client.iter() {
+fn send_multicast_messages(q_client: Query<&UdpNode, With<MulticastUdpMarker>>) {
+    for client in q_client.iter() {
         client.send_to(
             "I can send multicast message to".as_bytes(),
             "224.0.0.2:6004",

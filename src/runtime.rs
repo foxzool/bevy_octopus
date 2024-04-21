@@ -1,8 +1,8 @@
-mod bevy_runtime;
-
 use std::future::Future;
 
 use bevy::prelude::{Deref, DerefMut, Resource};
+
+mod bevy_runtime;
 
 /// A Resource that provides access to the runtime to internal Eventwork systems.
 ///
@@ -18,7 +18,8 @@ pub trait Runtime: Send + Sync + 'static {
     /// Create a long-running background task that is [`Send`] and [`Sync`].
     fn spawn(&self, task: impl Future<Output = ()> + Send + 'static) -> Self::JoinHandle;
 
-    /// Create a long-running background task that is *not* [`Send`] and [`Sync`] and will be run on the main thread
+    /// Create a long-running background task that is *not* [`Send`] and [`Sync`] and will be run on
+    /// the main thread
     fn spawn_local(&self, task: impl Future<Output = ()> + 'static) -> Self::JoinHandle;
 }
 

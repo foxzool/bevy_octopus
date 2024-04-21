@@ -1,5 +1,7 @@
-use bevy::prelude::{Entity, Resource};
-use bevy::utils::HashMap;
+use bevy::{
+    prelude::{Entity, Resource},
+    utils::HashMap,
+};
 
 #[derive(Resource, Default)]
 pub struct NetworkResource {

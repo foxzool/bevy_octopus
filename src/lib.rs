@@ -1,5 +1,7 @@
-use std::fmt::{Debug, Display};
-use std::net::SocketAddr;
+use std::{
+    fmt::{Debug, Display},
+    net::SocketAddr,
+};
 
 use bevy::prelude::{Event, Resource};
 use bytes::Bytes;
