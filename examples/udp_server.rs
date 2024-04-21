@@ -7,7 +7,7 @@ use bevy::log::LogPlugin;
 use bevy::prelude::*;
 
 use bevy_com::prelude::*;
-use bevy_com::udp::UdpNode;
+use bevy_com::udp::{UdpNode, UdpNodeBuilder};
 
 mod shared;
 
@@ -28,8 +28,8 @@ fn main() {
 fn setup_servers(mut commands: Commands) {
     commands.spawn(UdpNode::new("0.0.0.0:6001"));
     commands.spawn(UdpNode::new("0.0.0.0:6002"));
-    // commands.spawn(UdpServerNode::new("udp_server_1", "0.0.0.0:6001"));
-    // commands.spawn(UdpServerNode::new("udp_server_2", "0.0.0.0:6002"));
+    commands.spawn(UdpNodeBuilder::new().with_addrs("0.0.0.0:6003").with_broadcast(true).build());
+
 }
 
 fn close_and_restart(time: Res<Time>, mut q_server: Query<(Entity, &mut UdpNode)>) {
@@ -53,7 +53,7 @@ fn close_and_restart(time: Res<Time>, mut q_server: Query<(Entity, &mut UdpNode)
 fn receive_raw_messages(q_server: Query<&UdpNode>) {
     for server in q_server.iter() {
         while let Ok(Some(packet)) = server.receiver().try_recv() {
-            println!("Received: {:?}", packet);
+            println!("{} Received: {:?}", server, packet);
         }
     }
 }

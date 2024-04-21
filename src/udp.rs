@@ -30,12 +30,20 @@ pub struct UdpProtocol;
 
 #[derive(Component)]
 pub struct UdpNode {
+    /// The UDP socket
     socket: UdpSocket,
+    /// Channel for receiving messages
     recv_message_channel: AsyncChannel<NetworkRawPacket>,
+    /// Channel for sending messages
     send_message_channel: AsyncChannel<NetworkRawPacket>,
+    /// Channel for errors
     error_channel: AsyncChannel<NetworkError>,
+    /// A flag to cancel the node
     cancel_flag: Arc<AtomicBool>,
+    /// Whether the node is running or not
     running: bool,
+    /// Whether the node is broadcasting or not
+    broadcast: bool,
 }
 
 impl Default for UdpNode {
@@ -47,6 +55,64 @@ impl Default for UdpNode {
 impl Display for UdpNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("UDP Node on {:?}", self.local_addr()))
+    }
+}
+
+#[derive(Default)]
+pub struct UdpNodeBuilder {
+    addrs: Vec<SocketAddr>,
+    max_packet_size: usize,
+    auto_start: bool,
+    broadcast: bool,
+}
+
+impl UdpNodeBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_addrs(mut self, addrs: impl ToSocketAddrs) -> Self {
+        self.addrs = addrs.to_socket_addrs().unwrap().collect();
+        self
+    }
+
+    pub fn with_max_packet_size(mut self, max_packet_size: usize) -> Self {
+        self.max_packet_size = max_packet_size;
+        self
+    }
+
+    pub fn with_auto_start(mut self, auto_start: bool) -> Self {
+        self.auto_start = auto_start;
+        self
+    }
+
+    pub fn with_broadcast(mut self, broadcast: bool) -> Self {
+        self.broadcast = broadcast;
+        self
+    }
+
+    pub fn build(self) -> UdpNode {
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let send_channel = AsyncChannel::<NetworkRawPacket>::new();
+        let recv_channel = AsyncChannel::<NetworkRawPacket>::new();
+        let error_channel = AsyncChannel::<NetworkError>::new();
+
+        let addrs = self.addrs;
+
+        let socket = block_on(
+            ComputeTaskPool::get()
+                .spawn(async move { UdpSocket::bind(&*addrs).await.expect("Failed to bind") }),
+        );
+
+        UdpNode {
+            recv_message_channel: recv_channel,
+            send_message_channel: send_channel,
+            error_channel,
+            cancel_flag,
+            running: false,
+            socket,
+            broadcast: self.broadcast,
+        }
     }
 }
 
@@ -71,6 +137,7 @@ impl UdpNode {
             cancel_flag,
             running: false,
             socket,
+            broadcast: false,
         }
     }
 
@@ -142,12 +209,17 @@ impl UdpNode {
         }
     }
 
+    /// Check if the UDP node is running
     pub fn is_running(&self) -> bool {
         self.running
     }
 
+    /// Start the UDP node
     pub fn start(&mut self) {
         debug!("Starting {}", self);
+        self.socket
+            .set_broadcast(self.broadcast)
+            .expect("Failed to set broadcast");
         self.cancel_flag
             .store(false, std::sync::atomic::Ordering::Relaxed);
 
@@ -256,16 +328,11 @@ impl UdpNode {
 
 fn control_udp_node(
     mut q_udp_node: Query<
-        (
-            Entity,
-            &mut UdpNode,
-            Option<&NetworkSetting>,
-            Option<&ConnectTo>,
-        ),
-        (Added<UdpNode>),
+        (&mut UdpNode, Option<&NetworkSetting>, Option<&ConnectTo>),
+        Added<UdpNode>,
     >,
 ) {
-    for (_entity, mut udp_node, opt_setting, opt_connect_to) in q_udp_node.iter_mut() {
+    for (mut udp_node, opt_setting, opt_connect_to) in q_udp_node.iter_mut() {
         let setting = match opt_setting {
             Some(setting) => setting.clone(),
             None => NetworkSetting::default(),
