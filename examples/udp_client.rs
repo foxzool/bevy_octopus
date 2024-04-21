@@ -26,6 +26,7 @@ fn main() {
 }
 
 fn setup_clients(mut commands: Commands) {
+    commands.spawn((UdpNode::new("0.0.0.0:5001"), ConnectTo::new("0.0.0.0:6001")));
     commands.spawn((UdpNode::default(), ConnectTo::new("0.0.0.0:6001")));
     commands.spawn(UdpNode::default());
 }

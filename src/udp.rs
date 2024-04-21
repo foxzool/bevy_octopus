@@ -15,7 +15,7 @@ use futures_lite::future::block_on;
 use crate::{AsyncChannel, ChannelName, Connection, ConnectionId, NetworkRawPacket};
 use crate::component::{ConnectTo, NetworkSetting};
 use crate::error::NetworkError;
-use crate::runtime::{JoinHandle, run_async, Runtime};
+use crate::runtime::{JoinHandle, run_async};
 
 pub struct UdpPlugin;
 
@@ -99,7 +99,7 @@ impl UdpNode {
             match socket.recv_from(&mut buf).await {
                 Ok((len, from_addr)) => {
                     let bytes = Bytes::copy_from_slice(&buf[..len]);
-                    debug!("Received {} bytes from {}", len, from_addr);
+                    trace!("Received {} bytes from {}", len, from_addr);
                     message_sender
                         .send(NetworkRawPacket {
                             socket: from_addr,
@@ -130,7 +130,7 @@ impl UdpNode {
             }
 
             while let Ok(packet) = message_receiver.recv().await {
-                debug!("Sending {} bytes to {}", packet.bytes.len(), packet.socket,);
+                trace!("Sending {} bytes to {}", packet.bytes.len(), packet.socket,);
                 let buf = packet.bytes.as_ref();
                 if let Err(_e) = socket.send_to(&buf, packet.socket).await {
                     error_sender
@@ -243,6 +243,14 @@ impl UdpNode {
                 bytes: Bytes::copy_from_slice(bytes),
             })
             .expect("Message channel has closed.");
+    }
+
+    pub fn receiver(&self) -> Receiver<NetworkRawPacket> {
+        self.recv_message_channel.receiver.clone()
+    }
+
+    pub fn sender(&self) -> Sender<NetworkRawPacket> {
+        self.send_message_channel.sender.clone()
     }
 }
 

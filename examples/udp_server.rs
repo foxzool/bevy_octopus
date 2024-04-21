@@ -21,7 +21,7 @@ fn main() {
         )
         .add_plugins(BevyComPlugin)
         .add_systems(Startup, setup_servers)
-        .add_systems(Update, close_and_restart)
+        .add_systems(Update, (close_and_restart, receive_raw_messages))
         .run();
 }
 
@@ -46,6 +46,14 @@ fn close_and_restart(time: Res<Time>, mut q_server: Query<(Entity, &mut UdpNode)
             if !server.is_running() {
                 server.start();
             }
+        }
+    }
+}
+
+fn receive_raw_messages(q_server: Query<&UdpNode>) {
+    for server in q_server.iter() {
+        while let Ok(packet) = server.receiver().try_recv() {
+            println!("Received: {:?}", packet);
         }
     }
 }

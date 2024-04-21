@@ -75,6 +75,7 @@ impl Debug for NetworkRawPacket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NetworkRawPacket")
             .field("socket", &self.socket)
+            .field("len", &self.bytes.len())
             .finish()
     }
 }
