@@ -27,10 +27,16 @@ fn main() {
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((UdpNode::default(), ConnectTo::new("0.0.0.0:6001")));
+    commands.spawn(UdpNode::default());
 }
 
-fn send_messages(time: Res<Time>, mut q_client: Query<&mut UdpNode>) {
-    for mut client in q_client.iter_mut() {
-        client.send("Hello World".as_bytes());
+fn send_messages(q_client: Query<(&UdpNode, Option<&ConnectTo>)>) {
+    for (client, opt_connect_to) in q_client.iter() {
+        if opt_connect_to.is_some() {
+            client.send("Hello World".as_bytes());
+        } else {
+            client.send_to("Hello World2".as_bytes(), "0.0.0.0:6002");
+        }
+
     }
 }

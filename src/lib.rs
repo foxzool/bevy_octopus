@@ -67,14 +67,14 @@ impl Connection {
 
 /// [`NetworkRawPacket`]s are raw packets that are sent over the network.
 pub struct NetworkRawPacket {
-    pub from_addr: SocketAddr,
+    pub socket: SocketAddr,
     pub bytes: Bytes,
 }
 
 impl Debug for NetworkRawPacket {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NetworkRawPacket")
-            .field("from_addr", &self.from_addr)
+            .field("socket", &self.socket)
             .finish()
     }
 }
