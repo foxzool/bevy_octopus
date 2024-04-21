@@ -79,6 +79,5 @@ impl Debug for NetworkRawPacket {
     }
 }
 
-
 #[cfg(feature = "udp")]
 pub mod udp;

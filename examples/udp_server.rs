@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 
+use std::net::Ipv4Addr;
 use std::time::Duration;
 
 use bevy::app::ScheduleRunnerPlugin;
@@ -7,7 +8,7 @@ use bevy::log::LogPlugin;
 use bevy::prelude::*;
 
 use bevy_com::prelude::*;
-use bevy_com::udp::{UdpNode, UdpNodeBuilder};
+use bevy_com::udp::{MulticastV4Setting, UdpNode, UdpNodeBuilder};
 
 mod shared;
 
@@ -28,8 +29,21 @@ fn main() {
 fn setup_servers(mut commands: Commands) {
     commands.spawn(UdpNode::new("0.0.0.0:6001"));
     commands.spawn(UdpNode::new("0.0.0.0:6002"));
-    commands.spawn(UdpNodeBuilder::new().with_addrs("0.0.0.0:6003").with_broadcast(true).build());
 
+    // listen for broadcast messages
+    commands.spawn(
+        UdpNodeBuilder::new()
+            .with_addrs("0.0.0.0:6003")
+            .with_broadcast(true)
+            .build(),
+    );
+
+    // listen for multicast messages
+    let multicast_setting = MulticastV4Setting {
+        multi_addr: Ipv4Addr::new(224, 0, 0, 2),
+        interface: Ipv4Addr::UNSPECIFIED,
+    };
+    commands.spawn((UdpNode::new("0.0.0.0:6004"), multicast_setting));
 }
 
 fn close_and_restart(time: Res<Time>, mut q_server: Query<(Entity, &mut UdpNode)>) {

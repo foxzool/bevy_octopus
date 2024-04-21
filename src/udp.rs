@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use std::net::{SocketAddr, ToSocketAddrs};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::thread::spawn;
@@ -166,7 +166,12 @@ impl UdpNode {
             match socket.recv_from(&mut buf).await {
                 Ok((len, from_addr)) => {
                     let bytes = Bytes::copy_from_slice(&buf[..len]);
-                    trace!("Received {} bytes from {}", len, from_addr);
+                    trace!(
+                        "{} Received {} bytes from {}",
+                        socket.local_addr().unwrap(),
+                        len,
+                        from_addr
+                    );
                     message_sender
                         .send(NetworkRawPacket {
                             socket: from_addr,
@@ -197,9 +202,14 @@ impl UdpNode {
             }
 
             while let Ok(packet) = message_receiver.recv().await {
-                trace!("Sending {} bytes to {}", packet.bytes.len(), packet.socket,);
-                let buf = packet.bytes.as_ref();
-                if let Err(_e) = socket.send_to(&buf, packet.socket).await {
+                trace!(
+                    "{} Sending {} bytes to {}",
+                    socket.local_addr().unwrap(),
+                    packet.bytes.len(),
+                    packet.socket,
+                );
+
+                if let Err(_e) = socket.send_to(packet.bytes.as_ref(), packet.socket).await {
                     error_sender
                         .send(NetworkError::SendError)
                         .await
@@ -317,6 +327,98 @@ impl UdpNode {
             .expect("Message channel has closed.");
     }
 
+    pub fn join_multicast_v4(&self, multi_addr: Ipv4Addr, interface: Ipv4Addr) {
+        let socket = self.socket.clone();
+        let error_sender = self.error_channel.sender.clone();
+        match socket.join_multicast_v4(multi_addr, interface) {
+            Ok(_) => {
+                debug!(
+                    "{} Joined multicast group {} on interface {}",
+                    socket.local_addr().unwrap(),
+                    multi_addr,
+                    interface
+                );
+            }
+            Err(e) => {
+                error_sender
+                    .send(NetworkError::Error(format!(
+                        "Failed to join multicast group: {}",
+                        e
+                    )))
+                    .expect("Error channel has closed.");
+            }
+        }
+    }
+
+    pub fn leave_multicast_v4(&self, multi_addr: Ipv4Addr, interface: Ipv4Addr) {
+        let socket = self.socket.clone();
+        let error_sender = self.error_channel.sender.clone();
+        match socket.leave_multicast_v4(multi_addr, interface) {
+            Ok(_) => {
+                debug!(
+                    "{} Left multicast group {} on interface {}",
+                    socket.local_addr().unwrap(),
+                    multi_addr,
+                    interface
+                );
+            }
+            Err(e) => {
+                error_sender
+                    .send(NetworkError::Error(format!(
+                        "Failed to leave multicast group: {}",
+                        e
+                    )))
+                    .expect("Error channel has closed.");
+            }
+        }
+    }
+
+    pub fn join_multicast_v6(&self, multi_addr: Ipv6Addr, interface: u32) {
+        let socket = self.socket.clone();
+        let error_sender = self.error_channel.sender.clone();
+        match socket.join_multicast_v6(&multi_addr, interface) {
+            Ok(_) => {
+                debug!(
+                    "{} Joined multicast group {} on interface {}",
+                    socket.local_addr().unwrap(),
+                    multi_addr,
+                    interface
+                );
+            }
+            Err(e) => {
+                error_sender
+                    .send(NetworkError::Error(format!(
+                        "Failed to join multicast group: {}",
+                        e
+                    )))
+                    .expect("Error channel has closed.");
+            }
+        }
+    }
+
+    pub fn leave_multicast_v6(&self, multi_addr: Ipv6Addr, interface: u32) {
+        let socket = self.socket.clone();
+        let error_sender = self.error_channel.sender.clone();
+        match socket.leave_multicast_v6(&multi_addr, interface) {
+            Ok(_) => {
+                debug!(
+                    "{} Left multicast group {} on interface {}",
+                    socket.local_addr().unwrap(),
+                    multi_addr,
+                    interface
+                );
+            }
+            Err(e) => {
+                error_sender
+                    .send(NetworkError::Error(format!(
+                        "Failed to leave multicast group: {}",
+                        e
+                    )))
+                    .expect("Error channel has closed.");
+            }
+        }
+    }
+
     pub fn receiver(&self) -> Receiver<NetworkRawPacket> {
         self.recv_message_channel.receiver.clone()
     }
@@ -326,13 +428,33 @@ impl UdpNode {
     }
 }
 
+#[derive(Component)]
+pub struct MulticastV4Setting {
+    pub multi_addr: Ipv4Addr,
+    pub interface: Ipv4Addr,
+}
+
+#[derive(Component)]
+pub struct MulticastV6Setting {
+    pub multi_addr: Ipv6Addr,
+    pub interface: u32,
+}
+
 fn control_udp_node(
     mut q_udp_node: Query<
-        (&mut UdpNode, Option<&NetworkSetting>, Option<&ConnectTo>),
+        (
+            &mut UdpNode,
+            Option<&NetworkSetting>,
+            Option<&ConnectTo>,
+            Option<&MulticastV4Setting>,
+            Option<&MulticastV6Setting>,
+        ),
         Added<UdpNode>,
     >,
 ) {
-    for (mut udp_node, opt_setting, opt_connect_to) in q_udp_node.iter_mut() {
+    for (mut udp_node, opt_setting, opt_connect_to, opt_multi_v4, opt_multi_v6) in
+    q_udp_node.iter_mut()
+    {
         let setting = match opt_setting {
             Some(setting) => setting.clone(),
             None => NetworkSetting::default(),
@@ -343,6 +465,14 @@ fn control_udp_node(
 
             if let Some(connect_to) = opt_connect_to {
                 udp_node.connect_to(connect_to);
+            }
+
+            if let Some(multi_v4) = opt_multi_v4 {
+                udp_node.join_multicast_v4(multi_v4.multi_addr, multi_v4.interface);
+            }
+
+            if let Some(multi_v6) = opt_multi_v6 {
+                udp_node.join_multicast_v6(multi_v6.multi_addr, multi_v6.interface);
             }
         }
     }

@@ -10,7 +10,7 @@ pub struct ConnectTo {
 impl ConnectTo {
     pub fn new(addrs: impl ToSocketAddrs) -> Self {
         Self {
-            addrs: addrs.to_socket_addrs().unwrap().collect()
+            addrs: addrs.to_socket_addrs().unwrap().collect(),
         }
     }
 }
