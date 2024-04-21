@@ -4,13 +4,13 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::thread::spawn;
 
-use async_channel::{Receiver, Sender};
 use async_net::{AsyncToSocketAddrs, UdpSocket};
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, ComputeTaskPool, IoTaskPool, TaskPool, TaskPoolBuilder};
 use bytes::Bytes;
 use dashmap::DashMap;
 use futures_lite::future::block_on;
+use kanal::{AsyncReceiver, AsyncSender, Receiver, Sender};
 
 use crate::{AsyncChannel, ChannelName, Connection, ConnectionId, NetworkRawPacket};
 use crate::component::{ConnectTo, NetworkSetting};
@@ -84,8 +84,8 @@ impl UdpNode {
 
     async fn recv_loop(
         socket: UdpSocket,
-        message_sender: Sender<NetworkRawPacket>,
-        error_sender: Sender<NetworkError>,
+        message_sender: AsyncSender<NetworkRawPacket>,
+        error_sender: AsyncSender<NetworkError>,
         cancel_flag: Arc<AtomicBool>,
         max_packet_size: usize,
     ) {
@@ -120,8 +120,8 @@ impl UdpNode {
 
     async fn send_loop(
         socket: UdpSocket,
-        message_receiver: Receiver<NetworkRawPacket>,
-        error_sender: Sender<NetworkError>,
+        message_receiver: AsyncReceiver<NetworkRawPacket>,
+        error_sender: AsyncSender<NetworkError>,
         cancel_flag: Arc<AtomicBool>,
     ) {
         loop {
@@ -153,8 +153,8 @@ impl UdpNode {
 
         let socket = self.socket.clone();
         let cancel_flag = self.cancel_flag.clone();
-        let message_sender = self.recv_message_channel.sender.clone();
-        let error_sender = self.error_channel.sender.clone();
+        let message_sender = self.recv_message_channel.sender.clone_async();
+        let error_sender = self.error_channel.sender.clone_async();
         IoTaskPool::get()
             .spawn(async move {
                 Self::recv_loop(
@@ -170,8 +170,8 @@ impl UdpNode {
 
         let socket = self.socket.clone();
         let cancel_flag = self.cancel_flag.clone();
-        let message_receiver = self.send_message_channel.receiver.clone();
-        let error_sender = self.error_channel.sender.clone();
+        let message_receiver = self.send_message_channel.receiver.clone_async();
+        let error_sender = self.error_channel.sender.clone_async();
         IoTaskPool::get()
             .spawn(async move {
                 Self::send_loop(socket, message_receiver, error_sender, cancel_flag).await;
@@ -201,7 +201,7 @@ impl UdpNode {
     pub fn connect_to(&mut self, connect_to: &ConnectTo) {
         let socket = self.socket.clone();
         let connect_to = connect_to.addrs.clone();
-        let error_sender = self.error_channel.sender.clone();
+        let error_sender = self.error_channel.sender.clone_async();
 
         IoTaskPool::get()
             .spawn(async move {

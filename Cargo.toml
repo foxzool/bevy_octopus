@@ -20,11 +20,10 @@ udp = []
 
 [dependencies]
 async-net = "2.0.0"
-async-channel = "2.2.1"
-async-trait = "0.1.80"
 bevy = { version = "0.13.2", default-features = false, features = ["multi-threaded",] }
 bytes = "1.6.0"
 dashmap = { version = "5.5.3" }
+kanal = "0.1.0-pre8"
 futures-lite = "2.3.0"
 serde = { version = "1.0.198", features = ["derive"] }
 

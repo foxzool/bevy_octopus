@@ -52,7 +52,7 @@ fn close_and_restart(time: Res<Time>, mut q_server: Query<(Entity, &mut UdpNode)
 
 fn receive_raw_messages(q_server: Query<&UdpNode>) {
     for server in q_server.iter() {
-        while let Ok(packet) = server.receiver().try_recv() {
+        while let Ok(Some(packet)) = server.receiver().try_recv() {
             println!("Received: {:?}", packet);
         }
     }

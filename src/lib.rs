@@ -1,12 +1,13 @@
 use std::fmt::{Debug, Display};
 use std::net::SocketAddr;
 
-use async_channel::{Receiver, Sender, unbounded};
-use async_trait::async_trait;
 use bevy::prelude::{Event, Resource};
 use bytes::Bytes;
 use futures_lite::Stream;
+use kanal::{Receiver, Sender, unbounded};
 use serde::{Deserialize, Serialize};
+
+use async_trait::async_trait;
 
 use crate::error::NetworkError;
 use crate::runtime::JoinHandle;
@@ -24,6 +25,7 @@ pub mod component;
 
 pub type ChannelName = String;
 
+#[derive()]
 struct AsyncChannel<T> {
     pub(crate) sender: Sender<T>,
     pub(crate) receiver: Receiver<T>,
