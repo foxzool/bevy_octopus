@@ -26,10 +26,8 @@ dashmap = { version = "5.5.3" }
 kanal = "0.1.0-pre8"
 futures-lite = "2.3.0"
 serde = { version = "1.0.198", features = ["derive"] }
-
-
-[dev-dependencies]
-bincode = { version = "1.3.3" }
+bincode = { version = "1.3.3", optional = true }
+serde_json = { version = "1.0.68", optional = true }
 
 [[example]]
 name = "udp-server"
@@ -44,7 +42,7 @@ required-features = ["udp"]
 [[example]]
 name = "udp-unicast"
 path = "examples/udp_unicast.rs"
-required-features = ["udp"]
+required-features = ["udp", "serde_json"]
 
 
 [[example]]

@@ -28,6 +28,7 @@ fn main() {
             ))),
         )
         .add_plugins(BevyComPlugin)
+        .register_json_decoder::<PlayerInformation>()
         .add_systems(Startup, (setup_clients, setup_server))
         .add_systems(
             Update,
@@ -53,18 +54,21 @@ fn setup_clients(mut commands: Commands) {
 }
 
 fn setup_server(mut commands: Commands) {
-    commands.spawn((UdpNode::new("0.0.0.0:6001"), ServerMarker));
+    commands.spawn((
+        UdpNode::new("0.0.0.0:6001"),
+        ServerMarker,
+        JsonDecoder::<PlayerInformation>::new(),
+    ));
 }
 
 fn send_unicast_messages(q_client: Query<(&NetworkNode, Option<&ConnectTo>), With<ClientMarker>>) {
     for (client, opt_connect) in q_client.iter() {
         if opt_connect.is_some() {
             client.send(
-                &bincode::serialize(&PlayerInformation {
+                serde_json::to_string(&PlayerInformation {
                     health: 100,
                     position: (0, 0, 1),
-                })
-                .unwrap(),
+                }).unwrap().as_bytes()
             );
         } else {
             client.send_to(

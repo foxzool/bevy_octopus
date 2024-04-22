@@ -1,7 +1,7 @@
 use std::{
     marker::PhantomData,
     net::{SocketAddr, ToSocketAddrs},
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
 };
 
 use bevy::prelude::{Component, Deref};
@@ -9,7 +9,7 @@ use bytes::Bytes;
 use kanal::Receiver;
 use serde::Deserialize;
 
-use crate::{error::NetworkError, AsyncChannel, NetworkRawPacket};
+use crate::{AsyncChannel, error::NetworkError, NetworkRawPacket};
 
 #[derive(Component)]
 pub struct ConnectTo {
@@ -31,18 +31,24 @@ impl ConnectTo {
 // pub struct SerdeJsonDecode<'a, T: Deserialize<'a>>;
 
 #[derive(Debug, Deref, Component)]
-pub struct TypedDecoder<T>
+pub struct JsonDecoder<T>
 where
     T: for<'a> Deserialize<'a>,
 {
     inner: PhantomData<T>,
 }
 
-impl<T: for<'a> serde::Deserialize<'a>> TypedDecoder<T> {
+impl<T: for<'a> serde::Deserialize<'a>> JsonDecoder<T> {
     pub fn new() -> Self {
         Self { inner: PhantomData }
     }
+
+    pub fn decode(&self, bytes: &[u8]) -> Option<T> {
+        serde_json::from_slice(bytes).ok()
+    }
+
 }
+
 
 #[derive(Component)]
 pub struct NetworkNode {

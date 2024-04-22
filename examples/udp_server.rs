@@ -22,7 +22,7 @@ fn main() {
             ))),
         )
         .add_plugins(BevyComPlugin)
-        .register_decoder::<PlayerInformation>()
+        .register_json_decoder::<PlayerInformation>()
         .add_systems(Startup, setup_servers)
         .add_systems(Update, (close_and_restart, receive_raw_messages))
         .run();
@@ -50,7 +50,7 @@ fn setup_servers(mut commands: Commands) {
     // handle typed messages
     commands.spawn((
         UdpNode::new("0.0.0.0:6005"),
-        TypedDecoder::<PlayerInformation>::new(),
+        JsonDecoder::<PlayerInformation>::new(),
     ));
 }
 
