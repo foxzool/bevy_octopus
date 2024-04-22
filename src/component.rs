@@ -134,8 +134,12 @@ impl NetworkNode {
             .expect("Message channel has closed.");
     }
 
-    pub fn receiver(&self) -> &Receiver<NetworkRawPacket> {
+    pub fn message_receiver(&self) -> &Receiver<NetworkRawPacket> {
         &self.recv_message_channel.receiver
+    }
+
+    pub fn error_receiver(&self) -> &Receiver<NetworkError> {
+        &self.error_channel.receiver
     }
 }
 

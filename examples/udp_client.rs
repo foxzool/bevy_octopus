@@ -28,7 +28,10 @@ struct TypedUdpMarker;
 
 fn main() {
     App::new()
-        .add_plugins(LogPlugin::default())
+        .add_plugins(LogPlugin {
+            filter: "bevy_com=debug".to_string(),
+            ..default()
+        })
         .add_plugins(
             MinimalPlugins.set(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(
                 1.0 / 60.0,

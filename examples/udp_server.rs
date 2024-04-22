@@ -90,7 +90,7 @@ struct BitcodeDeserializer;
 
 fn receive_raw_messages(q_server: Query<(&UdpNode, &NetworkNode)>) {
     for (udp_node, network_node) in q_server.iter() {
-        while let Ok(Some(packet)) = network_node.receiver().try_recv() {
+        while let Ok(Some(packet)) = network_node.message_receiver().try_recv() {
             println!("{} Received: {:?}", udp_node, packet);
         }
     }

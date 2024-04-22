@@ -41,6 +41,11 @@ name = "udp-client"
 path = "examples/udp_client.rs"
 required-features = ["udp"]
 
+[[example]]
+name = "udp-unicast"
+path = "examples/udp_unicast.rs"
+required-features = ["udp"]
+
 
 
 [profile.release]
