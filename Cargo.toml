@@ -52,6 +52,11 @@ name = "udp-broadcast"
 path = "examples/udp_broadcast.rs"
 required-features = ["udp"]
 
+[[example]]
+name = "udp-multicast"
+path = "examples/udp_multicast.rs"
+required-features = ["udp"]
+
 
 
 [profile.release]
