@@ -64,7 +64,6 @@ fn close_and_restart(
             if server.running {
                 // TODO
                 udp.stop(&mut server);
-
             }
         }
     }
@@ -73,7 +72,6 @@ fn close_and_restart(
         for (e, mut udp, mut server) in q_server.iter_mut() {
             if !server.running {
                 udp.start(&mut server);
-
             }
         }
     }

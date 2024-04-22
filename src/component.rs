@@ -1,7 +1,7 @@
 use std::{
     marker::PhantomData,
     net::{SocketAddr, ToSocketAddrs},
-    sync::{Arc, atomic::AtomicBool},
+    sync::{atomic::AtomicBool, Arc},
 };
 
 use bevy::prelude::{Component, Deref};
@@ -9,7 +9,7 @@ use bytes::Bytes;
 use kanal::Receiver;
 use serde::Deserialize;
 
-use crate::{AsyncChannel, error::NetworkError, NetworkRawPacket};
+use crate::{error::NetworkError, AsyncChannel, NetworkRawPacket};
 
 #[derive(Component)]
 pub struct ConnectTo {
@@ -24,21 +24,6 @@ impl ConnectTo {
     }
 }
 
-#[derive(Component, Clone)]
-pub struct NetworkSetting {
-    pub max_packet_size: usize,
-    pub auto_start: bool,
-}
-
-impl Default for NetworkSetting {
-    fn default() -> Self {
-        Self {
-            max_packet_size: 65535,
-            auto_start: true,
-        }
-    }
-}
-
 // #[derive(Component)]
 // pub struct BincodeDecoder<'a, T: Deserialize<'a>>;
 //
@@ -47,8 +32,8 @@ impl Default for NetworkSetting {
 
 #[derive(Debug, Deref, Component)]
 pub struct TypedDecoder<T>
-    where
-        T: for<'a> Deserialize<'a>,
+where
+    T: for<'a> Deserialize<'a>,
 {
     inner: PhantomData<T>,
 }
@@ -73,6 +58,8 @@ pub struct NetworkNode {
     pub running: bool,
     pub local_addr: Option<SocketAddr>,
     pub peer_addr: Option<SocketAddr>,
+    pub max_packet_size: usize,
+    pub auto_start: bool,
 }
 
 impl Default for NetworkNode {
@@ -85,6 +72,8 @@ impl Default for NetworkNode {
             running: false,
             local_addr: None,
             peer_addr: None,
+            max_packet_size: 65535,
+            auto_start: true,
         }
     }
 }
@@ -99,6 +88,8 @@ impl NetworkNode {
             running: false,
             local_addr,
             peer_addr,
+            max_packet_size: 65535,
+            auto_start: true,
         }
     }
     pub fn start(&mut self) {

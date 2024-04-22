@@ -65,20 +65,16 @@ fn setup_server(mut commands: Commands) {
     ));
 }
 
-fn send_multicast_messages(
-    q_client: Query<&NetworkNode, With<ClientMarker>>,
-) {
+fn send_multicast_messages(q_client: Query<&NetworkNode, With<ClientMarker>>) {
     for client in q_client.iter() {
-
-            client.send_to(
-                &bincode::serialize(&PlayerInformation {
-                    health: 100,
-                    position: (0, 0, 1),
-                })
-                    .unwrap(),
-                "224.0.0.2:6004",
-            );
-
+        client.send_to(
+            &bincode::serialize(&PlayerInformation {
+                health: 100,
+                position: (0, 0, 1),
+            })
+            .unwrap(),
+            "224.0.0.2:6004",
+        );
     }
 }
 

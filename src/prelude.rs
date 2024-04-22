@@ -1,3 +1,5 @@
+#[cfg(feature = "udp")]
+pub use crate::udp::UdpNode;
 pub use crate::{
     component::*,
     network::NetworkMessage,
@@ -6,6 +8,3 @@ pub use crate::{
     runtime::{EventworkRuntime, Runtime},
     system::AppNetworkMessage,
 };
-#[cfg(feature = "udp")]
-pub use crate::udp::UdpNode;
-

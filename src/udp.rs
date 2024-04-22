@@ -1,7 +1,7 @@
 use std::{
     fmt::Display,
     net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
-    sync::{Arc, atomic::AtomicBool},
+    sync::{atomic::AtomicBool, Arc},
     thread::spawn,
 };
 
@@ -15,9 +15,9 @@ use futures_lite::future::block_on;
 use kanal::{AsyncReceiver, AsyncSender, Receiver, Sender};
 
 use crate::{
-    AsyncChannel,
-    ChannelName,
-    component::{ConnectTo, NetworkNode, NetworkSetting}, Connection, ConnectionId, error::NetworkError, NetworkRawPacket,
+    component::{ConnectTo, NetworkNode},
+    error::NetworkError,
+    AsyncChannel, ChannelName, Connection, ConnectionId, NetworkRawPacket,
 };
 
 pub struct UdpPlugin;
@@ -226,7 +226,7 @@ impl UdpNode {
                     cancel_flag.clone(),
                     65_507,
                 )
-                    .await;
+                .await;
             })
             .detach();
 
@@ -426,7 +426,6 @@ fn control_udp_node(
         (
             &mut UdpNode,
             &mut NetworkNode,
-            Option<&NetworkSetting>,
             Option<&ConnectTo>,
             Option<&MulticastV4Setting>,
             Option<&MulticastV6Setting>,
@@ -434,15 +433,10 @@ fn control_udp_node(
         Added<NetworkNode>,
     >,
 ) {
-    for (mut udp_node, mut network_node, opt_setting, opt_connect_to, opt_multi_v4, opt_multi_v6) in
-    q_udp_node.iter_mut()
+    for (mut udp_node, mut network_node, opt_connect_to, opt_multi_v4, opt_multi_v6) in
+        q_udp_node.iter_mut()
     {
-        let setting = match opt_setting {
-            Some(setting) => setting.clone(),
-            None => NetworkSetting::default(),
-        };
-
-        if setting.auto_start {
+        if network_node.auto_start {
             udp_node.start(&mut network_node);
 
             if let Some(connect_to) = opt_connect_to {

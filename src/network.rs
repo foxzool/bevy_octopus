@@ -20,7 +20,8 @@ use serde::{de::DeserializeOwned, Serialize};
 
 /// Marks a type as an eventwork message
 pub trait NetworkMessage: Serialize + DeserializeOwned + Send + Sync + 'static {
-    /// A unique name to identify your message, this needs to be unique __across all included crates__
+    /// A unique name to identify your message, this needs to be unique __across all included
+    /// crates__
     ///
     /// A good combination is crate name + struct name.
     const NAME: &'static str;

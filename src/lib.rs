@@ -18,8 +18,8 @@ pub mod resource;
 
 pub mod error;
 
-mod system;
 mod network;
+mod system;
 
 pub mod runtime;
 

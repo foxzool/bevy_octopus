@@ -93,7 +93,9 @@ fn setup_clients(mut commands: Commands) {
     ));
 }
 
-fn send_unicast_messages(q_client: Query<(&NetworkNode, Option<&ConnectTo>), With<UnicastUdpMarker>>) {
+fn send_unicast_messages(
+    q_client: Query<(&NetworkNode, Option<&ConnectTo>), With<UnicastUdpMarker>>,
+) {
     for (client, opt_connect) in q_client.iter() {
         if opt_connect.is_some() {
             client.send("I can send unicast message to connect".as_bytes());
@@ -128,7 +130,7 @@ fn send_typed_messages(q_client: Query<&NetworkNode, With<TypedUdpMarker>>) {
                 health: 100,
                 position: (0, 0, 1),
             })
-                .unwrap(),
+            .unwrap(),
         );
     }
 }

@@ -31,8 +31,7 @@ fn main() {
         .add_systems(Startup, (setup_clients, setup_server))
         .add_systems(
             Update,
-            send_unicast_messages
-                .run_if(on_timer(Duration::from_secs_f64(1.0))),
+            send_unicast_messages.run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
         .add_systems(Update, (receive_raw_messages, handle_error_messages))
         .run();
@@ -65,7 +64,7 @@ fn send_unicast_messages(q_client: Query<(&NetworkNode, Option<&ConnectTo>), Wit
                     health: 100,
                     position: (0, 0, 1),
                 })
-                    .unwrap(),
+                .unwrap(),
             );
         } else {
             client.send_to(
@@ -75,8 +74,6 @@ fn send_unicast_messages(q_client: Query<(&NetworkNode, Option<&ConnectTo>), Wit
         }
     }
 }
-
-
 
 fn receive_raw_messages(q_server: Query<(&UdpNode, &NetworkNode), With<ServerMarker>>) {
     for (udp_node, network_node) in q_server.iter() {
