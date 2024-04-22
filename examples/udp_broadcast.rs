@@ -4,7 +4,11 @@ use bevy::{
     app::ScheduleRunnerPlugin, log::LogPlugin, prelude::*, time::common_conditions::on_timer,
 };
 
-use bevy_com::{component::ConnectTo, prelude::*, udp::UdpNode};
+use bevy_com::{
+    component::ConnectTo,
+    prelude::*,
+    udp::{UdpNode, UdpNodeBuilder},
+};
 
 use crate::shared::PlayerInformation;
 
@@ -31,33 +35,42 @@ fn main() {
         .add_systems(Startup, (setup_clients, setup_server))
         .add_systems(
             Update,
-            send_unicast_messages
-                .run_if(on_timer(Duration::from_secs_f64(1.0))),
+            send_broadcast_messages.run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
         .add_systems(Update, (receive_raw_messages, handle_error_messages))
         .run();
 }
 
 fn setup_clients(mut commands: Commands) {
-    // send unicast udp
     commands.spawn((
-        UdpNode::new("0.0.0.0:5001"),
-        ConnectTo::new("127.0.0.1:6001"),
         ClientMarker,
+        UdpNodeBuilder::new()
+            .with_addrs("0.0.0.0:5002")
+            .with_broadcast(true)
+            .build(),
+        ConnectTo::new("255.255.255.255:6002"),
     ));
+
     commands.spawn((
-        UdpNode::default(),
-        ConnectTo::new("127.0.0.1:6001"),
         ClientMarker,
+        UdpNodeBuilder::new()
+            .with_addrs("0.0.0.0:5012")
+            .with_broadcast(true)
+            .build(),
     ));
-    commands.spawn((UdpNode::default(), ClientMarker));
 }
 
 fn setup_server(mut commands: Commands) {
-    commands.spawn((UdpNode::new("0.0.0.0:6001"), ServerMarker));
+    let broadcast_receiver = UdpNodeBuilder::new()
+        .with_addrs("0.0.0.0:6002")
+        .with_broadcast(true)
+        .build();
+    commands.spawn((broadcast_receiver, ServerMarker));
 }
 
-fn send_unicast_messages(q_client: Query<(&NetworkNode, Option<&ConnectTo>), With<ClientMarker>>) {
+fn send_broadcast_messages(
+    q_client: Query<(&NetworkNode, Option<&ConnectTo>), With<ClientMarker>>,
+) {
     for (client, opt_connect) in q_client.iter() {
         if opt_connect.is_some() {
             client.send(
@@ -65,18 +78,16 @@ fn send_unicast_messages(q_client: Query<(&NetworkNode, Option<&ConnectTo>), Wit
                     health: 100,
                     position: (0, 0, 1),
                 })
-                    .unwrap(),
+                .unwrap(),
             );
         } else {
             client.send_to(
                 "I can send message to specify socket ".as_bytes(),
-                "127.0.0.1:6001",
+                "127.0.0.1:6002",
             );
         }
     }
 }
-
-
 
 fn receive_raw_messages(q_server: Query<(&UdpNode, &NetworkNode), With<ServerMarker>>) {
     for (udp_node, network_node) in q_server.iter() {

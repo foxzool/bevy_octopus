@@ -47,6 +47,12 @@ path = "examples/udp_unicast.rs"
 required-features = ["udp"]
 
 
+[[example]]
+name = "udp-broadcast"
+path = "examples/udp_broadcast.rs"
+required-features = ["udp"]
+
+
 
 [profile.release]
 strip = true
