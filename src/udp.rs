@@ -1,7 +1,7 @@
 use std::{
     fmt::Display,
     net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
-    sync::{Arc, atomic::AtomicBool},
+    sync::{atomic::AtomicBool, Arc},
 };
 
 use async_net::UdpSocket;
@@ -25,9 +25,6 @@ impl Plugin for UdpPlugin {
         app.add_systems(Update, (create_network_node, control_udp_node));
     }
 }
-
-#[derive(Component)]
-pub struct UdpProtocol;
 
 #[derive(Component)]
 pub struct UdpNode {

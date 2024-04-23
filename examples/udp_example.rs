@@ -3,11 +3,9 @@ use std::time::Duration;
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
 use bevy_ecs_net::{
-    decoder::{AppMessageDecoder, DecodeWorker, serde_json::SerdeJsonProvider},
+    decoder::{serde_json::SerdeJsonProvider, AppMessageDecoder, DecodeWorker},
     prelude::*,
-
 };
-
 
 use crate::shared::*;
 

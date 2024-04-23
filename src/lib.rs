@@ -1,18 +1,22 @@
 use std::fmt::{Debug, Display};
 
 use bevy::app::{App, Plugin};
-use kanal::{Receiver, Sender, unbounded};
+use kanal::{unbounded, Receiver, Sender};
 
 use crate::{network::NetworkErrorEvent, prelude::NetworkResource};
 
+pub mod decoder;
+pub mod error;
 pub mod event;
 pub mod manager;
+pub mod network;
 pub mod prelude;
 
-pub mod error;
+#[cfg(feature = "udp")]
+pub mod udp;
 
-pub mod decoder;
-pub mod network;
+#[cfg(feature = "tcp")]
+pub mod tcp;
 
 pub type ChannelName = String;
 
@@ -54,6 +58,3 @@ impl Display for ConnectionId {
         f.write_fmt(format_args!("Connection with ID={0}", self.id))
     }
 }
-
-#[cfg(feature = "udp")]
-pub mod udp;

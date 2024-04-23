@@ -2,14 +2,14 @@ use std::{
     fmt::{Debug, Display},
     net::{SocketAddr, ToSocketAddrs},
     ops::Deref,
-    sync::{Arc, atomic::AtomicBool},
+    sync::{atomic::AtomicBool, Arc},
 };
 
 use bevy::prelude::{Component, Entity, Event};
 use bytes::Bytes;
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::{AsyncChannel, error::NetworkError};
+use crate::{error::NetworkError, AsyncChannel};
 
 /// Any type that should be sent over the wire has to implement [`NetworkMessage`].
 ///

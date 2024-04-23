@@ -20,7 +20,8 @@ fn main() {
     app.add_systems(Startup, (setup_clients, setup_server))
         .add_systems(
             Update,
-            (send_broadcast_messages, send_multicast_messages).run_if(on_timer(Duration::from_secs_f64(1.0))),
+            (send_broadcast_messages, send_multicast_messages)
+                .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
         .add_systems(Update, (receive_raw_messages, handle_error_events))
         .run();
