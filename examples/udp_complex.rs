@@ -2,7 +2,7 @@ use std::{net::Ipv4Addr, time::Duration};
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
-use bevy_com::prelude::*;
+use bevy_ecs_net::prelude::*;
 
 use crate::shared::*;
 

@@ -5,7 +5,7 @@ use std::{ops::Deref, time::Duration};
 use bevy::{app::ScheduleRunnerPlugin, log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use bevy_com::{
+use bevy_ecs_net::{
     BevyComPlugin,
     NetworkData, NetworkErrorEvent, prelude::{NetworkMessage, NetworkNode},
 };
@@ -32,7 +32,7 @@ pub fn shared_setup(app: &mut App) {
             1.0 / 60.0,
         ))),
         LogPlugin {
-            filter: "bevy_com=debug".to_string(),
+            filter: "bevy_ecs_net=debug".to_string(),
             ..default()
         },
     ))

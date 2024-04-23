@@ -350,21 +350,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_com"
-version = "0.1.0"
-dependencies = [
- "async-net",
- "bevy",
- "bincode",
- "bytes",
- "dashmap",
- "futures-lite",
- "kanal",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "bevy_core"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -436,6 +421,21 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.60",
+]
+
+[[package]]
+name = "bevy_ecs_net"
+version = "0.1.0"
+dependencies = [
+ "async-net",
+ "bevy",
+ "bincode",
+ "bytes",
+ "dashmap",
+ "futures-lite",
+ "kanal",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

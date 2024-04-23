@@ -6,7 +6,7 @@ use serde::{de::DeserializeOwned, Serialize};
 ///
 /// ## Example
 /// ```rust
-/// use bevy_com::prelude::NetworkMessage;
+/// use bevy_ecs_net::prelude::NetworkMessage;
 /// use serde::{Serialize, Deserialize};
 ///
 /// #[derive(Serialize, Deserialize, Debug)]
