@@ -5,7 +5,6 @@ use std::{
 
 use bevy::prelude::Component;
 use bytes::Bytes;
-use kanal::{Receiver, Sender};
 
 use crate::{AsyncChannel, error::NetworkError, NetworkRawPacket};
 
@@ -34,30 +33,15 @@ pub struct NetworkNode {
     pub cancel_flag: Arc<AtomicBool>,
     /// Whether the node is running or not
     pub running: bool,
-    pub local_addr: Option<SocketAddr>,
+    /// Local address
+    pub local_addr: SocketAddr,
     pub peer_addr: Option<SocketAddr>,
     pub max_packet_size: usize,
     pub auto_start: bool,
 }
 
-impl Default for NetworkNode {
-    fn default() -> Self {
-        Self {
-            recv_message_channel: AsyncChannel::new(),
-            send_message_channel: AsyncChannel::new(),
-            error_channel: AsyncChannel::new(),
-            cancel_flag: Arc::new(AtomicBool::new(false)),
-            running: false,
-            local_addr: None,
-            peer_addr: None,
-            max_packet_size: 65535,
-            auto_start: true,
-        }
-    }
-}
-
 impl NetworkNode {
-    pub fn new(local_addr: Option<SocketAddr>, peer_addr: Option<SocketAddr>) -> Self {
+    pub fn new(local_addr: SocketAddr, peer_addr: Option<SocketAddr>) -> Self {
         Self {
             recv_message_channel: AsyncChannel::new(),
             send_message_channel: AsyncChannel::new(),
@@ -111,12 +95,9 @@ impl NetworkNode {
         &self.send_message_channel
     }
 
-
     pub fn error_channel(&self) -> &AsyncChannel<NetworkError> {
         &self.error_channel
     }
-
-
 }
 
 #[derive(Component)]

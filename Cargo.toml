@@ -34,7 +34,7 @@ serde_json = { version = "1.0.68", optional = true }
 [[example]]
 name = "udp-example"
 path = "examples/udp_example.rs"
-required-features = ["udp", "serde_json"]
+required-features = ["udp", "serde_json", "bincode"]
 
 
 [[example]]

@@ -1,6 +1,7 @@
 use std::{
     fmt::{Debug, Display},
     net::SocketAddr,
+    ops::Deref,
 };
 
 use bevy::{
@@ -68,8 +69,28 @@ pub struct NetworkErrorEvent {
 ///
 /// Please check the root documentation how to up everything
 pub struct NetworkData<T> {
-    source: Entity,
+    pub source: Entity,
     inner: T,
+}
+
+impl<T> Deref for NetworkData<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<T> NetworkData<T> {
+    /// The source entity of this network data
+    pub fn source(&self) -> &Entity {
+        &self.source
+    }
+
+    /// Get the inner data out of it
+    pub fn into_inner(self) -> T {
+        self.inner
+    }
 }
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]

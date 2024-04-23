@@ -46,7 +46,7 @@ impl Default for UdpNode {
 
 impl Display for UdpNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("UDP Node on {:?}", self.local_addr()))
+        f.write_fmt(format_args!("UDP Node {} ", self.local_addr().unwrap()))
     }
 }
 
@@ -414,7 +414,7 @@ pub struct MulticastV6Setting {
 fn create_network_node(mut commands: Commands, q_udp: Query<(Entity, &UdpNode), Added<UdpNode>>) {
     for (entity, udp_node) in q_udp.iter() {
         commands.entity(entity).insert(NetworkNode::new(
-            udp_node.local_addr(),
+            udp_node.local_addr().unwrap(),
             udp_node.peer_addr(),
         ));
     }
