@@ -3,12 +3,13 @@ use std::{
     net::SocketAddr,
 };
 
-use bevy::prelude::{Event, Resource};
+use bevy::prelude::{Entity, Event, Resource};
 use bytes::Bytes;
 use futures_lite::Stream;
 use kanal::{Receiver, Sender, unbounded};
 use serde::{Deserialize, Serialize};
 
+use crate::error::NetworkError;
 use crate::runtime::JoinHandle;
 
 pub mod event;
@@ -18,6 +19,7 @@ pub mod resource;
 
 pub mod error;
 
+pub mod decoder;
 mod network;
 mod system;
 
@@ -39,6 +41,26 @@ impl<T> AsyncChannel<T> {
 
         Self { sender, receiver }
     }
+}
+
+
+#[derive(Debug, Event)]
+/// A network event originating from another eventwork app
+pub struct NetworkErrorEvent {
+    /// The entity that caused the error
+    pub source: Entity,
+    /// An error occurred while trying to do a network operation
+    pub error: NetworkError,
+}
+
+
+#[derive(Debug, Event)]
+/// [`NetworkData`] is what is sent over the bevy event system
+///
+/// Please check the root documentation how to up everything
+pub struct NetworkData<T> {
+    source: Entity,
+    inner: T,
 }
 
 #[derive(Hash, PartialEq, Eq, Clone, Copy, Debug)]

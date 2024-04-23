@@ -5,8 +5,10 @@ use bevy::{
 };
 
 use bevy_com::{component::ConnectTo, prelude::*, udp::UdpNode};
+use bevy_com::decoder::{AppMessageDecoder, DecodeWorker};
+use bevy_com::decoder::serde_json::{ SerdeJsonProvider};
 
-use crate::shared::PlayerInformation;
+use crate::shared::{handle_error_events, PlayerInformation};
 
 mod shared;
 
@@ -28,13 +30,13 @@ fn main() {
             ))),
         )
         .add_plugins(BevyComPlugin)
-        .register_json_decoder::<PlayerInformation>()
+        .register_decoder::<PlayerInformation, SerdeJsonProvider>()
         .add_systems(Startup, (setup_clients, setup_server))
         .add_systems(
             Update,
             send_unicast_messages.run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
-        .add_systems(Update, (receive_raw_messages, handle_error_messages))
+        .add_systems(Update, (receive_raw_messages, handle_error_events))
         .run();
 }
 
@@ -57,7 +59,7 @@ fn setup_server(mut commands: Commands) {
     commands.spawn((
         UdpNode::new("0.0.0.0:6001"),
         ServerMarker,
-        JsonDecoder::<PlayerInformation>::new(),
+        DecodeWorker::<PlayerInformation, SerdeJsonProvider>::new(),
     ));
 }
 
@@ -80,17 +82,9 @@ fn send_unicast_messages(q_client: Query<(&NetworkNode, Option<&ConnectTo>), Wit
 }
 
 fn receive_raw_messages(q_server: Query<(&UdpNode, &NetworkNode), With<ServerMarker>>) {
-    for (udp_node, network_node) in q_server.iter() {
-        while let Ok(Some(packet)) = network_node.message_receiver().try_recv() {
-            println!("{} Received: {:?}", udp_node, packet);
-        }
-    }
-}
-
-fn handle_error_messages(q_server: Query<(&UdpNode, &NetworkNode), With<ServerMarker>>) {
-    for (udp_node, network_node) in q_server.iter() {
-        while let Ok(Some(packet)) = network_node.error_receiver().try_recv() {
-            println!("{} Error: {:?}", udp_node, packet);
-        }
-    }
+    // for (udp_node, network_node) in q_server.iter() {
+    //     while let Ok(Some(packet)) = network_node.message_receiver().try_recv() {
+    //         println!("{} Received: {:?}", udp_node, packet);
+    //     }
+    // }
 }

@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use serde::{de::DeserializeOwned, Serialize};
 
 /// Any type that should be sent over the wire has to implement [`NetworkMessage`].
@@ -7,7 +9,7 @@ use serde::{de::DeserializeOwned, Serialize};
 /// use bevy_com::prelude::NetworkMessage;
 /// use serde::{Serialize, Deserialize};
 ///
-/// #[derive(Serialize, Deserialize)]
+/// #[derive(Serialize, Deserialize, Debug)]
 /// struct PlayerInformation {
 ///     health: usize,
 ///     position: (u32, u32, u32)
@@ -19,7 +21,7 @@ use serde::{de::DeserializeOwned, Serialize};
 /// ```
 
 /// Marks a type as an eventwork message
-pub trait NetworkMessage: Serialize + DeserializeOwned + Send + Sync + 'static {
+pub trait NetworkMessage: Serialize + DeserializeOwned + Send + Sync + Debug + 'static {
     /// A unique name to identify your message, this needs to be unique __across all included
     /// crates__
     ///

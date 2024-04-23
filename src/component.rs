@@ -24,30 +24,6 @@ impl ConnectTo {
     }
 }
 
-// #[derive(Component)]
-// pub struct BincodeDecoder<'a, T: Deserialize<'a>>;
-//
-// #[derive(Component)]
-// pub struct SerdeJsonDecode<'a, T: Deserialize<'a>>;
-
-#[derive(Debug, Deref, Component)]
-pub struct JsonDecoder<T>
-where
-    T: for<'a> Deserialize<'a>,
-{
-    inner: PhantomData<T>,
-}
-
-impl<T: for<'a> serde::Deserialize<'a>> JsonDecoder<T> {
-    pub fn new() -> Self {
-        Self { inner: PhantomData }
-    }
-
-    pub fn decode(&self, bytes: &[u8]) -> Option<T> {
-        serde_json::from_slice(bytes).ok()
-    }
-
-}
 
 
 #[derive(Component)]
