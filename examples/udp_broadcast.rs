@@ -10,7 +10,7 @@ use bevy_com::{
     udp::{UdpNode, UdpNodeBuilder},
 };
 
-use crate::shared::PlayerInformation;
+use crate::shared::{handle_error_events, PlayerInformation};
 
 mod shared;
 
@@ -37,7 +37,7 @@ fn main() {
             Update,
             send_broadcast_messages.run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
-        .add_systems(Update, (receive_raw_messages, handle_error_messages))
+        .add_systems(Update, (receive_raw_messages, handle_error_events))
         .run();
 }
 
@@ -97,10 +97,3 @@ fn receive_raw_messages(q_server: Query<(&UdpNode, &NetworkNode), With<ServerMar
     }
 }
 
-fn handle_error_messages(q_server: Query<(&UdpNode, &NetworkNode), With<ServerMarker>>) {
-    for (udp_node, network_node) in q_server.iter() {
-        while let Ok(Some(packet)) = network_node.error_receiver().try_recv() {
-            println!("{} Error: {:?}", udp_node, packet);
-        }
-    }
-}

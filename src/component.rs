@@ -1,13 +1,11 @@
 use std::{
-    marker::PhantomData,
     net::{SocketAddr, ToSocketAddrs},
     sync::{Arc, atomic::AtomicBool},
 };
 
-use bevy::prelude::{Component, Deref};
+use bevy::prelude::Component;
 use bytes::Bytes;
 use kanal::Receiver;
-use serde::Deserialize;
 
 use crate::{AsyncChannel, error::NetworkError, NetworkRawPacket};
 
@@ -23,7 +21,6 @@ impl ConnectTo {
         }
     }
 }
-
 
 
 #[derive(Component)]

@@ -75,18 +75,7 @@ fn decode_system<T: NetworkMessage, D: DecoderProvider>(
 
 
 #[cfg(feature = "bincode")]
-pub mod bincode
-{
-    use bevy::prelude::Resource;
-
-    use crate::decoder::DecoderProvider;
-
-    #[derive(Resource, Default)]
-    pub struct BincodeDecoder;
-
-
-    impl DecoderProvider for BincodeDecoder {}
-}
+pub mod bincode;
 
 
 #[cfg(feature = "serde_json")]
