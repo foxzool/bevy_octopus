@@ -4,7 +4,6 @@ pub use crate::{
     component::*,
     network::NetworkMessage,
     resource::*,
-    runtime::{EventworkRuntime, Runtime},
     BevyComPlugin,
 };
 

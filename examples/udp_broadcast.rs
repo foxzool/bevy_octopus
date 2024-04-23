@@ -7,7 +7,7 @@ use bevy::{
 use bevy_com::{
     component::ConnectTo,
     prelude::*,
-    udp::{UdpNode, UdpNodeBuilder},
+    udp::UdpNodeBuilder,
 };
 
 use crate::shared::*;
@@ -88,5 +88,3 @@ fn send_broadcast_messages(
         }
     }
 }
-
-

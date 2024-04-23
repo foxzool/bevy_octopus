@@ -11,6 +11,19 @@ use bevy::{
 use bytes::Bytes;
 use kanal::{Receiver, Sender, unbounded};
 
+use std::{
+    fmt::{Debug, Display},
+    net::SocketAddr,
+    ops::Deref,
+};
+
+use bevy::{
+    app::{App, Plugin},
+    prelude::{Entity, Event},
+};
+use bytes::Bytes;
+use kanal::{unbounded, Receiver, Sender};
+
 use crate::{error::NetworkError, prelude::NetworkResource};
 
 pub mod event;
@@ -22,8 +35,6 @@ pub mod error;
 pub mod decoder;
 mod network;
 mod system;
-
-pub mod runtime;
 
 pub mod component;
 
@@ -37,7 +48,7 @@ impl Plugin for BevyComPlugin {
             .add_event::<NetworkErrorEvent>();
 
         #[cfg(feature = "udp")]
-        app.add_plugins(crate::udp::UdpPlugin);
+        app.add_plugins(udp::UdpPlugin);
     }
 }
 
@@ -105,7 +116,6 @@ impl Display for ConnectionId {
         f.write_fmt(format_args!("Connection with ID={0}", self.id))
     }
 }
-
 
 /// [`NetworkRawPacket`]s are raw packets that are sent over the network.
 pub struct NetworkRawPacket {
