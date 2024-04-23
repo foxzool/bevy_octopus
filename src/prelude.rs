@@ -1,8 +1,7 @@
 pub use crate::{
     BevyComPlugin,
-    component::*,
     manager::*,
-    network::NetworkMessage,
+    network::*,
 };
 #[cfg(feature = "bincode")]
 pub use crate::decoder::bincode::BincodeProvider;

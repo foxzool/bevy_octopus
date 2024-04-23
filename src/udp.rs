@@ -14,9 +14,8 @@ use futures_lite::future::block_on;
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
-    component::{NetworkNode, NetworkProtocol},
     error::NetworkError,
-    NetworkRawPacket,
+    network::{NetworkNode, NetworkProtocol, NetworkRawPacket},
 };
 
 pub struct UdpPlugin;
@@ -486,19 +485,11 @@ fn control_udp_node(mut q_udp_node: Query<(&mut UdpNode, &mut NetworkNode), Adde
             }
 
             if let Some(multi_v4) = udp_node.multicast_v4setting.as_ref() {
-                udp_node.join_multicast_v4(
-                    &network_node,
-                    multi_v4.multi_addr,
-                    multi_v4.interface,
-                );
+                udp_node.join_multicast_v4(&network_node, multi_v4.multi_addr, multi_v4.interface);
             }
 
             if let Some(multi_v6) = udp_node.multicast_v6setting.as_ref() {
-                udp_node.join_multicast_v6(
-                    &network_node,
-                    multi_v6.multi_addr,
-                    multi_v6.interface,
-                );
+                udp_node.join_multicast_v6(&network_node, multi_v6.multi_addr, multi_v6.interface);
             }
         }
     }

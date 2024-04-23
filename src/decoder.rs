@@ -8,9 +8,11 @@ use bevy::{
 use serde::Deserialize;
 
 use crate::{
-    component::NetworkNode, error::NetworkError, network::NetworkMessage, NetworkData,
-    NetworkErrorEvent,
+
+    error::NetworkError,
+    network::{NetworkData, NetworkErrorEvent, NetworkMessage},
 };
+use crate::network::NetworkNode;
 
 pub trait DecoderProvider: 'static + Send + Sync + Default {
     fn decode<T: for<'a> Deserialize<'a>>(bytes: &[u8]) -> Result<T, NetworkError>;
@@ -73,7 +75,7 @@ fn decode_system<T: NetworkMessage, D: DecoderProvider>(
             messages
                 .into_iter()
                 .map(Result::unwrap)
-                .map(|m| NetworkData { source, inner: m })
+                .map(|m| NetworkData::new(source, m))
                 .collect::<Vec<_>>(),
         );
         error_events.send_batch(

@@ -14,8 +14,9 @@ autoexamples = false
 resolver = "2"
 
 [features]
-default = ["udp"]
+default = ["udp", "tcp"]
 udp = []
+tcp = []
 
 
 [dependencies]

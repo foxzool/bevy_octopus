@@ -5,10 +5,7 @@ use std::{ops::Deref, time::Duration};
 use bevy::{app::ScheduleRunnerPlugin, log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use bevy_ecs_net::{
-    BevyComPlugin,
-    NetworkData, NetworkErrorEvent, prelude::{NetworkMessage, NetworkNode},
-};
+use bevy_ecs_net::prelude::*;
 
 #[derive(Component)]
 pub struct ClientMarker;
