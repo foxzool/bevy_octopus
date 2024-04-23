@@ -106,12 +106,12 @@ fn send_raw_messages(q_client: Query<&NetworkNode, (With<ClientMarker>, With<Raw
     }
 }
 
-/// if you recv message directly from receiver, may be typed message will not handle
+/// if you recv message directly from receiver,  typed message to wait handled may be missed
 fn receive_raw_messages(
     q_server: Query<(&UdpNode, &NetworkNode), (With<ServerMarker>, With<RawPacketMarker>)>,
 ) {
     for (udp_node, network_node) in q_server.iter() {
-        while let Ok(Some(packet)) = network_node.message_receiver().try_recv() {
+        while let Ok(Some(packet)) = network_node.recv_channel().receiver.try_recv() {
             println!("{} Received: {:?}", udp_node, packet);
         }
     }

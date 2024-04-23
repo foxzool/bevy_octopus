@@ -5,7 +5,7 @@ use std::{
 
 use bevy::prelude::Component;
 use bytes::Bytes;
-use kanal::Receiver;
+use kanal::{Receiver, Sender};
 
 use crate::{AsyncChannel, error::NetworkError, NetworkRawPacket};
 
@@ -22,15 +22,14 @@ impl ConnectTo {
     }
 }
 
-
 #[derive(Component)]
 pub struct NetworkNode {
     /// Channel for receiving messages
-    pub recv_message_channel: AsyncChannel<NetworkRawPacket>,
+    recv_message_channel: AsyncChannel<NetworkRawPacket>,
     /// Channel for sending messages
-    pub send_message_channel: AsyncChannel<NetworkRawPacket>,
+    send_message_channel: AsyncChannel<NetworkRawPacket>,
     /// Channel for errors
-    pub error_channel: AsyncChannel<NetworkError>,
+    error_channel: AsyncChannel<NetworkError>,
     /// A flag to cancel the node
     pub cancel_flag: Arc<AtomicBool>,
     /// Whether the node is running or not
@@ -104,13 +103,20 @@ impl NetworkNode {
             .expect("Message channel has closed.");
     }
 
-    pub fn message_receiver(&self) -> &Receiver<NetworkRawPacket> {
-        &self.recv_message_channel.receiver
+    pub fn recv_channel(&self) -> &AsyncChannel<NetworkRawPacket> {
+        &self.recv_message_channel
     }
 
-    pub fn error_receiver(&self) -> &Receiver<NetworkError> {
-        &self.error_channel.receiver
+    pub fn send_channel(&self) -> &AsyncChannel<NetworkRawPacket> {
+        &self.send_message_channel
     }
+
+
+    pub fn error_channel(&self) -> &AsyncChannel<NetworkError> {
+        &self.error_channel
+    }
+
+
 }
 
 #[derive(Component)]

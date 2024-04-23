@@ -3,17 +3,16 @@ use std::{
     net::SocketAddr,
 };
 
-use bevy::prelude::{Entity, Event, Resource};
+use bevy::{
+    app::{App, Plugin},
+    prelude::{Entity, Event},
+};
 use bytes::Bytes;
-use futures_lite::Stream;
 use kanal::{Receiver, Sender, unbounded};
-use serde::{Deserialize, Serialize};
 
-use crate::error::NetworkError;
-use crate::runtime::JoinHandle;
+use crate::{error::NetworkError, prelude::NetworkResource, runtime::JoinHandle};
 
 pub mod event;
-pub mod plugin;
 pub mod prelude;
 pub mod resource;
 
@@ -29,10 +28,22 @@ pub mod component;
 
 pub type ChannelName = String;
 
+pub struct BevyComPlugin;
+
+impl Plugin for BevyComPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<NetworkResource>()
+            .add_event::<NetworkErrorEvent>();
+
+        #[cfg(feature = "udp")]
+        app.add_plugins(crate::udp::UdpPlugin);
+    }
+}
+
 #[derive()]
-struct AsyncChannel<T> {
-    pub(crate) sender: Sender<T>,
-    pub(crate) receiver: Receiver<T>,
+pub struct AsyncChannel<T> {
+    pub sender: Sender<T>,
+    pub receiver: Receiver<T>,
 }
 
 impl<T> AsyncChannel<T> {
@@ -43,7 +54,6 @@ impl<T> AsyncChannel<T> {
     }
 }
 
-
 #[derive(Debug, Event)]
 /// A network event originating from another eventwork app
 pub struct NetworkErrorEvent {
@@ -52,7 +62,6 @@ pub struct NetworkErrorEvent {
     /// An error occurred while trying to do a network operation
     pub error: NetworkError,
 }
-
 
 #[derive(Debug, Event)]
 /// [`NetworkData`] is what is sent over the bevy event system

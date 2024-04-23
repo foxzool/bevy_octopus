@@ -96,4 +96,3 @@ fn receive_raw_messages(q_server: Query<(&UdpNode, &NetworkNode), With<ServerMar
         }
     }
 }
-

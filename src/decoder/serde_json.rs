@@ -1,6 +1,4 @@
-use std::marker::PhantomData;
-
-use bevy::prelude::{Component, Deref, Resource};
+use bevy::prelude::Resource;
 use serde::Deserialize;
 
 use crate::{decoder::DecoderProvider, error::NetworkError};
@@ -15,12 +13,4 @@ impl DecoderProvider for SerdeJsonProvider {
             Err(e) => Err(NetworkError::DeserializeError(e.to_string())),
         }
     }
-}
-
-#[derive(Debug, Deref, Component, Default)]
-pub struct SerdeJsonMarker<T>
-where
-    T: for<'a> Deserialize<'a>,
-{
-    inner: PhantomData<T>,
 }

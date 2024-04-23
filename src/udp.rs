@@ -2,7 +2,6 @@ use std::{
     fmt::Display,
     net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
     sync::{atomic::AtomicBool, Arc},
-    thread::spawn,
 };
 
 use async_net::{AsyncToSocketAddrs, UdpSocket};
@@ -12,12 +11,12 @@ use bevy::{
 };
 use bytes::Bytes;
 use futures_lite::future::block_on;
-use kanal::{AsyncReceiver, AsyncSender, Receiver, Sender};
+use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
     component::{ConnectTo, NetworkNode},
     error::NetworkError,
-    AsyncChannel, ChannelName, Connection, ConnectionId, NetworkRawPacket,
+    Connection, ConnectionId, NetworkRawPacket,
 };
 
 pub struct UdpPlugin;
@@ -215,13 +214,13 @@ impl UdpNode {
 
         let socket = self.socket.clone();
         let cancel_flag = network_node.cancel_flag.clone();
-        let message_sender = network_node.recv_message_channel.sender.clone_async();
-        let error_sender = network_node.error_channel.sender.clone_async();
+        let recv_sender = network_node.recv_channel().sender.clone_async();
+        let error_sender = network_node.error_channel().sender.clone_async();
         IoTaskPool::get()
             .spawn(async move {
                 Self::recv_loop(
                     socket.clone(),
-                    message_sender,
+                    recv_sender,
                     error_sender.clone(),
                     cancel_flag.clone(),
                     65_507,
@@ -232,8 +231,8 @@ impl UdpNode {
 
         let socket = self.socket.clone();
         let cancel_flag = network_node.cancel_flag.clone();
-        let message_receiver = network_node.send_message_channel.receiver.clone_async();
-        let error_sender = network_node.error_channel.sender.clone_async();
+        let message_receiver = network_node.send_channel().receiver.clone_async();
+        let error_sender = network_node.error_channel().sender.clone_async();
         IoTaskPool::get()
             .spawn(async move {
                 Self::send_loop(socket, message_receiver, error_sender, cancel_flag).await;
@@ -250,7 +249,7 @@ impl UdpNode {
 
         // this is a hack to send a message to the server to shut down
         network_node
-            .send_message_channel
+            .send_channel()
             .sender
             .try_send(NetworkRawPacket {
                 socket: self_addr,
@@ -264,7 +263,7 @@ impl UdpNode {
     pub fn connect_to(&mut self, network_node: &mut NetworkNode, connect_to: &ConnectTo) {
         let socket = self.socket.clone();
         let connect_to = connect_to.addrs.clone();
-        let error_sender = network_node.error_channel.sender.clone_async();
+        let error_sender = network_node.error_channel().sender.clone_async();
 
         block_on(ComputeTaskPool::get().spawn(async move {
             match socket.connect(&*connect_to).await {
@@ -294,7 +293,7 @@ impl UdpNode {
         interface: Ipv4Addr,
     ) {
         let socket = self.socket.clone();
-        let error_sender = network_node.error_channel.sender.clone();
+        let error_sender = network_node.error_channel().sender.clone();
         match socket.join_multicast_v4(multi_addr, interface) {
             Ok(_) => {
                 debug!(
@@ -322,7 +321,7 @@ impl UdpNode {
         interface: Ipv4Addr,
     ) {
         let socket = self.socket.clone();
-        let error_sender = network_node.error_channel.sender.clone();
+        let error_sender = network_node.error_channel().sender.clone();
         match socket.leave_multicast_v4(multi_addr, interface) {
             Ok(_) => {
                 debug!(
@@ -350,7 +349,7 @@ impl UdpNode {
         interface: u32,
     ) {
         let socket = self.socket.clone();
-        let error_sender = network_node.error_channel.sender.clone();
+        let error_sender = network_node.error_channel().sender.clone();
         match socket.join_multicast_v6(&multi_addr, interface) {
             Ok(_) => {
                 debug!(
@@ -378,7 +377,7 @@ impl UdpNode {
         interface: u32,
     ) {
         let socket = self.socket.clone();
-        let error_sender = network_node.error_channel.sender.clone();
+        let error_sender = network_node.error_channel().sender.clone();
         match socket.leave_multicast_v6(&multi_addr, interface) {
             Ok(_) => {
                 debug!(
