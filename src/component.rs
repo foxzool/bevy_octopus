@@ -1,12 +1,13 @@
 use std::{
+    fmt::{Display, Formatter},
     net::{SocketAddr, ToSocketAddrs},
-    sync::{Arc, atomic::AtomicBool},
+    sync::{atomic::AtomicBool, Arc},
 };
 
 use bevy::prelude::Component;
 use bytes::Bytes;
 
-use crate::{AsyncChannel, error::NetworkError, NetworkRawPacket};
+use crate::{error::NetworkError, AsyncChannel, NetworkRawPacket};
 
 #[derive(Component)]
 pub struct ConnectTo {
@@ -18,6 +19,31 @@ impl ConnectTo {
         Self {
             addrs: addrs.to_socket_addrs().unwrap().collect(),
         }
+    }
+}
+
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+pub enum NetworkProtocol {
+    UDP,
+    TCP,
+    SSL,
+    WS,
+    WSS,
+}
+
+impl Display for NetworkProtocol {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                NetworkProtocol::UDP => "udp",
+                NetworkProtocol::TCP => "tcp",
+                NetworkProtocol::SSL => "ssl",
+                NetworkProtocol::WS => "ws",
+                NetworkProtocol::WSS => "wss",
+            }
+        )
     }
 }
 
@@ -38,10 +64,15 @@ pub struct NetworkNode {
     pub peer_addr: Option<SocketAddr>,
     pub max_packet_size: usize,
     pub auto_start: bool,
+    protocol: NetworkProtocol,
 }
 
 impl NetworkNode {
-    pub fn new(local_addr: SocketAddr, peer_addr: Option<SocketAddr>) -> Self {
+    pub fn new(
+        protocol: NetworkProtocol,
+        local_addr: SocketAddr,
+        peer_addr: Option<SocketAddr>,
+    ) -> Self {
         Self {
             recv_message_channel: AsyncChannel::new(),
             send_message_channel: AsyncChannel::new(),
@@ -52,6 +83,7 @@ impl NetworkNode {
             peer_addr,
             max_packet_size: 65535,
             auto_start: true,
+            protocol,
         }
     }
     pub fn start(&mut self) {
@@ -98,7 +130,19 @@ impl NetworkNode {
     pub fn error_channel(&self) -> &AsyncChannel<NetworkError> {
         &self.error_channel
     }
+
+    pub fn schema(&self) -> String {
+        format!(
+            "{}://{}:{}",
+            self.protocol,
+            self.local_addr.ip(),
+            self.local_addr.port()
+        )
+    }
 }
 
-#[derive(Component)]
-pub struct StopMarker;
+impl Display for NetworkNode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.schema())
+    }
+}

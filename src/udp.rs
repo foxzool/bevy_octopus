@@ -1,22 +1,22 @@
 use std::{
     fmt::Display,
     net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
 };
 
-use async_net::{AsyncToSocketAddrs, UdpSocket};
+use async_net::UdpSocket;
 use bevy::{
     prelude::*,
-    tasks::{AsyncComputeTaskPool, ComputeTaskPool, IoTaskPool, TaskPool, TaskPoolBuilder},
+    tasks::{ComputeTaskPool, IoTaskPool},
 };
 use bytes::Bytes;
 use futures_lite::future::block_on;
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
-    component::{ConnectTo, NetworkNode},
+    component::{ConnectTo, NetworkNode, NetworkProtocol},
     error::NetworkError,
-    Connection, ConnectionId, NetworkRawPacket,
+    NetworkRawPacket,
 };
 
 pub struct UdpPlugin;
@@ -414,6 +414,7 @@ pub struct MulticastV6Setting {
 fn create_network_node(mut commands: Commands, q_udp: Query<(Entity, &UdpNode), Added<UdpNode>>) {
     for (entity, udp_node) in q_udp.iter() {
         commands.entity(entity).insert(NetworkNode::new(
+            NetworkProtocol::UDP,
             udp_node.local_addr().unwrap(),
             udp_node.peer_addr(),
         ));

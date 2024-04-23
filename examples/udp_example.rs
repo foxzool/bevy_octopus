@@ -11,24 +11,10 @@ use bevy_com::{
     udp::UdpNode,
 };
 
-use crate::shared::{handle_error_events, handle_message_events, PlayerInformation};
+use crate::shared::*;
 
 mod shared;
 
-#[derive(Component)]
-struct ClientMarker;
-
-#[derive(Component)]
-struct ServerMarker;
-
-#[derive(Component)]
-struct RawPacketMarker;
-
-#[derive(Component)]
-struct JsonMarker;
-
-#[derive(Component)]
-struct BincodeMarker;
 
 fn main() {
     App::new()
@@ -136,13 +122,3 @@ fn send_raw_messages(q_client: Query<&NetworkNode, (With<ClientMarker>, With<Raw
     }
 }
 
-/// if you recv message directly from receiver,  typed message to wait handled may be missed
-fn receive_raw_messages(
-    q_server: Query<(&UdpNode, &NetworkNode), (With<ServerMarker>, With<RawPacketMarker>)>,
-) {
-    for (udp_node, network_node) in q_server.iter() {
-        while let Ok(Some(packet)) = network_node.recv_channel().receiver.try_recv() {
-            info!("{} Received: {:?}", udp_node, String::from_utf8(packet.bytes.to_vec()));
-        }
-    }
-}

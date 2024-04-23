@@ -10,7 +10,7 @@ use bevy_com::{
     udp::{UdpNode, UdpNodeBuilder},
 };
 
-use crate::shared::{handle_error_events, PlayerInformation};
+use crate::shared::*;
 
 mod shared;
 
@@ -89,10 +89,4 @@ fn send_broadcast_messages(
     }
 }
 
-fn receive_raw_messages(q_server: Query<(&UdpNode, &NetworkNode), With<ServerMarker>>) {
-    for (udp_node, network_node) in q_server.iter() {
-        while let Ok(Some(packet)) = network_node.message_receiver().try_recv() {
-            println!("{} Received: {:?}", udp_node, packet);
-        }
-    }
-}
+

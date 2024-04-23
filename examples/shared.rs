@@ -1,8 +1,27 @@
 use std::ops::Deref;
+
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use bevy_com::{NetworkData, NetworkErrorEvent, prelude::{NetworkMessage, NetworkNode}};
+use bevy_com::{
+    NetworkData,
+    NetworkErrorEvent, prelude::{NetworkMessage, NetworkNode},
+};
+
+#[derive(Component)]
+pub struct ClientMarker;
+
+#[derive(Component)]
+pub struct ServerMarker;
+
+#[derive(Component)]
+pub struct RawPacketMarker;
+
+#[derive(Component)]
+pub struct JsonMarker;
+
+#[derive(Component)]
+pub struct BincodeMarker;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerInformation {
@@ -31,6 +50,21 @@ pub fn handle_message_events(
     for event in new_network_events.read() {
         let net = q_net_node.get(event.source).unwrap();
         let player_info = event.deref();
-        info!("{:?} got Message: {:?}", net.local_addr, &player_info);
+        info!("{} Received: {:?}", net, &player_info);
+    }
+}
+
+/// if you recv message directly from receiver,  typed message to wait handled may be missed
+pub fn receive_raw_messages(
+    q_server: Query<&NetworkNode, (With<ServerMarker>, With<RawPacketMarker>)>,
+) {
+    for net_node in q_server.iter() {
+        while let Ok(Some(packet)) = net_node.recv_channel().receiver.try_recv() {
+            info!(
+                "{} Received: {:?}",
+                net_node,
+                String::from_utf8(packet.bytes.to_vec()).unwrap()
+            );
+        }
     }
 }

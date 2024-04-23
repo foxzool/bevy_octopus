@@ -11,7 +11,7 @@ use bevy::{
 use bytes::Bytes;
 use kanal::{Receiver, Sender, unbounded};
 
-use crate::{error::NetworkError, prelude::NetworkResource, runtime::JoinHandle};
+use crate::{error::NetworkError, prelude::NetworkResource};
 
 pub mod event;
 pub mod prelude;
@@ -106,20 +106,6 @@ impl Display for ConnectionId {
     }
 }
 
-struct Connection {
-    receive_task: Box<dyn JoinHandle>,
-    map_receive_task: Box<dyn JoinHandle>,
-    send_task: Box<dyn JoinHandle>,
-    send_message: Sender<Bytes>,
-}
-
-impl Connection {
-    fn stop(mut self) {
-        self.receive_task.abort();
-        self.send_task.abort();
-        self.map_receive_task.abort();
-    }
-}
 
 /// [`NetworkRawPacket`]s are raw packets that are sent over the network.
 pub struct NetworkRawPacket {
