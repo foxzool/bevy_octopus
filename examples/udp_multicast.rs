@@ -1,7 +1,7 @@
 use std::{net::Ipv4Addr, time::Duration};
 
 use bevy::{
-    app::ScheduleRunnerPlugin, log::LogPlugin, prelude::*, time::common_conditions::on_timer,
+    prelude::*, time::common_conditions::on_timer,
 };
 
 use bevy_com::{
@@ -20,18 +20,10 @@ struct ClientMarker;
 struct ServerMarker;
 
 fn main() {
-    App::new()
-        .add_plugins(LogPlugin {
-            filter: "bevy_com=debug".to_string(),
-            ..default()
-        })
-        .add_plugins(
-            MinimalPlugins.set(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(
-                1.0 / 60.0,
-            ))),
-        )
-        .add_plugins(BevyComPlugin)
-        .add_systems(Startup, (setup_clients, setup_server))
+    let mut app = App::new();
+    shared_setup(&mut app);
+
+    app.add_systems(Startup, (setup_clients, setup_server))
         .add_systems(
             Update,
             send_multicast_messages.run_if(on_timer(Duration::from_secs_f64(1.0))),

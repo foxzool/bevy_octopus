@@ -1,13 +1,13 @@
 #![allow(dead_code)]
 
-use std::ops::Deref;
+use std::{ops::Deref, time::Duration};
 
-use bevy::prelude::*;
+use bevy::{app::ScheduleRunnerPlugin, log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
 use bevy_com::{
-    NetworkData,
-    NetworkErrorEvent, prelude::{NetworkMessage, NetworkNode},
+    BevyComPlugin,
+    NetworkData, NetworkErrorEvent, prelude::{NetworkMessage, NetworkNode},
 };
 
 #[derive(Component)]
@@ -24,6 +24,20 @@ pub struct JsonMarker;
 
 #[derive(Component)]
 pub struct BincodeMarker;
+
+/// shared app setup
+pub fn shared_setup(app: &mut App) {
+    app.add_plugins((
+        MinimalPlugins.set(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(
+            1.0 / 60.0,
+        ))),
+        LogPlugin {
+            filter: "bevy_com=debug".to_string(),
+            ..default()
+        },
+    ))
+    .add_plugins(BevyComPlugin);
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerInformation {
