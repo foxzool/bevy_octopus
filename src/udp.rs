@@ -122,7 +122,7 @@ impl UdpNodeBuilder {
         let socket = block_on(ComputeTaskPool::get().spawn(async move {
             UdpSocket::bind(&*addrs)
                 .await
-                .expect(&format!("Failed to bind {:?}", addrs))
+                .unwrap_or_else(|_| panic!("Failed to bind {:?}", addrs))
         }));
 
         UdpNode {
@@ -488,15 +488,15 @@ fn control_udp_node(mut q_udp_node: Query<(&mut UdpNode, &mut NetworkNode), Adde
             if let Some(multi_v4) = udp_node.multicast_v4setting.as_ref() {
                 udp_node.join_multicast_v4(
                     &network_node,
-                    multi_v4.multi_addr.clone(),
-                    multi_v4.interface.clone(),
+                    multi_v4.multi_addr,
+                    multi_v4.interface,
                 );
             }
 
             if let Some(multi_v6) = udp_node.multicast_v6setting.as_ref() {
                 udp_node.join_multicast_v6(
                     &network_node,
-                    multi_v6.multi_addr.clone(),
+                    multi_v6.multi_addr,
                     multi_v6.interface,
                 );
             }
