@@ -3,7 +3,7 @@ pub use crate::decoder::bincode::BincodeProvider;
 pub use crate::{
     component::*,
     network::NetworkMessage,
-    resource::*,
+    manager::*,
     BevyComPlugin,
 };
 

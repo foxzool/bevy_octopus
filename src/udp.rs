@@ -14,7 +14,7 @@ use futures_lite::future::block_on;
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
-    component::{ConnectTo, NetworkNode, NetworkProtocol},
+    component::{NetworkNode, NetworkProtocol},
     error::NetworkError,
     NetworkRawPacket,
 };
@@ -36,6 +36,8 @@ pub struct UdpNode {
     socket: UdpSocket,
     /// Whether the node is broadcasting or not
     broadcast: bool,
+    /// Whether the node is connected to another node
+    connect_to: Option<Vec<SocketAddr>>,
 }
 
 impl Default for UdpNode {
@@ -56,6 +58,7 @@ pub struct UdpNodeBuilder {
     max_packet_size: usize,
     auto_start: bool,
     broadcast: bool,
+    connect_to: Option<Vec<SocketAddr>>,
 }
 
 impl UdpNodeBuilder {
@@ -83,6 +86,12 @@ impl UdpNodeBuilder {
         self
     }
 
+    pub fn with_connect_to(mut self, connect_to: impl ToSocketAddrs) -> Self {
+        let connect_to = connect_to.to_socket_addrs().unwrap().collect::<Vec<_>>();
+        self.connect_to = Some(connect_to);
+        self
+    }
+
     pub fn build(self) -> UdpNode {
         let addrs = self.addrs;
 
@@ -94,6 +103,7 @@ impl UdpNodeBuilder {
         UdpNode {
             socket,
             broadcast: self.broadcast,
+            connect_to: self.connect_to,
         }
     }
 }
@@ -110,6 +120,23 @@ impl UdpNode {
         Self {
             socket,
             broadcast: false,
+            connect_to: None,
+        }
+    }
+
+    pub fn new_with_peer(addrs: impl ToSocketAddrs, peer_addr: impl ToSocketAddrs) -> Self {
+        let addrs = addrs.to_socket_addrs().unwrap().collect::<Vec<_>>();
+        let connect_to = peer_addr.to_socket_addrs().unwrap().collect::<Vec<_>>();
+
+        let socket = block_on(
+            ComputeTaskPool::get()
+                .spawn(async move { UdpSocket::bind(&*addrs).await.expect("Failed to bind") }),
+        );
+
+        Self {
+            socket,
+            broadcast: false,
+            connect_to: Some(connect_to),
         }
     }
 
@@ -260,9 +287,8 @@ impl UdpNode {
         network_node.stop();
     }
 
-    pub fn connect_to(&mut self, network_node: &mut NetworkNode, connect_to: &ConnectTo) {
+    pub fn connect_to(&mut self, network_node: &mut NetworkNode, connect_to: Vec<SocketAddr>) {
         let socket = self.socket.clone();
-        let connect_to = connect_to.addrs.clone();
         let error_sender = network_node.error_channel().sender.clone_async();
 
         block_on(ComputeTaskPool::get().spawn(async move {
@@ -426,21 +452,18 @@ fn control_udp_node(
         (
             &mut UdpNode,
             &mut NetworkNode,
-            Option<&ConnectTo>,
             Option<&MulticastV4Setting>,
             Option<&MulticastV6Setting>,
         ),
         Added<NetworkNode>,
     >,
 ) {
-    for (mut udp_node, mut network_node, opt_connect_to, opt_multi_v4, opt_multi_v6) in
-        q_udp_node.iter_mut()
-    {
+    for (mut udp_node, mut network_node, opt_multi_v4, opt_multi_v6) in q_udp_node.iter_mut() {
         if network_node.auto_start {
             udp_node.start(&mut network_node);
 
-            if let Some(connect_to) = opt_connect_to {
-                udp_node.connect_to(&mut network_node, connect_to);
+            if let Some(addr) = udp_node.connect_to.clone() {
+                udp_node.connect_to(&mut network_node, addr);
             }
 
             if let Some(multi_v4) = opt_multi_v4 {

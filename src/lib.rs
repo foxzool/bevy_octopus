@@ -11,30 +11,16 @@ use bevy::{
 use bytes::Bytes;
 use kanal::{Receiver, Sender, unbounded};
 
-use std::{
-    fmt::{Debug, Display},
-    net::SocketAddr,
-    ops::Deref,
-};
-
-use bevy::{
-    app::{App, Plugin},
-    prelude::{Entity, Event},
-};
-use bytes::Bytes;
-use kanal::{unbounded, Receiver, Sender};
-
 use crate::{error::NetworkError, prelude::NetworkResource};
 
 pub mod event;
 pub mod prelude;
-pub mod resource;
+pub mod manager;
 
 pub mod error;
 
 pub mod decoder;
 mod network;
-mod system;
 
 pub mod component;
 

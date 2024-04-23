@@ -5,7 +5,6 @@ use bevy::{
 };
 
 use bevy_com::{
-    component::ConnectTo,
     decoder::{AppMessageDecoder, DecodeWorker, serde_json::SerdeJsonProvider},
     prelude::*,
     udp::UdpNode,
@@ -14,7 +13,6 @@ use bevy_com::{
 use crate::shared::*;
 
 mod shared;
-
 
 fn main() {
     App::new()
@@ -48,16 +46,14 @@ fn main() {
 fn setup_clients(mut commands: Commands) {
     // udp listen to specify  port and connect to remote
     commands.spawn((
-        UdpNode::new("0.0.0.0:5001"),
-        ConnectTo::new("127.0.0.1:6001"),
+        UdpNode::new_with_peer("0.0.0.0:5001", "127.0.0.1:6001"),
         ClientMarker,
         // marker to send json
         JsonMarker,
     ));
     // or listen to rand port
     commands.spawn((
-        UdpNode::default(),
-        ConnectTo::new("127.0.0.1:6002"),
+        UdpNode::new_with_peer("0.0.0.0:0", "127.0.0.1:6002"),
         ClientMarker,
         // marker to send bincode
         BincodeMarker,
@@ -66,7 +62,7 @@ fn setup_clients(mut commands: Commands) {
     commands.spawn((UdpNode::default(), ClientMarker));
 
     // this is an udp node to send raw bytes;
-    commands.spawn((UdpNode::default(), ClientMarker, RawPacketMarker));
+    commands.spawn((UdpNode::new("0.0.0.0:5002"), ClientMarker, RawPacketMarker));
 }
 
 fn setup_server(mut commands: Commands) {
@@ -121,4 +117,3 @@ fn send_raw_messages(q_client: Query<&NetworkNode, (With<ClientMarker>, With<Raw
         );
     }
 }
-

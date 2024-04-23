@@ -9,18 +9,6 @@ use bytes::Bytes;
 
 use crate::{error::NetworkError, AsyncChannel, NetworkRawPacket};
 
-#[derive(Component)]
-pub struct ConnectTo {
-    pub addrs: Vec<SocketAddr>,
-}
-
-impl ConnectTo {
-    pub fn new(addrs: impl ToSocketAddrs) -> Self {
-        Self {
-            addrs: addrs.to_socket_addrs().unwrap().collect(),
-        }
-    }
-}
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum NetworkProtocol {
