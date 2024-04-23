@@ -2,6 +2,30 @@
 
 The ECS driven network plugin for Bevy.
 
+## Features
+
+### ECS driven network
+
+Every network node is a component, so you can easily manage network entities with Bevy ECS.
+
+App can be a server or client or both.
+
+### Flexible network protocol decoder
+
+You can define your own network protocol decoder.
+
+### UDP unicast broadcast multicast
+
+Support UDP unicast, broadcast, multicast.
+
+## Supported Network Protocol
+
+- [x] UDP
+- [ ] TCP
+- [ ] WebSocket
+- [ ] SSL
+- [ ] WebSocket SSL
+
 ## Supported Versions
 
 | bevy | bevy_ecs_net |
