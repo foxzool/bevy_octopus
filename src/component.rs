@@ -1,14 +1,13 @@
 use std::{
     fmt::{Display, Formatter},
     net::{SocketAddr, ToSocketAddrs},
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
 };
 
 use bevy::prelude::Component;
 use bytes::Bytes;
 
-use crate::{error::NetworkError, AsyncChannel, NetworkRawPacket};
-
+use crate::{AsyncChannel, error::NetworkError, NetworkRawPacket};
 
 #[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum NetworkProtocol {

@@ -37,7 +37,7 @@ pub struct UdpNode {
     /// Whether the node is broadcasting or not
     broadcast: bool,
     /// Whether the node is connected to another node
-    connect_to: Option<Vec<SocketAddr>>,
+    peers: Option<Vec<SocketAddr>>,
 }
 
 impl Default for UdpNode {
@@ -58,7 +58,7 @@ pub struct UdpNodeBuilder {
     max_packet_size: usize,
     auto_start: bool,
     broadcast: bool,
-    connect_to: Option<Vec<SocketAddr>>,
+    peers: Option<Vec<SocketAddr>>,
 }
 
 impl UdpNodeBuilder {
@@ -86,9 +86,9 @@ impl UdpNodeBuilder {
         self
     }
 
-    pub fn with_connect_to(mut self, connect_to: impl ToSocketAddrs) -> Self {
+    pub fn with_peers(mut self, connect_to: impl ToSocketAddrs) -> Self {
         let connect_to = connect_to.to_socket_addrs().unwrap().collect::<Vec<_>>();
-        self.connect_to = Some(connect_to);
+        self.peers = Some(connect_to);
         self
     }
 
@@ -97,13 +97,13 @@ impl UdpNodeBuilder {
 
         let socket = block_on(
             ComputeTaskPool::get()
-                .spawn(async move { UdpSocket::bind(&*addrs).await.expect("Failed to bind") }),
+                .spawn(async move { UdpSocket::bind(&*addrs).await.expect(&format!("Failed to bind {:?}", addrs)) }),
         );
 
         UdpNode {
             socket,
             broadcast: self.broadcast,
-            connect_to: self.connect_to,
+            peers: self.peers,
         }
     }
 }
@@ -120,7 +120,7 @@ impl UdpNode {
         Self {
             socket,
             broadcast: false,
-            connect_to: None,
+            peers: None,
         }
     }
 
@@ -136,7 +136,7 @@ impl UdpNode {
         Self {
             socket,
             broadcast: false,
-            connect_to: Some(connect_to),
+            peers: Some(connect_to),
         }
     }
 
@@ -234,7 +234,7 @@ impl UdpNode {
 
     /// Start the UDP node
     pub fn start(&mut self, network_node: &mut NetworkNode) {
-        debug!("Starting {}", self);
+        debug!("Starting {} broadcast: {}", self, self.broadcast);
         self.socket
             .set_broadcast(self.broadcast)
             .expect("Failed to set broadcast");
@@ -462,8 +462,8 @@ fn control_udp_node(
         if network_node.auto_start {
             udp_node.start(&mut network_node);
 
-            if let Some(addr) = udp_node.connect_to.clone() {
-                udp_node.connect_to(&mut network_node, addr);
+            if let Some(addrs) = udp_node.peers.clone() {
+                udp_node.connect_to(&mut network_node, addrs);
             }
 
             if let Some(multi_v4) = opt_multi_v4 {

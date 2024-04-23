@@ -4,21 +4,12 @@ use bevy::{
     app::ScheduleRunnerPlugin, log::LogPlugin, prelude::*, time::common_conditions::on_timer,
 };
 
-use bevy_com::{
-    component::ConnectTo,
-    prelude::*,
-    udp::UdpNodeBuilder,
-};
+use bevy_com::prelude::*;
 
 use crate::shared::*;
 
 mod shared;
 
-#[derive(Component)]
-struct ClientMarker;
-
-#[derive(Component)]
-struct ServerMarker;
 
 fn main() {
     App::new()
@@ -45,46 +36,25 @@ fn setup_clients(mut commands: Commands) {
     commands.spawn((
         ClientMarker,
         UdpNodeBuilder::new()
-            .with_addrs("0.0.0.0:5002")
+            .with_addrs("0.0.0.0:50002")
             .with_broadcast(true)
-            .build(),
-        ConnectTo::new("255.255.255.255:6002"),
-    ));
 
-    commands.spawn((
-        ClientMarker,
-        UdpNodeBuilder::new()
-            .with_addrs("0.0.0.0:5012")
-            .with_broadcast(true)
             .build(),
     ));
 }
 
 fn setup_server(mut commands: Commands) {
     let broadcast_receiver = UdpNodeBuilder::new()
-        .with_addrs("0.0.0.0:6002")
+        .with_addrs("0.0.0.0:60002")
         .with_broadcast(true)
         .build();
-    commands.spawn((broadcast_receiver, ServerMarker));
+    commands.spawn((broadcast_receiver, ServerMarker, RawPacketMarker));
 }
 
-fn send_broadcast_messages(
-    q_client: Query<(&NetworkNode, Option<&ConnectTo>), With<ClientMarker>>,
-) {
-    for (client, opt_connect) in q_client.iter() {
-        if opt_connect.is_some() {
-            client.send(
-                &bincode::serialize(&PlayerInformation {
-                    health: 100,
-                    position: (0, 0, 1),
-                })
-                .unwrap(),
-            );
-        } else {
-            client.send_to(
-                "I can send message to specify socket ".as_bytes(),
-                "127.0.0.1:6002",
-            );
-        }
+fn send_broadcast_messages(q_client: Query<&NetworkNode, With<ClientMarker>>) {
+    for net_code in q_client.iter() {
+
+        net_code.send_to(b"I can send broadcast message", "255.255.255.255:60002");
+
     }
 }
