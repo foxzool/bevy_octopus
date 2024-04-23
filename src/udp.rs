@@ -38,6 +38,10 @@ pub struct UdpNode {
     broadcast: bool,
     /// Whether the node is connected to another node
     peers: Option<Vec<SocketAddr>>,
+    /// Multicast v4 settings
+    multicast_v4setting: Option<MulticastV4Setting>,
+    /// Multicast v6 settings
+    multicast_v6setting: Option<MulticastV6Setting>,
 }
 
 impl Default for UdpNode {
@@ -59,6 +63,10 @@ pub struct UdpNodeBuilder {
     auto_start: bool,
     broadcast: bool,
     peers: Option<Vec<SocketAddr>>,
+    /// Multicast v4 settings
+    multicast_v4setting: Option<MulticastV4Setting>,
+    /// Multicast v6 settings
+    multicast_v6setting: Option<MulticastV6Setting>,
 }
 
 impl UdpNodeBuilder {
@@ -92,18 +100,37 @@ impl UdpNodeBuilder {
         self
     }
 
+    pub fn with_multicast_v4(mut self, multi_addr: Ipv4Addr, interface: Ipv4Addr) -> Self {
+        self.multicast_v4setting = Some(MulticastV4Setting {
+            multi_addr,
+            interface,
+        });
+        self
+    }
+
+    pub fn with_multicast_v6(mut self, multi_addr: Ipv6Addr, interface: u32) -> Self {
+        self.multicast_v6setting = Some(MulticastV6Setting {
+            multi_addr,
+            interface,
+        });
+        self
+    }
+
     pub fn build(self) -> UdpNode {
         let addrs = self.addrs;
 
-        let socket = block_on(
-            ComputeTaskPool::get()
-                .spawn(async move { UdpSocket::bind(&*addrs).await.expect(&format!("Failed to bind {:?}", addrs)) }),
-        );
+        let socket = block_on(ComputeTaskPool::get().spawn(async move {
+            UdpSocket::bind(&*addrs)
+                .await
+                .expect(&format!("Failed to bind {:?}", addrs))
+        }));
 
         UdpNode {
             socket,
             broadcast: self.broadcast,
             peers: self.peers,
+            multicast_v4setting: self.multicast_v4setting,
+            multicast_v6setting: self.multicast_v6setting,
         }
     }
 }
@@ -121,6 +148,8 @@ impl UdpNode {
             socket,
             broadcast: false,
             peers: None,
+            multicast_v4setting: None,
+            multicast_v6setting: None,
         }
     }
 
@@ -137,6 +166,8 @@ impl UdpNode {
             socket,
             broadcast: false,
             peers: Some(connect_to),
+            multicast_v4setting: None,
+            multicast_v6setting: None,
         }
     }
 
@@ -425,13 +456,11 @@ impl UdpNode {
     }
 }
 
-#[derive(Component)]
 pub struct MulticastV4Setting {
     pub multi_addr: Ipv4Addr,
     pub interface: Ipv4Addr,
 }
 
-#[derive(Component)]
 pub struct MulticastV6Setting {
     pub multi_addr: Ipv6Addr,
     pub interface: u32,
@@ -447,18 +476,8 @@ fn create_network_node(mut commands: Commands, q_udp: Query<(Entity, &UdpNode), 
     }
 }
 
-fn control_udp_node(
-    mut q_udp_node: Query<
-        (
-            &mut UdpNode,
-            &mut NetworkNode,
-            Option<&MulticastV4Setting>,
-            Option<&MulticastV6Setting>,
-        ),
-        Added<NetworkNode>,
-    >,
-) {
-    for (mut udp_node, mut network_node, opt_multi_v4, opt_multi_v6) in q_udp_node.iter_mut() {
+fn control_udp_node(mut q_udp_node: Query<(&mut UdpNode, &mut NetworkNode), Added<NetworkNode>>) {
+    for (mut udp_node, mut network_node) in q_udp_node.iter_mut() {
         if network_node.auto_start {
             udp_node.start(&mut network_node);
 
@@ -466,12 +485,20 @@ fn control_udp_node(
                 udp_node.connect_to(&mut network_node, addrs);
             }
 
-            if let Some(multi_v4) = opt_multi_v4 {
-                udp_node.join_multicast_v4(&network_node, multi_v4.multi_addr, multi_v4.interface);
+            if let Some(multi_v4) = udp_node.multicast_v4setting.as_ref() {
+                udp_node.join_multicast_v4(
+                    &network_node,
+                    multi_v4.multi_addr.clone(),
+                    multi_v4.interface.clone(),
+                );
             }
 
-            if let Some(multi_v6) = opt_multi_v6 {
-                udp_node.join_multicast_v6(&network_node, multi_v6.multi_addr, multi_v6.interface);
+            if let Some(multi_v6) = udp_node.multicast_v6setting.as_ref() {
+                udp_node.join_multicast_v6(
+                    &network_node,
+                    multi_v6.multi_addr.clone(),
+                    multi_v6.interface,
+                );
             }
         }
     }

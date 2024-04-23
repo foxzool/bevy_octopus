@@ -26,6 +26,8 @@ dashmap = { version = "5.5.3" }
 kanal = "0.1.0-pre8"
 futures-lite = "2.3.0"
 serde = { version = "1.0.198", features = ["derive"] }
+
+
 bincode = { version = "1.3.3", optional = true }
 serde_json = { version = "1.0.68", optional = true }
 
@@ -38,14 +40,10 @@ required-features = ["udp", "serde_json", "bincode"]
 
 
 [[example]]
-name = "udp-broadcast"
-path = "examples/udp_broadcast.rs"
-required-features = ["udp", "bincode"]
-
-[[example]]
-name = "udp-multicast"
-path = "examples/udp_multicast.rs"
+name = "udp-complex"
+path = "examples/udp_complex.rs"
 required-features = ["udp"]
+
 
 
 
