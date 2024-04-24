@@ -14,9 +14,9 @@ App can be a server or client or both.
 
 You can define your own network protocol decoder.
 
-### UDP unicast broadcast multicast
+### UDP Communication Types
 
-Support UDP [unicast](https://github.com/foxzool/bevy_ecs_net/blob/main/examples/udp_example.rs), broadcast,
+Support UDP [unicast](https://github.com/foxzool/bevy_ecs_net/blob/main/examples/udp_send_and_recv.rs), broadcast,
 multicast. [example](https://github.com/foxzool/bevy_ecs_net/blob/main/examples/udp_complex.rs)
 
 ## Supported Network Protocol

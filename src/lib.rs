@@ -1,3 +1,6 @@
+#![doc = include_str!("../README.md")]
+// #![warn(missing_docs)]
+
 use std::fmt::{Debug, Display};
 
 use bevy::app::{App, Plugin};
@@ -29,6 +32,9 @@ impl Plugin for BevyComPlugin {
 
         #[cfg(feature = "udp")]
         app.add_plugins(udp::UdpPlugin);
+
+        #[cfg(feature = "tcp")]
+        app.add_plugins(tcp::TcpPlugin);
     }
 }
 

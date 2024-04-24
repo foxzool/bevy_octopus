@@ -22,7 +22,7 @@ pub struct UdpPlugin;
 
 impl Plugin for UdpPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (create_network_node, control_udp_node));
+        app.add_systems(PostUpdate, (create_network_node, control_udp_node));
     }
 }
 
@@ -260,16 +260,16 @@ impl UdpNode {
     }
 
     /// Start the UDP node
-    pub fn start(&mut self, network_node: &mut NetworkNode) {
+    pub fn start(&mut self, net_node: &mut NetworkNode) {
         debug!("Starting {} broadcast: {}", self, self.broadcast);
         self.socket
             .set_broadcast(self.broadcast)
             .expect("Failed to set broadcast");
 
         let socket = self.socket.clone();
-        let cancel_flag = network_node.cancel_flag.clone();
-        let recv_sender = network_node.recv_channel().sender.clone_async();
-        let error_sender = network_node.error_channel().sender.clone_async();
+        let cancel_flag = net_node.cancel_flag.clone();
+        let recv_sender = net_node.recv_channel().sender.clone_async();
+        let error_sender = net_node.error_channel().sender.clone_async();
         IoTaskPool::get()
             .spawn(async move {
                 Self::recv_loop(
@@ -284,16 +284,16 @@ impl UdpNode {
             .detach();
 
         let socket = self.socket.clone();
-        let cancel_flag = network_node.cancel_flag.clone();
-        let message_receiver = network_node.send_channel().receiver.clone_async();
-        let error_sender = network_node.error_channel().sender.clone_async();
+        let cancel_flag = net_node.cancel_flag.clone();
+        let message_receiver = net_node.send_channel().receiver.clone_async();
+        let error_sender = net_node.error_channel().sender.clone_async();
         IoTaskPool::get()
             .spawn(async move {
                 Self::send_loop(socket, message_receiver, error_sender, cancel_flag).await;
             })
             .detach();
 
-        network_node.start();
+        net_node.start();
     }
 
     pub fn stop(&mut self, network_node: &mut NetworkNode) {

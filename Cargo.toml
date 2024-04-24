@@ -14,13 +14,14 @@ autoexamples = false
 resolver = "2"
 
 [features]
-default = ["udp", "tcp"]
+default = ["udp", "tcp", "bincode"]
 udp = []
 tcp = []
 
 
 [dependencies]
 async-net = "2.0.0"
+async-trait = "0.1.51"
 bevy = { version = "0.13.2", default-features = false, features = ["multi-threaded", ] }
 bytes = "1.6.0"
 dashmap = { version = "5.5.3" }
@@ -35,8 +36,8 @@ serde_json = { version = "1.0.68", optional = true }
 
 
 [[example]]
-name = "udp-example"
-path = "examples/udp_example.rs"
+name = "udp_send_and_recv"
+path = "examples/udp_send_and_recv.rs"
 required-features = ["udp", "serde_json", "bincode"]
 
 
@@ -45,6 +46,10 @@ name = "udp-complex"
 path = "examples/udp_complex.rs"
 required-features = ["udp"]
 
+[[example]]
+name = "tcp_send_and_recv"
+path = "examples/tcp_send_and_recv.rs"
+required-features = ["tcp"]
 
 
 
