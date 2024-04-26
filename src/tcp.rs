@@ -19,11 +19,7 @@ impl Plugin for TcpPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            (
-                control_tcp_client,
-                control_tcp_server,
-                handle_new_connection,
-            ),
+            (manage_tcp_client, manage_tcp_server, handle_new_connection),
         );
     }
 }
@@ -88,25 +84,35 @@ impl TcpServerNode {
             if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
                 break;
             }
-
-            let n = stream.read(&mut buffer).await.unwrap();
-            if n == 0 {
-                break; // EOF
+            match stream.read(&mut buffer).await {
+                Ok(0) => {
+                    error!("Connection closed by peer");
+                    break;
+                }
+                Ok(n) => {
+                    debug!(
+                        "{} Received {} bytes from {}",
+                        "?",
+                        n,
+                        stream.local_addr().unwrap(),
+                    );
+                    let bytes = Bytes::copy_from_slice(&buffer[..n]);
+                    message_sender
+                        .send(NetworkRawPacket {
+                            socket: Some(stream.local_addr().unwrap()),
+                            bytes,
+                        })
+                        .await
+                        .expect("Message channel has closed.");
+                }
+                Err(e) => {
+                    error_sender
+                        .send(NetworkError::Error(e.to_string()))
+                        .await
+                        .expect("Error channel has closed");
+                    break;
+                }
             }
-            debug!(
-                "{} Received {} bytes from {}",
-                "?",
-                n,
-                stream.local_addr().unwrap(),
-            );
-            let bytes = Bytes::copy_from_slice(&buffer[..n]);
-            message_sender
-                .send(NetworkRawPacket {
-                    socket: Some(stream.local_addr().unwrap()),
-                    bytes,
-                })
-                .await
-                .expect("Message channel has closed.");
         }
     }
 }
@@ -170,7 +176,7 @@ impl TcpClientNode {
     }
 }
 
-fn control_tcp_client(
+fn manage_tcp_client(
     mut commands: Commands,
     mut q_tcp_client: Query<(Entity, &TcpClientNode), Added<TcpClientNode>>,
 ) {
@@ -185,7 +191,7 @@ fn control_tcp_client(
     }
 }
 
-fn control_tcp_server(
+fn manage_tcp_server(
     mut commands: Commands,
     q_tcp_server: Query<(Entity, &TcpServerNode), Added<TcpServerNode>>,
 ) {
