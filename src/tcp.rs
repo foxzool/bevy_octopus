@@ -1,17 +1,17 @@
-use crate::error::NetworkError;
-use crate::network::{NetworkNode, NetworkProtocol, NetworkRawPacket};
-use crate::prelude::UdpNode;
-use crate::AsyncChannel;
+use std::net::ToSocketAddrs;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+
 use async_net::{TcpListener, TcpStream};
 use bevy::prelude::*;
 use bevy::tasks::{ComputeTaskPool, IoTaskPool};
-use futures_lite::stream::block_on;
+use bytes::Bytes;
 use futures_lite::{AsyncReadExt, AsyncWriteExt, StreamExt};
 use kanal::{AsyncReceiver, AsyncSender};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
-use bytes::Bytes;
+
+use crate::error::NetworkError;
+use crate::network::{NetworkNode, NetworkProtocol, NetworkRawPacket};
+use crate::AsyncChannel;
 
 pub struct TcpPlugin;
 
@@ -187,7 +187,7 @@ fn control_tcp_client(
 
 fn control_tcp_server(
     mut commands: Commands,
-    mut q_tcp_server: Query<(Entity, &TcpServerNode), Added<TcpServerNode>>,
+    q_tcp_server: Query<(Entity, &TcpServerNode), Added<TcpServerNode>>,
 ) {
     for (e, tcp_server) in q_tcp_server.iter() {
         let mut net_node = NetworkNode::new(
@@ -201,7 +201,7 @@ fn control_tcp_server(
 }
 
 fn handle_new_connection(mut q_tcp_server: Query<(Entity, &mut TcpServerNode, &mut NetworkNode)>) {
-    for (e, tcp_server, net_node) in q_tcp_server.iter_mut() {
+    for (_e, tcp_server, net_node) in q_tcp_server.iter_mut() {
         while let Ok(Some(tcp_stream)) = tcp_server.new_connections.receiver.try_recv() {
             debug!(
                 "new Tcp client {:?} connected",
@@ -213,12 +213,14 @@ fn handle_new_connection(mut q_tcp_server: Query<(Entity, &mut TcpServerNode, &m
 
             IoTaskPool::get()
                 .spawn(async move {
-                    TcpServerNode::recv_loop(tcp_stream,
-                                             recv_sender,
-                                             error_sender.clone(),
-                                             cancel_flag.clone(),
-                                             65_507,
-                    ).await;
+                    TcpServerNode::recv_loop(
+                        tcp_stream,
+                        recv_sender,
+                        error_sender.clone(),
+                        cancel_flag.clone(),
+                        65_507,
+                    )
+                    .await;
                 })
                 .detach();
         }

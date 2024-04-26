@@ -10,8 +10,9 @@ readme = "README.md"
 repository = "https://github.com/foxzool/bevy_ecs_net"
 license = "MIT OR Apache-2.0"
 categories = ["game-development", "network-programming"]
-autoexamples = false
-resolver = "2"
+keywords = ["bevy", "networking", "ecs"]
+homepage = "https://github.com/foxzool/bevy_ecs_net"
+documentation = "https://docs.rs/bevy_ecs_net"
 
 [features]
 default = ["udp", "tcp", "bincode"]
@@ -49,9 +50,7 @@ required-features = ["udp"]
 [[example]]
 name = "tcp_send_and_recv"
 path = "examples/tcp_send_and_recv.rs"
-required-features = ["tcp"]
-
-
+required-features = ["tcp", "serde_json", "bincode"]
 
 [profile.release]
 strip = true

@@ -81,3 +81,34 @@ pub fn receive_raw_messages(
         }
     }
 }
+
+/// send json packet to server
+pub fn send_json_packet(q_client: Query<&NetworkNode, (With<ClientMarker>, With<JsonMarker>)>) {
+    for client in q_client.iter() {
+        let player_info = PlayerInformation {
+            health: 100,
+            position: (1, 2, 3),
+        };
+        client.send(serde_json::to_string(&player_info).unwrap().as_bytes());
+    }
+}
+
+/// send bincode packet
+pub fn send_bincode_packet(
+    q_client: Query<&NetworkNode, (With<ClientMarker>, With<BincodeMarker>)>,
+) {
+    for client in q_client.iter() {
+        let player_info = PlayerInformation {
+            health: 200,
+            position: (4, 5, 6),
+        };
+        client.send(&bincode::serialize(&player_info).unwrap());
+    }
+}
+
+/// send raw packet to server
+pub fn send_raw_packet(q_client: Query<&NetworkNode, (With<ClientMarker>, With<RawPacketMarker>)>) {
+    for client in q_client.iter() {
+        client.send("I can send raw packet".as_bytes());
+    }
+}
