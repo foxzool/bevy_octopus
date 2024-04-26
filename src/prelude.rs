@@ -7,4 +7,4 @@ pub use crate::tcp::{TcpClientNode, TcpServerNode};
 #[cfg(feature = "udp")]
 pub use crate::udp::{UdpNode, UdpNodeBuilder};
 
-pub use crate::{manager::*, network::*, BevyComPlugin};
+pub use crate::{network::*, network_manager::*, BevyComPlugin};

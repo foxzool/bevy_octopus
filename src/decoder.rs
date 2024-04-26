@@ -7,9 +7,10 @@ use bevy::{
 };
 use serde::Deserialize;
 
+use crate::network_manager::NetworkNode;
 use crate::{
     error::NetworkError,
-    network::{NetworkData, NetworkEvent, NetworkMessage, NetworkNode},
+    network::{NetworkData, NetworkEvent, NetworkMessage},
 };
 
 ///

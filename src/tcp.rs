@@ -10,7 +10,8 @@ use futures_lite::{AsyncReadExt, AsyncWriteExt, StreamExt};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::error::NetworkError;
-use crate::network::{NetworkEvent, NetworkNode, NetworkProtocol, NetworkRawPacket};
+use crate::network::{NetworkEvent, NetworkProtocol, NetworkRawPacket};
+use crate::network_manager::NetworkNode;
 use crate::AsyncChannel;
 
 pub struct TcpPlugin;
@@ -235,7 +236,6 @@ fn handle_new_connection(
 
             // FIXME
             node_events.send(NetworkEvent::Connected(entity));
-
         }
     }
 }

@@ -77,6 +77,9 @@ fn send_multicast_messages(
     q_client: Query<&NetworkNode, (With<ClientMarker>, With<MulticastMarker>)>,
 ) {
     for net_node in q_client.iter() {
-        net_node.send_to(format!("multicast message from {}", net_node), "224.0.0.1:60003");
+        net_node.send_to(
+            format!("multicast message from {}", net_node),
+            "224.0.0.1:60003",
+        );
     }
 }

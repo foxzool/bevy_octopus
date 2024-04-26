@@ -82,6 +82,7 @@ pub fn receive_raw_messages(
     }
 }
 
+#[cfg(feature = "serde_json")]
 /// send json message to server
 pub fn send_json_message(q_client: Query<&NetworkNode, (With<ClientMarker>, With<JsonMarker>)>) {
     for client in q_client.iter() {
@@ -93,6 +94,7 @@ pub fn send_json_message(q_client: Query<&NetworkNode, (With<ClientMarker>, With
     }
 }
 
+#[cfg(feature = "bincode")]
 /// send bincode message
 pub fn send_bincode_message(
     q_client: Query<&NetworkNode, (With<ClientMarker>, With<BincodeMarker>)>,
@@ -107,7 +109,9 @@ pub fn send_bincode_message(
 }
 
 /// send raw message to server
-pub fn send_raw_message(q_client: Query<&NetworkNode, (With<ClientMarker>, With<RawPacketMarker>)>) {
+pub fn send_raw_message(
+    q_client: Query<&NetworkNode, (With<ClientMarker>, With<RawPacketMarker>)>,
+) {
     for node in q_client.iter() {
         node.send(format!("raw packet from {}", node).as_bytes());
     }

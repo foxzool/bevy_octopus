@@ -48,8 +48,13 @@ path = "examples/udp_complex.rs"
 required-features = ["udp", "serde_json", "bincode"]
 
 [[example]]
-name = "tcp_send_and_recv"
-path = "examples/tcp_send_and_recv.rs"
+name = "tcp_client"
+path = "examples/tcp_client.rs"
+required-features = ["tcp", "serde_json", "bincode"]
+
+[[example]]
+name = "tcp_server"
+path = "examples/tcp_server.rs"
 required-features = ["tcp", "serde_json", "bincode"]
 
 [profile.release]

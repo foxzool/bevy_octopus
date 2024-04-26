@@ -13,9 +13,10 @@ use bytes::Bytes;
 use futures_lite::future::block_on;
 use kanal::{AsyncReceiver, AsyncSender};
 
+use crate::network_manager::NetworkNode;
 use crate::{
     error::NetworkError,
-    network::{NetworkNode, NetworkProtocol, NetworkRawPacket},
+    network::{NetworkProtocol, NetworkRawPacket},
 };
 
 pub struct UdpPlugin;

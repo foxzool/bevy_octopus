@@ -7,14 +7,13 @@ use bevy::app::{App, Plugin, Update};
 use bevy::prelude::{Entity, EventWriter, Query};
 use kanal::{unbounded, Receiver, Sender};
 
-use crate::{network::NetworkEvent, prelude::NetworkResource};
-use crate::network::NetworkNode;
+use crate::network::NetworkEvent;
+use crate::network_manager::NetworkNode;
 
 pub mod decoder;
 pub mod error;
-pub mod event;
-pub mod manager;
 pub mod network;
+pub mod network_manager;
 pub mod prelude;
 
 #[cfg(feature = "udp")]
@@ -29,8 +28,7 @@ pub struct BevyComPlugin;
 
 impl Plugin for BevyComPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<NetworkResource>()
-            .add_event::<NetworkEvent>()
+        app.add_event::<NetworkEvent>()
             .add_systems(Update, node_error_event);
 
         #[cfg(feature = "udp")]
@@ -68,10 +66,11 @@ impl Display for ConnectionId {
     }
 }
 
-
-
 /// send network node error channel to events
-fn node_error_event(q_net: Query<(Entity ,&NetworkNode)>, mut node_events: EventWriter<NetworkEvent>) {
+fn node_error_event(
+    q_net: Query<(Entity, &NetworkNode)>,
+    mut node_events: EventWriter<NetworkEvent>,
+) {
     for (entity, net_node) in q_net.iter() {
         while let Ok(Some(error)) = net_node.error_channel().receiver.try_recv() {
             node_events.send(NetworkEvent::Error(entity, error));
