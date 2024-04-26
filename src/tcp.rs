@@ -184,7 +184,7 @@ fn manage_tcp_client(
     for (e, tcp_client) in q_tcp_client.iter_mut() {
         let mut net_node = NetworkNode::new(
             NetworkProtocol::TCP,
-            tcp_client.client.clone().local_addr().unwrap(),
+            tcp_client.client.clone().local_addr().ok(),
             None,
         );
         tcp_client.start(&mut net_node);
@@ -199,7 +199,7 @@ fn manage_tcp_server(
     for (e, tcp_server) in q_tcp_server.iter() {
         let mut net_node = NetworkNode::new(
             NetworkProtocol::TCP,
-            tcp_server.listener.clone().unwrap().local_addr().unwrap(),
+            tcp_server.listener.clone().unwrap().local_addr().ok(),
             None,
         );
         tcp_server.start(&mut net_node);
@@ -208,6 +208,7 @@ fn manage_tcp_server(
 }
 
 fn handle_new_connection(
+    mut commands: Commands,
     mut q_tcp_server: Query<(Entity, &mut TcpServerNode, &mut NetworkNode)>,
     mut node_events: EventWriter<NetworkEvent>,
 ) {
@@ -220,6 +221,8 @@ fn handle_new_connection(
             let cancel_flag = net_node.cancel_flag.clone();
             let recv_sender = net_node.recv_channel().sender.clone_async();
             let error_sender = net_node.error_channel().sender.clone_async();
+            let tcp_client = commands.spawn(NetworkNode::new(NetworkProtocol::TCP, None, tcp_stream.clone().peer_addr().ok() )).id();
+            commands.entity(entity).push_children(&[tcp_client]);
 
             IoTaskPool::get()
                 .spawn(async move {
@@ -230,12 +233,16 @@ fn handle_new_connection(
                         cancel_flag.clone(),
                         65_507,
                     )
-                    .await;
+                        .await;
                 })
                 .detach();
 
-            // FIXME
-            node_events.send(NetworkEvent::Connected(entity));
+            node_events.send(NetworkEvent::Connected(tcp_client));
+
+
+
+
+
         }
     }
 }

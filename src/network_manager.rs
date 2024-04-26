@@ -21,7 +21,7 @@ pub struct NetworkNode {
     /// Whether the node is running or not
     pub running: bool,
     /// Local address
-    pub local_addr: SocketAddr,
+    pub local_addr: Option<SocketAddr>,
     pub peer_addr: Option<SocketAddr>,
     pub max_packet_size: usize,
     pub auto_start: bool,
@@ -31,7 +31,7 @@ pub struct NetworkNode {
 impl NetworkNode {
     pub fn new(
         protocol: NetworkProtocol,
-        local_addr: SocketAddr,
+        local_addr: Option<SocketAddr>,
         peer_addr: Option<SocketAddr>,
     ) -> Self {
         Self {
@@ -93,12 +93,23 @@ impl NetworkNode {
     }
 
     pub fn schema(&self) -> String {
-        format!(
-            "{}://{}:{}",
-            self.protocol,
-            self.local_addr.ip(),
-            self.local_addr.port()
-        )
+        if let Some(local_addr) = self.local_addr {
+            format!(
+                "{}://{}:{}",
+                self.protocol,
+                local_addr.ip(),
+                local_addr.port()
+            )
+        } else if let Some(peer_addr) = self.peer_addr {
+            format!(
+                "{}://{}:{}",
+                self.protocol,
+                peer_addr.ip(),
+                peer_addr.port()
+            )
+        } else {
+            format!("{}://", self.protocol)
+        }
     }
 }
 

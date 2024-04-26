@@ -467,7 +467,7 @@ fn create_network_node(mut commands: Commands, q_udp: Query<(Entity, &UdpNode), 
     for (entity, udp_node) in q_udp.iter() {
         commands.entity(entity).insert(NetworkNode::new(
             NetworkProtocol::UDP,
-            udp_node.local_addr().unwrap(),
+            udp_node.local_addr(),
             udp_node.peer_addr(),
         ));
     }
