@@ -7,9 +7,10 @@ use bevy_ecs_net::{
     prelude::*,
 };
 
-use crate::shared::*;
+use crate::common::*;
 
-mod shared;
+#[path = "common/lib.rs"]
+mod common;
 
 fn main() {
     let mut app = App::new();

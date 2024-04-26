@@ -7,9 +7,10 @@ use bevy_ecs_net::decoder::{AppMessageDecoder, DecodeWorker};
 use bevy_ecs_net::prelude::{BincodeProvider, SerdeJsonProvider};
 use bevy_ecs_net::tcp::{TcpClientNode, TcpServerNode};
 
-use crate::shared::*;
+use crate::common::*;
 
-mod shared;
+#[path = "common/lib.rs"]
+mod common;
 
 fn main() {
     let mut app = App::new();

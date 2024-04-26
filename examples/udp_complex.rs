@@ -4,9 +4,10 @@ use bevy::{prelude::*, time::common_conditions::on_timer};
 
 use bevy_ecs_net::prelude::*;
 
-use crate::shared::*;
+use crate::common::*;
 
-mod shared;
+#[path = "common/lib.rs"]
+mod common;
 
 #[derive(Component)]
 struct BroadcastMarker;
