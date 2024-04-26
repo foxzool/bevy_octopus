@@ -10,7 +10,7 @@ use futures_lite::{AsyncReadExt, AsyncWriteExt, StreamExt};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::error::NetworkError;
-use crate::network::{NetworkNode, NetworkProtocol, NetworkRawPacket};
+use crate::network::{NetworkEvent, NetworkNode, NetworkProtocol, NetworkRawPacket};
 use crate::AsyncChannel;
 
 pub struct TcpPlugin;
@@ -206,8 +206,11 @@ fn manage_tcp_server(
     }
 }
 
-fn handle_new_connection(mut q_tcp_server: Query<(Entity, &mut TcpServerNode, &mut NetworkNode)>) {
-    for (_e, tcp_server, net_node) in q_tcp_server.iter_mut() {
+fn handle_new_connection(
+    mut q_tcp_server: Query<(Entity, &mut TcpServerNode, &mut NetworkNode)>,
+    mut node_events: EventWriter<NetworkEvent>,
+) {
+    for (entity, tcp_server, net_node) in q_tcp_server.iter_mut() {
         while let Ok(Some(tcp_stream)) = tcp_server.new_connections.receiver.try_recv() {
             debug!(
                 "new Tcp client {:?} connected",
@@ -229,6 +232,10 @@ fn handle_new_connection(mut q_tcp_server: Query<(Entity, &mut TcpServerNode, &m
                     .await;
                 })
                 .detach();
+
+            // FIXME
+            node_events.send(NetworkEvent::Connected(entity));
+
         }
     }
 }

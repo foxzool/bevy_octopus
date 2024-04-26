@@ -3,10 +3,12 @@
 
 use std::fmt::{Debug, Display};
 
-use bevy::app::{App, Plugin};
+use bevy::app::{App, Plugin, Update};
+use bevy::prelude::{Entity, EventWriter, Query};
 use kanal::{unbounded, Receiver, Sender};
 
-use crate::{network::NetworkErrorEvent, prelude::NetworkResource};
+use crate::{network::NetworkEvent, prelude::NetworkResource};
+use crate::network::NetworkNode;
 
 pub mod decoder;
 pub mod error;
@@ -28,7 +30,8 @@ pub struct BevyComPlugin;
 impl Plugin for BevyComPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<NetworkResource>()
-            .add_event::<NetworkErrorEvent>();
+            .add_event::<NetworkEvent>()
+            .add_systems(Update, node_error_event);
 
         #[cfg(feature = "udp")]
         app.add_plugins(udp::UdpPlugin);
@@ -62,5 +65,16 @@ pub struct ConnectionId {
 impl Display for ConnectionId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("Connection with ID={0}", self.id))
+    }
+}
+
+
+
+/// send network node error channel to events
+fn node_error_event(q_net: Query<(Entity ,&NetworkNode)>, mut node_events: EventWriter<NetworkEvent>) {
+    for (entity, net_node) in q_net.iter() {
+        while let Ok(Some(error)) = net_node.error_channel().receiver.try_recv() {
+            node_events.send(NetworkEvent::Error(entity, error));
+        }
     }
 }

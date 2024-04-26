@@ -29,7 +29,7 @@ use crate::{error::NetworkError, AsyncChannel};
 /// }
 /// ```
 
-/// Marks a type as an eventwork message
+/// Marks a type as an network message
 pub trait NetworkMessage: Serialize + DeserializeOwned + Send + Sync + Debug + 'static {
     /// A unique name to identify your message, this needs to be unique __across all included
     /// crates__
@@ -39,12 +39,21 @@ pub trait NetworkMessage: Serialize + DeserializeOwned + Send + Sync + Debug + '
 }
 
 #[derive(Debug, Event)]
-/// A network event originating from another eventwork app
-pub struct NetworkErrorEvent {
-    /// The entity that caused the error
-    pub source: Entity,
-    /// An error occurred while trying to do a network operation
-    pub error: NetworkError,
+/// A network event originating from a network node
+pub enum NetworkEvent {
+    Connected(Entity),
+    Disconnected(Entity),
+    Error(Entity, NetworkError),
+}
+
+impl NetworkEvent {
+    pub fn entity(&self) -> Entity {
+        match self {
+            NetworkEvent::Connected(entity) => *entity,
+            NetworkEvent::Disconnected(entity) => *entity,
+            NetworkEvent::Error(entity, _) => *entity,
+        }
+    }
 }
 
 #[derive(Debug, Event)]

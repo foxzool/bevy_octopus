@@ -22,7 +22,7 @@ multicast. [example](https://github.com/foxzool/bevy_ecs_net/blob/main/examples/
 ## Supported Network Protocol
 
 - [x] UDP
-- [ ] TCP
+- [x] TCP
 - [ ] WebSocket
 - [ ] SSL
 - [ ] WebSocket SSL
@@ -33,9 +33,16 @@ multicast. [example](https://github.com/foxzool/bevy_ecs_net/blob/main/examples/
 |------|--------------|
 | 0.13 | 0.1          |
 
-## License
+# License
 
-Dual-licensed under either
+All code in this repository is dual-licensed under either:
 
-- MIT
-- Apache 2.0
+- MIT License (LICENSE-MIT or http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0 (LICENSE-APACHE or http://www.apache.org/licenses/LICENSE-2.0)
+
+at your option. This means you can select the license you prefer.
+
+## Your contributions
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the
+work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any
+additional terms or conditions.

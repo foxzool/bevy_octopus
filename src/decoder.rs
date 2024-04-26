@@ -9,9 +9,10 @@ use serde::Deserialize;
 
 use crate::{
     error::NetworkError,
-    network::{NetworkData, NetworkErrorEvent, NetworkMessage, NetworkNode},
+    network::{NetworkData, NetworkEvent, NetworkMessage, NetworkNode},
 };
 
+///
 pub trait DecoderProvider: 'static + Send + Sync + Default {
     fn decode<T: for<'a> Deserialize<'a>>(bytes: &[u8]) -> Result<T, NetworkError>;
 }
@@ -54,11 +55,11 @@ impl AppMessageDecoder for App {
 }
 
 fn decode_system<T: NetworkMessage, D: DecoderProvider>(
-    mut msg_events: EventWriter<NetworkData<T>>,
-    mut error_events: EventWriter<NetworkErrorEvent>,
+    mut data_events: EventWriter<NetworkData<T>>,
+    mut node_events: EventWriter<NetworkEvent>,
     query: Query<(Entity, &NetworkNode, &DecodeWorker<T, D>)>,
 ) {
-    for (source, network_node, decoder) in query.iter() {
+    for (entity, network_node, decoder) in query.iter() {
         let mut packets = vec![];
         while let Ok(Some(packet)) = network_node.recv_channel().receiver.try_recv() {
             packets.push(packet.bytes);
@@ -69,18 +70,18 @@ fn decode_system<T: NetworkMessage, D: DecoderProvider>(
             .map(|msg| decoder.decode(&msg))
             .partition(Result::is_ok);
 
-        msg_events.send_batch(
+        data_events.send_batch(
             messages
                 .into_iter()
                 .map(Result::unwrap)
-                .map(|m| NetworkData::new(source, m))
+                .map(|m| NetworkData::new(entity, m))
                 .collect::<Vec<_>>(),
         );
-        error_events.send_batch(
+        node_events.send_batch(
             errors
                 .into_iter()
                 .map(Result::unwrap_err)
-                .map(|error| NetworkErrorEvent { source, error })
+                .map(|error| NetworkEvent::Error(entity, error))
                 .collect::<Vec<_>>(),
         );
     }

@@ -45,7 +45,7 @@ required-features = ["udp", "serde_json", "bincode"]
 [[example]]
 name = "udp-complex"
 path = "examples/udp_complex.rs"
-required-features = ["udp"]
+required-features = ["udp", "serde_json", "bincode"]
 
 [[example]]
 name = "tcp_send_and_recv"

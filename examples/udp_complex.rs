@@ -24,7 +24,7 @@ fn main() {
             (send_broadcast_messages, send_multicast_messages)
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
-        .add_systems(Update, (receive_raw_messages, handle_error_events))
+        .add_systems(Update, (receive_raw_messages, handle_node_events))
         .run();
 }
 
@@ -66,7 +66,10 @@ fn send_broadcast_messages(
     q_client: Query<&NetworkNode, (With<ClientMarker>, With<BroadcastMarker>)>,
 ) {
     for net_node in q_client.iter() {
-        net_node.send_to(b"I can send broadcast message", "255.255.255.255:60002");
+        net_node.send_to(
+            format!("broadcast message from {}", net_node),
+            "255.255.255.255:60002",
+        );
     }
 }
 
@@ -74,6 +77,6 @@ fn send_multicast_messages(
     q_client: Query<&NetworkNode, (With<ClientMarker>, With<MulticastMarker>)>,
 ) {
     for net_node in q_client.iter() {
-        net_node.send_to(b"I can send multicast message", "224.0.0.1:60003");
+        net_node.send_to(format!("multicast message from {}", net_node), "224.0.0.1:60003");
     }
 }

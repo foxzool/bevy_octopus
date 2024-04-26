@@ -22,9 +22,9 @@ fn main() {
         .add_systems(
             Update,
             (
-                send_raw_packet,
-                send_json_packet,
-                send_bincode_packet,
+                send_raw_message,
+                send_json_message,
+                send_bincode_message,
                 send_socket_packet,
             )
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
@@ -34,7 +34,7 @@ fn main() {
             (
                 receive_raw_messages,
                 handle_message_events,
-                handle_error_events,
+                handle_node_events,
             ),
         )
         .run();

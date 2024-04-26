@@ -29,7 +29,7 @@ pub fn shared_setup(app: &mut App) {
             1.0 / 60.0,
         ))),
         LogPlugin {
-            filter: "bevy_ecs_net=debug".to_string(),
+            filter: "bevy_ecs_net=trace".to_string(),
             ..default()
         },
     ))
@@ -46,13 +46,13 @@ impl NetworkMessage for PlayerInformation {
     const NAME: &'static str = "PlayerInfo";
 }
 
-pub fn handle_error_events(
-    mut new_network_events: EventReader<NetworkErrorEvent>,
+pub fn handle_node_events(
+    mut new_network_events: EventReader<NetworkEvent>,
     q_net_node: Query<&NetworkNode>,
 ) {
     for event in new_network_events.read() {
-        let net = q_net_node.get(event.source).unwrap();
-        error!("{:?} got Error: {:?}", net.local_addr, event.error);
+        let net = q_net_node.get(event.entity()).unwrap();
+        info!("{} got event: {:?}", net, event);
     }
 }
 
@@ -82,8 +82,8 @@ pub fn receive_raw_messages(
     }
 }
 
-/// send json packet to server
-pub fn send_json_packet(q_client: Query<&NetworkNode, (With<ClientMarker>, With<JsonMarker>)>) {
+/// send json message to server
+pub fn send_json_message(q_client: Query<&NetworkNode, (With<ClientMarker>, With<JsonMarker>)>) {
     for client in q_client.iter() {
         let player_info = PlayerInformation {
             health: 100,
@@ -93,8 +93,8 @@ pub fn send_json_packet(q_client: Query<&NetworkNode, (With<ClientMarker>, With<
     }
 }
 
-/// send bincode packet
-pub fn send_bincode_packet(
+/// send bincode message
+pub fn send_bincode_message(
     q_client: Query<&NetworkNode, (With<ClientMarker>, With<BincodeMarker>)>,
 ) {
     for client in q_client.iter() {
@@ -106,9 +106,9 @@ pub fn send_bincode_packet(
     }
 }
 
-/// send raw packet to server
-pub fn send_raw_packet(q_client: Query<&NetworkNode, (With<ClientMarker>, With<RawPacketMarker>)>) {
-    for client in q_client.iter() {
-        client.send("I can send raw packet".as_bytes());
+/// send raw message to server
+pub fn send_raw_message(q_client: Query<&NetworkNode, (With<ClientMarker>, With<RawPacketMarker>)>) {
+    for node in q_client.iter() {
+        node.send(format!("raw packet from {}", node).as_bytes());
     }
 }
