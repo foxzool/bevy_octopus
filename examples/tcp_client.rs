@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
-use bevy_ecs_net::decoder::{AppMessageDecoder};
+use bevy_ecs_net::decoder::{NetworkMessageDecoder};
 use bevy_ecs_net::prelude::{BincodeProvider, SerdeJsonProvider};
 use bevy_ecs_net::tcp::{TcpClientNode};
 

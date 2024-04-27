@@ -1,10 +1,11 @@
+use std::net::ToSocketAddrs;
 use std::{
     fmt::{Debug, Display},
     net::SocketAddr,
     ops::Deref,
 };
 
-use bevy::prelude::{Entity, Event};
+use bevy::prelude::{Component, Deref, Entity, Event};
 use bytes::Bytes;
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -102,7 +103,7 @@ impl Debug for NetworkRawPacket {
     }
 }
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Component, Ord, PartialOrd, Eq, PartialEq)]
 pub enum NetworkProtocol {
     UDP,
     TCP,
@@ -124,5 +125,33 @@ impl Display for NetworkProtocol {
                 NetworkProtocol::WSS => "wss",
             }
         )
+    }
+}
+
+#[derive(Component, Deref)]
+pub struct LocalSocket(pub SocketAddr);
+
+impl LocalSocket {
+    pub fn new(addr: impl ToSocketAddrs) -> Self {
+        let socket = addr
+            .to_socket_addrs()
+            .expect("not valid socket format")
+            .next()
+            .expect("must have one socket addr");
+        Self(socket)
+    }
+}
+
+#[derive(Component, Deref)]
+pub struct PeerSocket(pub SocketAddr);
+
+impl PeerSocket {
+    pub fn new(addr: impl ToSocketAddrs) -> Self {
+        let socket = addr
+            .to_socket_addrs()
+            .expect("not valid socket format")
+            .next()
+            .expect("must have one socket addr");
+        Self(socket)
     }
 }

@@ -7,6 +7,8 @@ use crate::{decoder::DecoderProvider, error::NetworkError};
 pub struct BincodeProvider;
 
 impl DecoderProvider for BincodeProvider {
+    const NAME: &'static str = "Bincode";
+
     fn decode<T: for<'a> Deserialize<'a>>(bytes: &[u8]) -> Result<T, NetworkError> {
         match bincode::deserialize(bytes) {
             Ok(value) => Ok(value),

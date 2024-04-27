@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 
-use bevy_ecs_net::decoder::{AppMessageDecoder, DecodeWorker};
+use bevy_ecs_net::decoder::{DecodeWorker, NetworkMessageDecoder};
+use bevy_ecs_net::network::LocalSocket;
 use bevy_ecs_net::prelude::{BincodeProvider, SerdeJsonProvider};
-use bevy_ecs_net::tcp::TcpServerNode;
+use bevy_ecs_net::tcp::TCPProtocol;
 
 use crate::common::*;
 
@@ -29,18 +30,21 @@ fn main() {
 }
 
 fn setup_server(mut commands: Commands) {
-    let tcp_node = TcpServerNode::new("0.0.0.0:6003");
-    commands.spawn((tcp_node, ServerMarker, RawPacketMarker));
-
-    let tcp_node = TcpServerNode::new("0.0.0.0:6004");
     commands.spawn((
-        tcp_node,
+        TCPProtocol,
+        LocalSocket::new("0.0.0.0:6003"),
+        ServerMarker,
+        RawPacketMarker,
+    ));
+    commands.spawn((
+        TCPProtocol,
+        LocalSocket::new("0.0.0.0:6004"),
         ServerMarker,
         DecodeWorker::<PlayerInformation, SerdeJsonProvider>::new(),
     ));
-    let tcp_node = TcpServerNode::new("0.0.0.0:6005");
     commands.spawn((
-        tcp_node,
+        TCPProtocol,
+        LocalSocket::new("0.0.0.0:6005"),
         ServerMarker,
         DecodeWorker::<PlayerInformation, BincodeProvider>::new(),
     ));

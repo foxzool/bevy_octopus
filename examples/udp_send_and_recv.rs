@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
 use bevy_ecs_net::{
-    decoder::{serde_json::SerdeJsonProvider, AppMessageDecoder, DecodeWorker},
+    decoder::{serde_json::SerdeJsonProvider, NetworkMessageDecoder, DecodeWorker},
     prelude::*,
 };
 

@@ -4,15 +4,15 @@ use std::sync::Arc;
 
 use async_net::{TcpListener, TcpStream};
 use bevy::prelude::*;
-use bevy::tasks::{ComputeTaskPool, IoTaskPool};
+use bevy::tasks::IoTaskPool;
 use bytes::Bytes;
 use futures_lite::{AsyncReadExt, AsyncWriteExt, StreamExt};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::error::NetworkError;
-use crate::network::{NetworkEvent, NetworkProtocol, NetworkRawPacket};
+use crate::network::{LocalSocket, NetworkEvent, NetworkProtocol, NetworkRawPacket};
 use crate::network_manager::NetworkNode;
-use crate::AsyncChannel;
+use crate::{AsyncChannel, ConnectionId};
 
 pub struct TcpPlugin;
 
@@ -20,56 +20,60 @@ impl Plugin for TcpPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            (manage_tcp_client, manage_tcp_server, handle_new_connection),
+            (manage_tcp_client, spawn_tcp_server, handle_new_connection),
         );
     }
 }
 
 #[derive(Component)]
+pub struct TCPProtocol;
+
+#[derive(Component)]
 pub struct TcpServerNode {
-    listener: Option<TcpListener>,
     new_connections: AsyncChannel<TcpStream>,
 }
 
 impl TcpServerNode {
-    pub fn new(addrs: impl ToSocketAddrs) -> Self {
-        let sockets: Vec<_> = addrs.to_socket_addrs().unwrap().collect();
-        let listener = futures_lite::future::block_on(
-            ComputeTaskPool::get()
-                .spawn(async move { TcpListener::bind(&*sockets).await.unwrap() }),
-        );
-        debug!(
-            "Starting TCP server on {:?}",
-            listener.local_addr().unwrap()
-        );
-
+    pub fn new() -> Self {
         Self {
-            listener: Some(listener),
             new_connections: AsyncChannel::new(),
         }
     }
-
-    pub fn start(&self, network_node: &mut NetworkNode) {
-        match self.listener.clone() {
-            None => network_node
-                .error_channel()
-                .sender
-                .send(NetworkError::Error("server not exist".to_string()))
-                .expect("Error channel has closed"),
-            Some(listener) => {
-                let new_connections_sender = self.new_connections.sender.clone_async();
-                IoTaskPool::get()
-                    .spawn(async move {
+    pub fn start(
+        &self,
+        addr: SocketAddr,
+        error_sender: AsyncSender<NetworkError>,
+        cancel_flag: Arc<AtomicBool>,
+    ) {
+        let new_connection_sender = self.new_connections.sender.clone_async();
+        IoTaskPool::get()
+            .spawn(async move {
+                match TcpListener::bind(addr).await {
+                    Ok(listener) => {
+                        debug!(
+                            "Starting TCP server on {:?}",
+                            listener.local_addr().unwrap()
+                        );
                         let mut incoming = listener.incoming();
                         loop {
+                            if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
+                                break;
+                            }
+
                             while let Some(Ok(income)) = incoming.next().await {
-                                new_connections_sender.send(income).await.unwrap();
+                                new_connection_sender.send(income).await.unwrap();
                             }
                         }
-                    })
-                    .detach();
-            }
-        }
+                    }
+                    Err(e) => {
+                        error_sender
+                            .send(NetworkError::Listen(e))
+                            .await
+                            .expect("Error channel has been closed");
+                    }
+                }
+            })
+            .detach();
     }
 
     pub async fn recv_loop(
@@ -87,7 +91,11 @@ impl TcpServerNode {
             }
             match stream.read(&mut buffer).await {
                 Ok(0) => {
-                    error!("Connection closed by peer");
+                    error_sender
+                        .send(NetworkError::ChannelClosed(ConnectionId { id: 0 }))
+                        .await
+                        .expect("Error channel has closed");
+
                     break;
                 }
                 Ok(n) => {
@@ -193,18 +201,20 @@ fn manage_tcp_client(
     }
 }
 
-fn manage_tcp_server(
+fn spawn_tcp_server(
     mut commands: Commands,
-    q_tcp_server: Query<(Entity, &TcpServerNode), Added<TcpServerNode>>,
+    q_tcp_server: Query<(Entity, &LocalSocket), (Added<LocalSocket>, With<TCPProtocol>)>,
 ) {
-    for (e, tcp_server) in q_tcp_server.iter() {
-        let mut net_node = NetworkNode::new(
-            NetworkProtocol::TCP,
-            tcp_server.listener.clone().unwrap().local_addr().ok(),
-            None,
+    for (e, local_addr) in q_tcp_server.iter() {
+        let net_node = NetworkNode::new(NetworkProtocol::TCP, Some(**local_addr), None);
+        let tcp_server = TcpServerNode::new();
+        tcp_server.start(
+            **local_addr,
+            net_node.error_channel().sender.clone_async(),
+            net_node.cancel_flag.clone(),
         );
-        tcp_server.start(&mut net_node);
-        commands.entity(e).insert(net_node);
+
+        commands.entity(e).insert((net_node, tcp_server));
     }
 }
 

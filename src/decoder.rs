@@ -15,6 +15,7 @@ use crate::{
 
 ///
 pub trait DecoderProvider: 'static + Send + Sync + Default {
+    const NAME: &'static str;
     fn decode<T: for<'a> Deserialize<'a>>(bytes: &[u8]) -> Result<T, NetworkError>;
 }
 
@@ -41,13 +42,13 @@ impl<T: for<'a> serde::Deserialize<'a>, DP: DecoderProvider> DecodeWorker<T, DP>
     }
 }
 
-pub trait AppMessageDecoder {
+pub trait NetworkMessageDecoder {
     fn register_decoder<T: NetworkMessage, D: DecoderProvider>(&mut self) -> &mut Self;
 }
 
-impl AppMessageDecoder for App {
+impl NetworkMessageDecoder for App {
     fn register_decoder<T: NetworkMessage, D: DecoderProvider>(&mut self) -> &mut Self {
-        debug!("Registering decoder for {}", T::NAME);
+        debug!("Registering {} decoder for {}", D::NAME, T::NAME);
 
         self.add_event::<NetworkData<T>>();
         self.add_systems(PostUpdate, decode_system::<T, D>);
