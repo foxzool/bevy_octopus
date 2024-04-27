@@ -30,6 +30,8 @@ pub enum NetworkError {
     Serialization,
     /// Deserialization error
     DeserializeError(String),
+    /// No peer found
+    NoPeer,
 }
 
 impl Display for NetworkError {
@@ -61,6 +63,7 @@ impl Display for NetworkError {
             Self::DeserializeError(string) => {
                 f.write_fmt(format_args!("Failed to deserialize: {0}", string))
             }
+            NetworkError::NoPeer => f.write_fmt(format_args!("Failed to find peer addr")),
         }
     }
 }

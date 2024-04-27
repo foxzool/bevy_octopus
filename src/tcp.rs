@@ -1,4 +1,4 @@
-use std::net::ToSocketAddrs;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
@@ -100,7 +100,7 @@ impl TcpServerNode {
                     let bytes = Bytes::copy_from_slice(&buffer[..n]);
                     message_sender
                         .send(NetworkRawPacket {
-                            socket: Some(stream.local_addr().unwrap()),
+                            socket: stream.local_addr().unwrap(),
                             bytes,
                         })
                         .await
@@ -120,34 +120,38 @@ impl TcpServerNode {
 
 #[derive(Component)]
 pub struct TcpClientNode {
-    client: TcpStream,
+    socket: SocketAddr,
 }
 
 impl TcpClientNode {
     pub fn new(addrs: impl ToSocketAddrs) -> Self {
-        let sockets: Vec<_> = addrs.to_socket_addrs().unwrap().collect();
-        let client = futures_lite::future::block_on(
-            ComputeTaskPool::get()
-                .spawn(async move { TcpStream::connect(&*sockets).await.unwrap() }),
-        );
-
-        Self { client }
+        Self {
+            socket: addrs.to_socket_addrs().unwrap().next().unwrap(),
+        }
     }
 
     pub fn start(&self, net: &mut NetworkNode) {
-        let client = self.client.clone();
+        let socket = self.socket.clone();
         let cancel_flag = net.cancel_flag.clone();
         let message_receiver = net.send_channel().receiver.clone_async();
         let error_sender = net.error_channel().sender.clone_async();
         IoTaskPool::get()
             .spawn(async move {
-                Self::send_loop(
-                    client,
-                    message_receiver,
-                    error_sender.clone(),
-                    cancel_flag.clone(),
-                )
-                .await;
+                match TcpStream::connect(&socket).await {
+                    Ok(stream) => {
+                        Self::send_loop(
+                            stream,
+                            message_receiver,
+                            error_sender.clone(),
+                            cancel_flag.clone(),
+                        )
+                        .await;
+                    }
+                    Err(e) => error_sender
+                        .send(NetworkError::Connection(e))
+                        .await
+                        .expect("Error channel has closed"),
+                }
             })
             .detach()
     }
@@ -182,11 +186,8 @@ fn manage_tcp_client(
     mut q_tcp_client: Query<(Entity, &TcpClientNode), Added<TcpClientNode>>,
 ) {
     for (e, tcp_client) in q_tcp_client.iter_mut() {
-        let mut net_node = NetworkNode::new(
-            NetworkProtocol::TCP,
-            tcp_client.client.clone().local_addr().ok(),
-            None,
-        );
+        let mut net_node =
+            NetworkNode::new(NetworkProtocol::TCP, None, Some(tcp_client.socket.clone()));
         tcp_client.start(&mut net_node);
         commands.entity(e).insert(net_node);
     }
@@ -221,7 +222,13 @@ fn handle_new_connection(
             let cancel_flag = net_node.cancel_flag.clone();
             let recv_sender = net_node.recv_channel().sender.clone_async();
             let error_sender = net_node.error_channel().sender.clone_async();
-            let tcp_client = commands.spawn(NetworkNode::new(NetworkProtocol::TCP, None, tcp_stream.clone().peer_addr().ok() )).id();
+            let tcp_client = commands
+                .spawn(NetworkNode::new(
+                    NetworkProtocol::TCP,
+                    None,
+                    tcp_stream.clone().peer_addr().ok(),
+                ))
+                .id();
             commands.entity(entity).push_children(&[tcp_client]);
 
             IoTaskPool::get()
@@ -233,16 +240,11 @@ fn handle_new_connection(
                         cancel_flag.clone(),
                         65_507,
                     )
-                        .await;
+                    .await;
                 })
                 .detach();
 
             node_events.send(NetworkEvent::Connected(tcp_client));
-
-
-
-
-
         }
     }
 }

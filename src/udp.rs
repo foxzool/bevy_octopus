@@ -201,7 +201,7 @@ impl UdpNode {
                     );
                     message_sender
                         .send(NetworkRawPacket {
-                            socket: Some(from_addr),
+                            socket: from_addr,
                             bytes,
                         })
                         .await
@@ -236,18 +236,12 @@ impl UdpNode {
                     packet.socket,
                 );
 
-                if packet.socket.is_none() {
-                    error_sender
-                        .send(NetworkError::SendError)
-                        .await
-                        .expect("Error channel has closed.");
-                    continue;
-                }
+
 
                 if let Err(_e) = socket
                     .send_to(
                         packet.bytes.as_ref(),
-                        packet.socket.expect("send packet must have dest socket"),
+                        packet.socket
                     )
                     .await
                 {
@@ -300,7 +294,7 @@ impl UdpNode {
     pub fn stop(&mut self, network_node: &mut NetworkNode) {
         debug!("Stopping {}", self);
 
-        let self_addr = self.local_addr();
+        let self_addr = self.local_addr().unwrap();
 
         // this is a hack to send a message to the server to shut down
         network_node

@@ -89,7 +89,7 @@ impl<T> NetworkData<T> {
 
 /// [`NetworkRawPacket`]s are raw packets that are sent over the network.
 pub struct NetworkRawPacket {
-    pub socket: Option<SocketAddr>,
+    pub socket: SocketAddr,
     pub bytes: Bytes,
 }
 

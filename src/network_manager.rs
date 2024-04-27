@@ -60,21 +60,31 @@ impl NetworkNode {
     }
 
     pub fn send(&self, bytes: &[u8]) {
-        self.send_message_channel
-            .sender
-            .try_send(NetworkRawPacket {
-                socket: self.peer_addr,
-                bytes: Bytes::copy_from_slice(bytes),
-            })
-            .expect("Message channel has closed.");
+        match self.peer_addr {
+            None => {
+                self.error_channel
+                    .sender
+                    .try_send(NetworkError::NoPeer)
+                    .expect("Error channel has closed");
+            }
+            Some(remote_addr) => {
+                self.send_message_channel
+                    .sender
+                    .try_send(NetworkRawPacket {
+                        socket: remote_addr,
+                        bytes: Bytes::copy_from_slice(bytes),
+                    })
+                    .expect("Message channel has closed.");
+            }
+        }
     }
 
     pub fn send_to(&self, bytes: &[u8], addr: impl ToSocketAddrs) {
-        let peer_addr = addr.to_socket_addrs().unwrap().next().unwrap();
+        let remote_addr = addr.to_socket_addrs().unwrap().next().unwrap();
         self.send_message_channel
             .sender
             .try_send(NetworkRawPacket {
-                socket: Some(peer_addr),
+                socket: remote_addr,
                 bytes: Bytes::copy_from_slice(bytes),
             })
             .expect("Message channel has closed.");
