@@ -143,9 +143,9 @@ impl LocalSocket {
 }
 
 #[derive(Component, Deref)]
-pub struct PeerSocket(pub SocketAddr);
+pub struct RemoteSocket(pub SocketAddr);
 
-impl PeerSocket {
+impl RemoteSocket {
     pub fn new(addr: impl ToSocketAddrs) -> Self {
         let socket = addr
             .to_socket_addrs()

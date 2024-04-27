@@ -12,6 +12,7 @@ use kanal::{AsyncReceiver, AsyncSender};
 use crate::error::NetworkError;
 use crate::network::{LocalSocket, NetworkEvent, NetworkProtocol, NetworkRawPacket};
 use crate::network_manager::NetworkNode;
+use crate::prelude::RemoteSocket;
 use crate::{AsyncChannel, ConnectionId};
 
 pub struct TcpPlugin;
@@ -20,7 +21,7 @@ impl Plugin for TcpPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            (manage_tcp_client, spawn_tcp_server, handle_new_connection),
+            (spawn_tcp_client, spawn_tcp_server, handle_new_connection),
         );
     }
 }
@@ -138,7 +139,7 @@ impl TcpClientNode {
         }
     }
 
-    pub fn start(&self, net: &mut NetworkNode) {
+    pub fn start(&self, net: &NetworkNode) {
         let socket = self.socket.clone();
         let cancel_flag = net.cancel_flag.clone();
         let message_receiver = net.send_channel().receiver.clone_async();
@@ -189,15 +190,16 @@ impl TcpClientNode {
     }
 }
 
-fn manage_tcp_client(
+fn spawn_tcp_client(
     mut commands: Commands,
-    mut q_tcp_client: Query<(Entity, &TcpClientNode), Added<TcpClientNode>>,
+
+    q_tcp_client: Query<(Entity, &RemoteSocket), (Added<RemoteSocket>, With<TCPProtocol>)>,
 ) {
-    for (e, tcp_client) in q_tcp_client.iter_mut() {
-        let mut net_node =
-            NetworkNode::new(NetworkProtocol::TCP, None, Some(tcp_client.socket.clone()));
-        tcp_client.start(&mut net_node);
-        commands.entity(e).insert(net_node);
+    for (e, remote_socket) in q_tcp_client.iter() {
+        let net_node = NetworkNode::new(NetworkProtocol::TCP, None, Some(**remote_socket));
+        let tcp_client = TcpClientNode::new(**remote_socket);
+        tcp_client.start(&net_node);
+        commands.entity(e).insert((net_node, tcp_client));
     }
 }
 
