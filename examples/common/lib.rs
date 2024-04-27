@@ -68,9 +68,7 @@ pub fn handle_message_events(
 }
 
 /// if you recv message directly from receiver,  typed message to wait handled may be missed
-pub fn receive_raw_messages(
-    q_server: Query<&NetworkNode, (With<ServerMarker>, With<RawPacketMarker>)>,
-) {
+pub fn receive_raw_messages(q_server: Query<&NetworkNode, With<RawPacketMarker>>) {
     for net_node in q_server.iter() {
         while let Ok(Some(packet)) = net_node.recv_channel().receiver.try_recv() {
             info!(

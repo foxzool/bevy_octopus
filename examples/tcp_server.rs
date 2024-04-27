@@ -1,9 +1,11 @@
 use bevy::prelude::*;
+use bevy::time::common_conditions::on_timer;
+use std::time::Duration;
 
 use bevy_ecs_net::decoder::{DecodeWorker, NetworkMessageDecoder};
 use bevy_ecs_net::network::LocalSocket;
-use bevy_ecs_net::prelude::{BincodeProvider, SerdeJsonProvider};
-use bevy_ecs_net::tcp::TCPProtocol;
+use bevy_ecs_net::prelude::{BincodeProvider, NetworkNode, SerdeJsonProvider};
+use bevy_ecs_net::tcp::{TCPProtocol};
 
 use crate::common::*;
 
@@ -25,6 +27,10 @@ fn main() {
                 handle_message_events,
                 handle_node_events,
             ),
+        )
+        .add_systems(
+            Update,
+            broadcast_message.run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
         .run()
 }
@@ -49,3 +55,10 @@ fn setup_server(mut commands: Commands) {
         DecodeWorker::<PlayerInformation, BincodeProvider>::new(),
     ));
 }
+
+fn broadcast_message(q_net_node: Query<&NetworkNode, (With<ServerMarker>, With<RawPacketMarker>)>) {
+    for net in q_net_node.iter() {
+        net.broadcast(b"broadcast message");
+    }
+}
+

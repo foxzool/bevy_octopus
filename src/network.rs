@@ -128,7 +128,7 @@ impl Display for NetworkProtocol {
     }
 }
 
-#[derive(Component, Deref)]
+#[derive(Component, Debug, Deref)]
 pub struct LocalSocket(pub SocketAddr);
 
 impl LocalSocket {
@@ -142,7 +142,7 @@ impl LocalSocket {
     }
 }
 
-#[derive(Component, Deref)]
+#[derive(Component, Debug, Deref)]
 pub struct RemoteSocket(pub SocketAddr);
 
 impl RemoteSocket {

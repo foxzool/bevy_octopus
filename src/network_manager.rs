@@ -12,8 +12,10 @@ use std::sync::Arc;
 pub struct NetworkNode {
     /// Channel for receiving messages
     recv_message_channel: AsyncChannel<NetworkRawPacket>,
-    /// Channel for sending messages
+    /// Channel for sending messages for peer
     send_message_channel: AsyncChannel<NetworkRawPacket>,
+    /// Channel for broadcasting messages
+    broadcast_message_channel: AsyncChannel<NetworkRawPacket>,
     /// Channel for errors
     error_channel: AsyncChannel<NetworkError>,
     /// A flag to cancel the node
@@ -37,6 +39,7 @@ impl NetworkNode {
         Self {
             recv_message_channel: AsyncChannel::new(),
             send_message_channel: AsyncChannel::new(),
+            broadcast_message_channel: AsyncChannel::new(),
             error_channel: AsyncChannel::new(),
             cancel_flag: Arc::new(AtomicBool::new(false)),
             running: false,
@@ -90,6 +93,16 @@ impl NetworkNode {
             .expect("Message channel has closed.");
     }
 
+    pub fn broadcast(&self, bytes: &[u8]) {
+        self.broadcast_message_channel
+            .sender
+            .try_send(NetworkRawPacket {
+                socket: self.local_addr.unwrap(),
+                bytes: Bytes::copy_from_slice(bytes),
+            })
+            .expect("Message channel has closed.");
+    }
+
     pub fn recv_channel(&self) -> &AsyncChannel<NetworkRawPacket> {
         &self.recv_message_channel
     }
@@ -100,6 +113,10 @@ impl NetworkNode {
 
     pub fn error_channel(&self) -> &AsyncChannel<NetworkError> {
         &self.error_channel
+    }
+
+    pub fn broadcast_channel(&self) -> &AsyncChannel<NetworkRawPacket> {
+        &self.broadcast_message_channel
     }
 
     pub fn schema(&self) -> String {
