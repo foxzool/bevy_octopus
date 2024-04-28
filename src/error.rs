@@ -1,3 +1,4 @@
+use bevy::prelude::Entity;
 use std::fmt::Display;
 
 use crate::ConnectionId;
@@ -15,7 +16,7 @@ pub enum NetworkError {
     ConnectionNotFound(ConnectionId),
 
     /// Failed to send across channel because it was closed.
-    ChannelClosed(ConnectionId),
+    ChannelClosed(Entity),
 
     /// An error occurred when trying to listen for connections.
     Listen(std::io::Error),
@@ -46,7 +47,7 @@ impl Display for NetworkError {
                 f.write_fmt(format_args!("Could not find connection with id: {0}", id))
             }
             Self::ChannelClosed(id) => {
-                f.write_fmt(format_args!("Connection closed with id: {0}", id))
+                f.write_fmt(format_args!("Connection closed with entity: {0:?}", id))
             }
             Self::Listen(e) => f.write_fmt(format_args!(
                 "An error occurred when trying to start listening for new connections: {0}",

@@ -2,11 +2,15 @@
 // #![warn(missing_docs)]
 
 use std::fmt::{Debug, Display};
+use std::sync::atomic::Ordering;
 
 use bevy::app::{App, Plugin, Update};
-use bevy::prelude::{Entity, EventWriter, Query};
+use bevy::hierarchy::DespawnRecursiveExt;
+use bevy::prelude::{Commands, Entity, EventWriter, Query};
+use bevy::reflect::Reflect;
 use kanal::{unbounded, Receiver, Sender};
 
+use crate::error::NetworkError;
 use crate::network::NetworkEvent;
 use crate::network_manager::NetworkNode;
 
@@ -39,7 +43,7 @@ impl Plugin for BevyComPlugin {
     }
 }
 
-#[derive()]
+#[derive(Reflect)]
 pub struct AsyncChannel<T> {
     pub sender: Sender<T>,
     pub receiver: Receiver<T>,
@@ -68,13 +72,23 @@ impl Display for ConnectionId {
 
 /// send network node error channel to events
 fn node_error_event(
-    q_net: Query<(Entity, &NetworkNode)>,
+    mut commands: Commands,
+    mut q_net: Query<(Entity, &mut NetworkNode)>,
     mut node_events: EventWriter<NetworkEvent>,
 ) {
-    for (entity, net_node) in q_net.iter() {
+    for (entity, net_node) in q_net.iter_mut() {
         while let Ok(Some(error)) = net_node.error_channel().receiver.try_recv() {
-            node_events.send(NetworkEvent::Error(entity, error));
+            match error {
+                NetworkError::ChannelClosed(_) | NetworkError::SendError => {
+                    node_events.send(NetworkEvent::Disconnected(entity));
+                    net_node.cancel_flag.store(true, Ordering::Relaxed);
+                    commands.entity(entity).despawn_recursive();
+                }
+
+                _ => {
+                    node_events.send(NetworkEvent::Error(entity, error));
+                }
+            }
         }
     }
 }
-

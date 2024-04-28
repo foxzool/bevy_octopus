@@ -4,8 +4,7 @@ use std::time::Duration;
 
 use bevy_ecs_net::decoder::{DecodeWorker, NetworkMessageDecoder};
 use bevy_ecs_net::network::LocalSocket;
-use bevy_ecs_net::prelude::{BincodeProvider, NetworkNode, SerdeJsonProvider};
-use bevy_ecs_net::tcp::{TCPProtocol};
+use bevy_ecs_net::prelude::{BincodeProvider, NetworkNode, SerdeJsonProvider, TcpNode};
 
 use crate::common::*;
 
@@ -37,19 +36,19 @@ fn main() {
 
 fn setup_server(mut commands: Commands) {
     commands.spawn((
-        TCPProtocol,
+        TcpNode::new(),
         LocalSocket::new("0.0.0.0:6003"),
         ServerMarker,
         RawPacketMarker,
     ));
     commands.spawn((
-        TCPProtocol,
+        TcpNode::new(),
         LocalSocket::new("0.0.0.0:6004"),
         ServerMarker,
         DecodeWorker::<PlayerInformation, SerdeJsonProvider>::new(),
     ));
     commands.spawn((
-        TCPProtocol,
+        TcpNode::new(),
         LocalSocket::new("0.0.0.0:6005"),
         ServerMarker,
         DecodeWorker::<PlayerInformation, BincodeProvider>::new(),
@@ -61,4 +60,3 @@ fn broadcast_message(q_net_node: Query<&NetworkNode, (With<ServerMarker>, With<R
         net.broadcast(b"broadcast message");
     }
 }
-

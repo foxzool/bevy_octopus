@@ -6,6 +6,7 @@ use std::{
 };
 
 use bevy::prelude::{Component, Deref, Entity, Event};
+use bevy::reflect::Reflect;
 use bytes::Bytes;
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -103,7 +104,7 @@ impl Debug for NetworkRawPacket {
     }
 }
 
-#[derive(Debug, Component, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Component, Ord, PartialOrd, Eq, PartialEq, Reflect)]
 pub enum NetworkProtocol {
     UDP,
     TCP,

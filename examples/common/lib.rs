@@ -1,8 +1,10 @@
 #![allow(dead_code)]
 
-use std::{ops::Deref, time::Duration};
+use std::ops::Deref;
+use std::time::Duration;
 
-use bevy::{app::ScheduleRunnerPlugin, log::LogPlugin, prelude::*};
+use bevy::app::ScheduleRunnerPlugin;
+use bevy::{log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
 use bevy_ecs_net::prelude::*;
@@ -23,6 +25,7 @@ pub struct JsonMarker;
 pub struct BincodeMarker;
 
 /// shared app setup
+#[cfg(not(feature = "inspect"))]
 pub fn shared_setup(app: &mut App) {
     app.add_plugins((
         MinimalPlugins.set(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(
@@ -33,6 +36,16 @@ pub fn shared_setup(app: &mut App) {
             ..default()
         },
     ))
+    .add_plugins(BevyComPlugin);
+}
+
+#[cfg(feature = "inspect")]
+pub fn shared_setup(app: &mut App) {
+    app.add_plugins(DefaultPlugins.set(LogPlugin {
+        filter: "bevy_ecs_net=trace".to_string(),
+        ..default()
+    }))
+    .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
     .add_plugins(BevyComPlugin);
 }
 
@@ -48,11 +61,11 @@ impl NetworkMessage for PlayerInformation {
 
 pub fn handle_node_events(
     mut new_network_events: EventReader<NetworkEvent>,
-    q_net_node: Query<&NetworkNode>,
+    // q_net_node: Query<&NetworkNode>,
 ) {
     for event in new_network_events.read() {
-        let net = q_net_node.get(event.entity()).unwrap();
-        info!("{} got event: {:?}", net, event);
+        // let net = q_net_node.get(event.entity()).unwrap();
+        info!("got event: {:?}", event);
     }
 }
 

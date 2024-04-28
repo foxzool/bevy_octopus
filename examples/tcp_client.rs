@@ -5,8 +5,7 @@ use bevy::time::common_conditions::on_timer;
 
 use bevy_ecs_net::decoder::NetworkMessageDecoder;
 use bevy_ecs_net::network::RemoteSocket;
-use bevy_ecs_net::prelude::{BincodeProvider, SerdeJsonProvider};
-use bevy_ecs_net::tcp::TCPProtocol;
+use bevy_ecs_net::prelude::{BincodeProvider, SerdeJsonProvider, TcpNode};
 
 use crate::common::*;
 
@@ -39,25 +38,25 @@ fn main() {
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
-        TCPProtocol,
+        TcpNode::new(),
         RemoteSocket::new("127.0.0.1:6003"),
         ClientMarker,
         RawPacketMarker,
     ));
     commands.spawn((
-        TCPProtocol,
+        TcpNode::new(),
         RemoteSocket::new("127.0.0.1:6003"),
         ClientMarker,
         RawPacketMarker,
     ));
     commands.spawn((
-        TCPProtocol,
+        TcpNode::new(),
         RemoteSocket::new("127.0.0.1:6004"),
         ClientMarker,
         JsonMarker,
     ));
     commands.spawn((
-        TCPProtocol,
+        TcpNode::new(),
         RemoteSocket::new("127.0.0.1:6005"),
         ClientMarker,
         BincodeMarker,
