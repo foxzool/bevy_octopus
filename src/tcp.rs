@@ -36,6 +36,12 @@ pub struct TcpNode {
     new_connections: AsyncChannel<TcpStream>,
 }
 
+impl Default for TcpNode {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TcpNode {
     pub fn new() -> Self {
         Self {
@@ -188,7 +194,7 @@ async fn recv_loop(
     let mut buffer = vec![0; max_packet_size];
 
     loop {
-        if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
+        if cancel_flag.load(Ordering::Relaxed) {
             break;
         }
         match stream.read(&mut buffer).await {
@@ -228,6 +234,7 @@ async fn recv_loop(
 }
 
 /// TcpNode with local socket meas TCP server need to listen socket
+#[allow(clippy::type_complexity)]
 fn spawn_tcp_server(
     mut commands: Commands,
     q_tcp_server: Query<
@@ -247,6 +254,7 @@ fn spawn_tcp_server(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn spawn_tcp_client(
     mut commands: Commands,
     q_tcp_client: Query<

@@ -1,4 +1,4 @@
-use std::net::ToSocketAddrs;
+use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
 use std::{
     fmt::{Debug, Display},
     net::SocketAddr,
@@ -42,6 +42,7 @@ pub trait NetworkMessage: Serialize + DeserializeOwned + Send + Sync + Debug + '
 #[derive(Debug, Event)]
 /// A network event originating from a network node
 pub enum NetworkEvent {
+    Listen(Entity),
     Connected(Entity),
     Disconnected(Entity),
     Error(Entity, NetworkError),
@@ -53,6 +54,7 @@ impl NetworkEvent {
             NetworkEvent::Connected(entity) => *entity,
             NetworkEvent::Disconnected(entity) => *entity,
             NetworkEvent::Error(entity, _) => *entity,
+            NetworkEvent::Listen(entity) => *entity,
         }
     }
 }
@@ -129,7 +131,7 @@ impl Display for NetworkProtocol {
     }
 }
 
-#[derive(Component, Debug, Deref)]
+#[derive(Component, Clone, Debug, Deref)]
 pub struct LocalSocket(pub SocketAddr);
 
 impl LocalSocket {
@@ -143,8 +145,20 @@ impl LocalSocket {
     }
 }
 
-#[derive(Component, Debug, Deref)]
+impl Default for LocalSocket {
+    fn default() -> Self {
+        Self(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0))
+    }
+}
+
+#[derive(Component, Clone, Debug, Deref)]
 pub struct RemoteSocket(pub SocketAddr);
+
+impl Default for RemoteSocket {
+    fn default() -> Self {
+        Self(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0))
+    }
+}
 
 impl RemoteSocket {
     pub fn new(addr: impl ToSocketAddrs) -> Self {

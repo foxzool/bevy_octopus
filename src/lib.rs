@@ -28,9 +28,9 @@ pub mod tcp;
 
 pub type ChannelName = String;
 
-pub struct BevyComPlugin;
+pub struct BevyNetPlugin;
 
-impl Plugin for BevyComPlugin {
+impl Plugin for BevyNetPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<NetworkEvent>()
             .add_systems(Update, node_error_event);

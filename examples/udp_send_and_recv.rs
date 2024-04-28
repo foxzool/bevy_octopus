@@ -2,8 +2,9 @@ use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
+use bevy_ecs_net::decoder::DecodeWorker;
 use bevy_ecs_net::{
-    decoder::{serde_json::SerdeJsonProvider, NetworkMessageDecoder, DecodeWorker},
+    decoder::{serde_json::SerdeJsonProvider, NetworkMessageDecoder},
     prelude::*,
 };
 
@@ -42,53 +43,73 @@ fn main() {
 
 fn setup_server(mut commands: Commands) {
     commands.spawn((
-        UdpNode::new("0.0.0.0:6001"),
+        UdpNode::new(),
+        LocalSocket::new("0.0.0.0:6001"),
+        ServerMarker,
+        RawPacketMarker,
+    ));
+    commands.spawn((
+        UdpNode::new(),
+        LocalSocket::new("0.0.0.0:6002"),
         ServerMarker,
         DecodeWorker::<PlayerInformation, SerdeJsonProvider>::new(),
     ));
 
     commands.spawn((
-        UdpNode::new("0.0.0.0:6002"),
+        UdpNode::new(),
+        LocalSocket::new("0.0.0.0:6003"),
         ServerMarker,
         DecodeWorker::<PlayerInformation, BincodeProvider>::new(),
     ));
-
-    commands.spawn((UdpNode::new("0.0.0.0:6003"), ServerMarker, RawPacketMarker));
 }
 
 fn setup_clients(mut commands: Commands) {
-    // udp listen to specify  port and connect to remote
     commands.spawn((
-        UdpNode::new_with_peer("0.0.0.0:5001", "127.0.0.1:6001"),
+        UdpNode::new(),
+        LocalSocket::new("0.0.0.0:7006"),
+        RemoteSocket::new("127.0.0.1:6001"),
+        ClientMarker,
+        // marker to send raw bytes
+        RawPacketMarker,
+    ));
+    commands.spawn((
+        UdpNode::new(),
+        LocalSocket::new("0.0.0.0:0"),
+        RemoteSocket::new("127.0.0.1:6001"),
+        ClientMarker,
+        // marker to send raw bytes
+        RawPacketMarker,
+    ));
+    commands.spawn((
+        UdpNode::new(),
+        RemoteSocket::new("127.0.0.1:6001"),
+        ClientMarker,
+        // marker to send raw bytes
+        RawPacketMarker,
+    ));
+
+    commands.spawn((
+        UdpNode::new(),
+        RemoteSocket::new("127.0.0.1:6002"),
         ClientMarker,
         // marker to send json
         JsonMarker,
     ));
-    // or listen to rand port
+
     commands.spawn((
-        UdpNode::new_with_peer("0.0.0.0:0", "127.0.0.1:6002"),
+        UdpNode::new(),
+        RemoteSocket::new("127.0.0.1:6003"),
         ClientMarker,
         // marker to send bincode
         BincodeMarker,
     ));
-    commands.spawn((
-        UdpNode::new_with_peer("0.0.0.0:0", "127.0.0.1:6003"),
-        ClientMarker,
-        // marker to send bincode
-        RawPacketMarker,
-    ));
-    // ConnectTo is not necessary component
-    commands.spawn((UdpNode::default(), ClientMarker));
-
-    // this is an udp node to send raw bytes;
-    commands.spawn((UdpNode::new("0.0.0.0:5002"), ClientMarker, RawPacketMarker));
 }
 
 fn send_socket_packet(q_client: Query<&NetworkNode, (With<ClientMarker>, With<RawPacketMarker>)>) {
     for client in q_client.iter() {
         client.send_to(
             "I can send message to specify socket".as_bytes(),
-            "127.0.0.1:6003",
+            "127.0.0.1:6001",
         );
     }
 }

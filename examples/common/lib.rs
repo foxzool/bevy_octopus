@@ -32,21 +32,21 @@ pub fn shared_setup(app: &mut App) {
             1.0 / 60.0,
         ))),
         LogPlugin {
-            filter: "bevy_ecs_net=trace".to_string(),
+            filter: "bevy_ecs_net=debug".to_string(),
             ..default()
         },
     ))
-    .add_plugins(BevyComPlugin);
+    .add_plugins(BevyNetPlugin);
 }
 
 #[cfg(feature = "inspect")]
 pub fn shared_setup(app: &mut App) {
     app.add_plugins(DefaultPlugins.set(LogPlugin {
-        filter: "bevy_ecs_net=trace".to_string(),
+        filter: "bevy_ecs_net=debug".to_string(),
         ..default()
     }))
     .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
-    .add_plugins(BevyComPlugin);
+    .add_plugins(BevyNetPlugin);
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -87,7 +87,8 @@ pub fn receive_raw_messages(q_server: Query<&NetworkNode, With<RawPacketMarker>>
             info!(
                 "{} Received: {:?}",
                 net_node,
-                String::from_utf8(packet.bytes.to_vec()).unwrap()
+                String::from_utf8(packet.bytes.to_vec())
+                    .unwrap_or_else(|e| format!("Error: {:?}", e))
             );
         }
     }
