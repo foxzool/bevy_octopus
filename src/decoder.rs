@@ -1,19 +1,30 @@
 use std::marker::PhantomData;
 
-use bevy::app::PreUpdate;
 use bevy::{
     app::App,
     log::debug,
     prelude::{Component, Entity, EventWriter, Query},
 };
+use bevy::app::PreUpdate;
 use serde::Deserialize;
 
-use crate::network_manager::NetworkNode;
-use crate::shared::{NetworkEvent, NetworkNodeEvent};
+#[cfg(feature = "bincode")]
+pub use bincode::BincodeProvider;
+#[cfg(feature = "serde_json")]
+pub use serde_json::SerdeJsonProvider;
+
 use crate::{
     error::NetworkError,
     network::{NetworkData, NetworkMessage},
 };
+use crate::network_manager::NetworkNode;
+use crate::shared::{NetworkEvent, NetworkNodeEvent};
+
+#[cfg(feature = "bincode")]
+mod bincode;
+
+#[cfg(feature = "serde_json")]
+mod serde_json;
 
 ///
 pub trait DecoderProvider: 'static + Send + Sync + Default {
@@ -23,9 +34,9 @@ pub trait DecoderProvider: 'static + Send + Sync + Default {
 
 #[derive(Debug, Component, Default)]
 pub struct DecodeWorker<T, P>
-where
-    T: for<'a> Deserialize<'a>,
-    P: DecoderProvider,
+    where
+        T: for<'a> Deserialize<'a>,
+        P: DecoderProvider,
 {
     inner: PhantomData<T>,
     provider_inner: PhantomData<P>,
@@ -93,9 +104,3 @@ fn decode_system<T: NetworkMessage, D: DecoderProvider>(
         );
     }
 }
-
-#[cfg(feature = "bincode")]
-pub mod bincode;
-
-#[cfg(feature = "serde_json")]
-pub mod serde_json;

@@ -7,7 +7,7 @@ use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::network::{LocalSocket, RemoteSocket};
 use crate::network_manager::NetworkNode;
-use crate::prelude::{NetworkEvent, NetworkProtocol};
+use crate::shared::{NetworkEvent, NetworkProtocol};
 use crate::shared::AsyncRuntime;
 use crate::{error::NetworkError, network::NetworkRawPacket};
 

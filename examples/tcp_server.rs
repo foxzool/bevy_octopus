@@ -4,9 +4,12 @@ use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 use bytes::Bytes;
 
-use bevy_ecs_net::decoder::{DecodeWorker, NetworkMessageDecoder};
-use bevy_ecs_net::network::{LocalSocket, NetworkRawPacket, RemoteSocket};
-use bevy_ecs_net::prelude::{BincodeProvider, NetworkNode, NetworkProtocol, SerdeJsonProvider};
+use bevy_ecs_net::{
+    decoder::{BincodeProvider, DecodeWorker, NetworkMessageDecoder, SerdeJsonProvider},
+    network::{LocalSocket, NetworkRawPacket, RemoteSocket},
+    network_manager::NetworkNode,
+    shared::NetworkProtocol,
+};
 
 use crate::common::*;
 

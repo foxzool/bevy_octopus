@@ -3,9 +3,11 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
-use bevy_ecs_net::decoder::NetworkMessageDecoder;
-use bevy_ecs_net::network::RemoteSocket;
-use bevy_ecs_net::prelude::{BincodeProvider, NetworkProtocol, SerdeJsonProvider};
+use bevy_ecs_net::{
+    decoder::{BincodeProvider, NetworkMessageDecoder, SerdeJsonProvider},
+    network::RemoteSocket,
+};
+use bevy_ecs_net::shared::NetworkProtocol;
 
 use crate::common::*;
 

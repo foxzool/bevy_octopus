@@ -51,6 +51,7 @@ bevy = { version = "0.13.0", default-features = false, features = [
     "bevy_ui",
     "bevy_text",
     "bevy_core_pipeline",
+    "x11"
 ] }
 
 
@@ -73,7 +74,7 @@ required-features = ["tcp", "serde_json", "bincode"]
 [[example]]
 name = "tcp_server"
 path = "examples/tcp_server.rs"
-required-features = ["tcp", "serde_json", "bincode", "inspect"]
+required-features = ["tcp", "serde_json", "bincode"]
 
 [profile.release]
 strip = true

@@ -8,8 +8,8 @@ use bytes::Bytes;
 
 use crate::error::NetworkError;
 use crate::network::NetworkRawPacket;
-use crate::shared::{NetworkEvent, NetworkProtocol};
-use crate::AsyncChannel;
+use crate::shared::{NetworkEvent,AsyncChannel, NetworkProtocol};
+
 
 #[derive(Component)]
 pub struct NetworkNode {

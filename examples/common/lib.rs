@@ -5,7 +5,11 @@ use std::ops::Deref;
 use bevy::{log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use bevy_ecs_net::prelude::*;
+use bevy_ecs_net::{
+    network::{NetworkData, NetworkMessage},
+    network_manager::NetworkNode,
+    shared::{BevyNetPlugin, NetworkNodeEvent},
+};
 
 /// shared app setup
 #[cfg(not(feature = "inspect"))]
@@ -19,7 +23,7 @@ pub fn shared_setup(app: &mut App) {
             ..default()
         },
     ))
-    .add_plugins(BevyNetPlugin);
+        .add_plugins(BevyNetPlugin);
 }
 
 #[cfg(feature = "inspect")]
@@ -28,8 +32,8 @@ pub fn shared_setup(app: &mut App) {
         filter: "bevy_ecs_net=debug".to_string(),
         ..default()
     }))
-    .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
-    .add_plugins(BevyNetPlugin);
+        .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
+        .add_plugins(BevyNetPlugin);
 }
 
 #[derive(Component)]

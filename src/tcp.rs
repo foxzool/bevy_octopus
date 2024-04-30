@@ -8,10 +8,9 @@ use tokio::net::{TcpListener, TcpStream};
 
 use crate::error::NetworkError;
 use crate::network::{LocalSocket, NetworkRawPacket};
+use crate::network::RemoteSocket;
 use crate::network_manager::NetworkNode;
-use crate::prelude::{NetworkNodeEvent, RemoteSocket};
-use crate::shared::{AsyncRuntime, NetworkEvent, NetworkProtocol};
-use crate::AsyncChannel;
+use crate::shared::{AsyncChannel, AsyncRuntime, NetworkEvent, NetworkNodeEvent, NetworkProtocol};
 
 pub struct TcpPlugin;
 
@@ -27,6 +26,12 @@ impl Plugin for TcpPlugin {
 #[derive(Component)]
 pub struct TcpNode {
     new_connection_channel: AsyncChannel<(TcpStream, SocketAddr)>,
+}
+
+impl Default for TcpNode {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TcpNode {
@@ -139,7 +144,6 @@ async fn handle_connection(
     tokio::select! {
         Ok(_) = shutdown_rx.recv() => {
             debug!("shutdown connection");
-            return;
         }
         _ = read_task => (),
         _ = write_task => (),
@@ -163,7 +167,7 @@ fn spawn_tcp_server(
 
         let net_node = NetworkNode::new(NetworkProtocol::TCP, Some(**local_addr), None);
 
-        let local_addr = local_addr.0.clone();
+        let local_addr = local_addr.0;
         let event_tx = net_node.event_channel.sender.clone_async();
         let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
         let tcp_node = TcpNode::new();
@@ -200,7 +204,7 @@ fn spawn_tcp_client(
 
         let new_net_node = NetworkNode::new(NetworkProtocol::TCP, None, Some(**remote_socket));
 
-        let addr = remote_socket.0.clone();
+        let addr = remote_socket.0;
         let recv_tx = new_net_node.recv_message_channel.sender.clone_async();
         let message_rx = new_net_node.send_message_channel.receiver.clone_async();
         let event_tx = new_net_node.event_channel.sender.clone_async();

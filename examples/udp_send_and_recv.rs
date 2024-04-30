@@ -2,10 +2,16 @@ use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
-use bevy_ecs_net::decoder::DecodeWorker;
 use bevy_ecs_net::{
-    decoder::{serde_json::SerdeJsonProvider, NetworkMessageDecoder},
-    prelude::*,
+    decoder::{
+        BincodeProvider,
+        DecodeWorker,
+        NetworkMessageDecoder,
+        SerdeJsonProvider,
+    },
+    network::{LocalSocket, RemoteSocket},
+    network_manager::NetworkNode,
+    shared::NetworkProtocol,
 };
 
 use crate::common::*;
