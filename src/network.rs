@@ -35,26 +35,6 @@ pub trait NetworkMessage: Serialize + DeserializeOwned + Send + Sync + Debug + '
 }
 
 #[derive(Debug, Event)]
-/// A network event originating from a network node
-pub enum NetworkEvent {
-    Listen(Entity),
-    Connected(Entity),
-    Disconnected(Entity),
-    Error(Entity, NetworkError),
-}
-
-impl NetworkEvent {
-    pub fn entity(&self) -> Entity {
-        match self {
-            NetworkEvent::Connected(entity) => *entity,
-            NetworkEvent::Disconnected(entity) => *entity,
-            NetworkEvent::Error(entity, _) => *entity,
-            NetworkEvent::Listen(entity) => *entity,
-        }
-    }
-}
-
-#[derive(Debug, Event)]
 /// [`NetworkData`] is what is sent over the bevy event system
 ///
 /// Please check the root documentation how to up everything

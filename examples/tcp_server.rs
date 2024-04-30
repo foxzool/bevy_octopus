@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
-use bevy_ecs_net::decoder::NetworkMessageDecoder;
+use bevy_ecs_net::decoder::{DecodeWorker, NetworkMessageDecoder};
 use bevy_ecs_net::network::LocalSocket;
 use bevy_ecs_net::prelude::{BincodeProvider, NetworkNode, NetworkProtocol, SerdeJsonProvider};
 
@@ -42,18 +42,18 @@ fn setup_server(mut commands: Commands) {
         ServerMarker,
         RawPacketMarker,
     ));
-    // commands.spawn((
-    //     TcpNode::new(),
-    //     LocalSocket::new("0.0.0.0:6004"),
-    //     ServerMarker,
-    //     DecodeWorker::<PlayerInformation, SerdeJsonProvider>::new(),
-    // ));
-    // commands.spawn((
-    //     TcpNode::new(),
-    //     LocalSocket::new("0.0.0.0:6005"),
-    //     ServerMarker,
-    //     DecodeWorker::<PlayerInformation, BincodeProvider>::new(),
-    // ));
+    commands.spawn((
+        NetworkProtocol::TCP,
+        LocalSocket::new("0.0.0.0:6004"),
+        ServerMarker,
+        DecodeWorker::<PlayerInformation, SerdeJsonProvider>::new(),
+    ));
+    commands.spawn((
+        NetworkProtocol::TCP,
+        LocalSocket::new("0.0.0.0:6005"),
+        ServerMarker,
+        DecodeWorker::<PlayerInformation, BincodeProvider>::new(),
+    ));
 }
 
 fn broadcast_message(q_net_node: Query<&NetworkNode, (With<ServerMarker>, With<RawPacketMarker>)>) {

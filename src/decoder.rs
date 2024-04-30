@@ -8,9 +8,10 @@ use bevy::{
 use serde::Deserialize;
 
 use crate::network_manager::NetworkNode;
+use crate::shared::{NetworkEvent, NetworkNodeEvent};
 use crate::{
     error::NetworkError,
-    network::{NetworkData, NetworkEvent, NetworkMessage},
+    network::{NetworkData, NetworkMessage},
 };
 
 ///
@@ -58,7 +59,7 @@ impl NetworkMessageDecoder for App {
 
 fn decode_system<T: NetworkMessage, D: DecoderProvider>(
     mut data_events: EventWriter<NetworkData<T>>,
-    mut node_events: EventWriter<NetworkEvent>,
+    mut node_events: EventWriter<NetworkNodeEvent>,
     query: Query<(Entity, &NetworkNode, &DecodeWorker<T, D>)>,
 ) {
     for (entity, network_node, decoder) in query.iter() {
@@ -83,7 +84,10 @@ fn decode_system<T: NetworkMessage, D: DecoderProvider>(
             errors
                 .into_iter()
                 .map(Result::unwrap_err)
-                .map(|error| NetworkEvent::Error(entity, error))
+                .map(|error| NetworkNodeEvent {
+                    node: entity,
+                    event: NetworkEvent::Error(error),
+                })
                 .collect::<Vec<_>>(),
         );
     }

@@ -11,8 +11,9 @@ use bevy::reflect::Reflect;
 use kanal::{unbounded, Receiver, Sender};
 
 use crate::error::NetworkError;
-use crate::network::NetworkEvent;
 use crate::network_manager::NetworkNode;
+use crate::prelude::NetworkEvent;
+use crate::shared::NetworkNodeEvent;
 use crate::shared::{AsyncRuntime, NetworkProtocol};
 
 pub mod decoder;
@@ -41,8 +42,8 @@ impl Plugin for BevyNetPlugin {
             .unwrap();
         app.register_type::<NetworkProtocol>()
             .insert_resource(AsyncRuntime(async_runtime))
-            .add_event::<NetworkEvent>()
-            .add_systems(Update, node_error_event);
+            .add_event::<NetworkNodeEvent>()
+            .add_systems(Update, network_node_event);
 
         #[cfg(feature = "udp")]
         app.add_plugins(udp::UdpPlugin);
@@ -80,24 +81,25 @@ impl Display for ConnectionId {
 }
 
 /// send network node error channel to events
-fn node_error_event(
+fn network_node_event(
     mut commands: Commands,
     mut q_net: Query<(Entity, &mut NetworkNode)>,
-    mut node_events: EventWriter<NetworkEvent>,
+    mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
     for (entity, net_node) in q_net.iter_mut() {
-        while let Ok(Some(error)) = net_node.error_channel().receiver.try_recv() {
-            match error {
-                NetworkError::SendError => {
-                    node_events.send(NetworkEvent::Disconnected(entity));
-                    net_node.cancel_flag.store(true, Ordering::Relaxed);
+        while let Ok(Some(event)) = net_node.event_channel.receiver.try_recv() {
+            match event {
+                NetworkEvent::Listen => {}
+                NetworkEvent::Connected => {}
+                NetworkEvent::Disconnected => {
                     commands.entity(entity).despawn_recursive();
                 }
-
-                _ => {
-                    node_events.send(NetworkEvent::Error(entity, error));
-                }
+                NetworkEvent::Error(_) => {}
             }
+            node_events.send(NetworkNodeEvent {
+                node: entity,
+                event,
+            });
         }
     }
 }

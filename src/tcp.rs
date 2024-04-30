@@ -10,15 +10,13 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
-use tokio::runtime::Runtime;
-use tokio::sync::{broadcast, mpsc, watch, Mutex};
 use tokio::task;
 
 use crate::error::NetworkError;
-use crate::network::{LocalSocket, NetworkEvent, NetworkRawPacket};
+use crate::network::{LocalSocket, NetworkRawPacket};
 use crate::network_manager::NetworkNode;
-use crate::prelude::RemoteSocket;
-use crate::shared::{AsyncRuntime, NetworkProtocol};
+use crate::prelude::{NetworkNodeEvent, RemoteSocket};
+use crate::shared::{AsyncRuntime, NetworkEvent, NetworkProtocol};
 use crate::AsyncChannel;
 
 pub struct TcpPlugin;
@@ -30,7 +28,7 @@ impl Plugin for TcpPlugin {
             (
                 spawn_tcp_client,
                 spawn_tcp_server,
-                handle_new_connection,
+                handle_endpoint,
                 broadcast_message,
             ),
         );
@@ -135,19 +133,17 @@ impl TcpNode {
             new_connection_channel: AsyncChannel::new(),
         }
     }
-    pub async fn start(
+    pub async fn listen(
         addr: SocketAddr,
         message_rx: AsyncReceiver<NetworkRawPacket>,
         recv_tx: AsyncSender<NetworkRawPacket>,
         new_connection_tx: AsyncSender<(TcpStream, SocketAddr)>,
         shutdown_rx: AsyncReceiver<()>,
     ) -> Result<(), NetworkError> {
-        let stop = Arc::new(AtomicBool::new(false));
-
         let shutdown_rx_clone = shutdown_rx.clone();
 
         let server = async move {
-            let listener = TcpListener::bind(addr).await.unwrap();
+            let listener = TcpListener::bind(addr).await?;
             debug!("TCP Server listening on {}", addr);
 
             loop {
@@ -171,12 +167,14 @@ impl TcpNode {
                     }
                 }
             }
+
+            Ok::<(), NetworkError>(())
         };
 
         tokio::spawn(server);
 
         if let Ok(()) = shutdown_rx.recv().await {
-            println!("Shutting down server...");
+            println!("Shutting down TCP server...");
         }
 
         Ok(())
@@ -187,20 +185,23 @@ async fn handle_connection(
     mut socket: TcpStream,
     recv_tx: AsyncSender<NetworkRawPacket>,
     message_rx: AsyncReceiver<NetworkRawPacket>,
-    error_tx: AsyncSender<NetworkError>,
+    event_tx: AsyncSender<NetworkEvent>,
     shutdown_rx: AsyncReceiver<()>,
 ) {
     let addr = socket.peer_addr().unwrap();
     let (mut reader, mut writer) = socket.split();
 
+    let event_tx_clone = event_tx.clone();
     let read_task = async {
         let mut buffer = vec![0; 1024];
 
         loop {
             match reader.read(&mut buffer).await {
                 Ok(0) => {
-                    println!("connection closed by peer");
-                    // 连接关闭
+                    event_tx_clone
+                        .send(NetworkEvent::Disconnected)
+                        .await
+                        .expect("event channel has closed");
                     break;
                 }
                 Ok(n) => {
@@ -223,15 +224,18 @@ async fn handle_connection(
 
     let write_task = async move {
         while let Ok(data) = message_rx.recv().await {
-            println!("write data {:?}", data);
+            trace!("write data {:?} to {} ", data.bytes.len(), addr);
             if let Err(e) = writer.write_all(&data.bytes).await {
                 eprintln!("Failed to write data to socket: {}", e);
+                event_tx
+                    .send(NetworkEvent::Error(NetworkError::SendError))
+                    .await
+                    .unwrap();
                 break;
             }
         }
     };
 
-    // 启动读取和写入任务
     tokio::select! {
         Ok(_) = shutdown_rx.recv() => {
             debug!("shutdown connection");
@@ -260,13 +264,14 @@ fn spawn_tcp_server(
         let net_node = NetworkNode::new(NetworkProtocol::TCP, Some(**local_addr), None);
 
         let local_addr = local_addr.0.clone();
+        let event_tx = net_node.event_channel.sender.clone_async();
         let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
         let message_rx_clone = net_node.send_message_channel.receiver.clone_async();
         let recv_tx = net_node.recv_message_channel.sender.clone_async();
         let tcp_node = TcpNode::new();
         let new_connection_tx = tcp_node.new_connection_channel.sender.clone_async();
         rt.spawn(async move {
-            TcpNode::start(
+            match TcpNode::listen(
                 local_addr,
                 message_rx_clone,
                 recv_tx,
@@ -274,7 +279,15 @@ fn spawn_tcp_server(
                 shutdown_clone,
             )
             .await
-            .unwrap()
+            {
+                Ok(_) => {}
+                Err(err) => {
+                    event_tx
+                        .send(NetworkEvent::Error(err))
+                        .await
+                        .expect("event channel has closed");
+                }
+            }
         });
 
         commands.entity(e).insert((net_node, tcp_node));
@@ -283,30 +296,40 @@ fn spawn_tcp_server(
 
 #[allow(clippy::type_complexity)]
 fn spawn_tcp_client(
+    rt: Res<AsyncRuntime>,
     mut commands: Commands,
     q_tcp_client: Query<
-        (Entity, &TcpNode, &RemoteSocket),
+        (Entity, &NetworkProtocol, &RemoteSocket),
         (Added<RemoteSocket>, Without<NetworkNode>),
     >,
 ) {
-    for (e, tcp_node, remote_socket) in q_tcp_client.iter() {
-        let net_node = NetworkNode::new(NetworkProtocol::TCP, None, Some(**remote_socket));
+    for (e, protocol, remote_socket) in q_tcp_client.iter() {
+        if *protocol != NetworkProtocol::TCP {
+            continue;
+        }
 
-        // tcp_node.connect(
-        //     **remote_socket,
-        //     net_node.error_channel().sender.clone_async(),
-        //     net_node.cancel_flag.clone(),
-        // );
+        let new_net_node = NetworkNode::new(NetworkProtocol::TCP, None, Some(**remote_socket));
 
-        commands.entity(e).insert(net_node);
+        let addr = remote_socket.0.clone();
+        let recv_tx = new_net_node.recv_message_channel.sender.clone_async();
+        let message_rx = new_net_node.send_message_channel.receiver.clone_async();
+        let event_tx = new_net_node.event_channel.sender.clone_async();
+        let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
+
+        rt.spawn(async move {
+            let tcp_stream = TcpStream::connect(addr).await.unwrap();
+            handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
+        });
+
+        commands.entity(e).insert(new_net_node);
     }
 }
 
-fn handle_new_connection(
+fn handle_endpoint(
     rt: Res<AsyncRuntime>,
     mut commands: Commands,
     q_tcp_server: Query<(Entity, &TcpNode, &NetworkNode)>,
-    mut node_events: EventWriter<NetworkEvent>,
+    mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
     for (entity, tcp_node, _net_node) in q_tcp_server.iter() {
         while let Ok(Some((tcp_stream, socket))) =
@@ -317,11 +340,10 @@ fn handle_new_connection(
             let child_tcp_client = commands.spawn_empty().id();
             let recv_tx = new_net_node.recv_message_channel.sender.clone_async();
             let message_rx = new_net_node.send_message_channel.receiver.clone_async();
-            let error_tx = new_net_node.error_channel.sender.clone_async();
+            let event_tx = new_net_node.event_channel.sender.clone_async();
             let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
             rt.spawn(async move {
-                handle_connection(tcp_stream, recv_tx, message_rx, error_tx, shutdown_rx).await;
-                println!("handle connection end");
+                handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
             });
 
             debug!(
@@ -337,7 +359,10 @@ fn handle_new_connection(
             // Add the client to the server's children
             commands.entity(entity).add_child(child_tcp_client);
 
-            node_events.send(NetworkEvent::Connected(child_tcp_client));
+            node_events.send(NetworkNodeEvent {
+                node: entity,
+                event: NetworkEvent::Connected,
+            });
         }
     }
 }
@@ -350,8 +375,9 @@ fn broadcast_message(
         while let Ok(Some(message)) = net_node.broadcast_channel().receiver.try_recv() {
             if let Some(children) = opt_children {
                 for &child in children.iter() {
-                    debug!("Broadcasting message: {:?} to {:?}", message, child);
-                    let (child_net_node, child_remote_addr) = q_child.get(child).unwrap();
+                    trace!("Broadcasting message: {:?} to {:?}", message, child);
+                    let (child_net_node, child_remote_addr) =
+                        q_child.get(child).expect("Child node not found.");
 
                     child_net_node
                         .send_message_channel

@@ -58,7 +58,7 @@ impl NetworkMessage for PlayerInformation {
 }
 
 pub fn handle_node_events(
-    mut new_network_events: EventReader<NetworkEvent>,
+    mut new_network_events: EventReader<NetworkNodeEvent>,
     // q_net_node: Query<&NetworkNode>,
 ) {
     for event in new_network_events.read() {
@@ -78,17 +78,10 @@ pub fn handle_message_events(
     }
 }
 
-/// if you recv message directly from receiver,  typed message to wait handled may be missed
 pub fn receive_raw_messages(q_server: Query<(Entity, &NetworkNode)>) {
     for (entity, net_node) in q_server.iter() {
         while let Ok(Some(packet)) = net_node.recv_message_channel.receiver.try_recv() {
-            info!(
-                "{:?} {} Received: {:?}",
-                entity,
-                net_node,
-                String::from_utf8(packet.bytes.to_vec())
-                    .unwrap_or_else(|e| format!("Error: {:?}", e))
-            );
+            info!("{:?} {} Received: {:?}", entity, net_node, packet.bytes);
         }
     }
 }

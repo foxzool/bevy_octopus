@@ -8,7 +8,7 @@ use bytes::Bytes;
 
 use crate::error::NetworkError;
 use crate::network::NetworkRawPacket;
-use crate::shared::NetworkProtocol;
+use crate::shared::{NetworkEvent, NetworkProtocol};
 use crate::AsyncChannel;
 
 #[derive(Component)]
@@ -19,8 +19,11 @@ pub struct NetworkNode {
     pub send_message_channel: AsyncChannel<NetworkRawPacket>,
     /// Channel for broadcasting messages
     pub broadcast_message_channel: AsyncChannel<NetworkRawPacket>,
+    /// Channel for events
+    pub event_channel: AsyncChannel<NetworkEvent>,
     /// Channel for errors
     pub error_channel: AsyncChannel<NetworkError>,
+    /// Channel for shutdown
     pub shutdown_channel: AsyncChannel<()>,
     /// A flag to cancel the node
     pub cancel_flag: Arc<AtomicBool>,
@@ -44,6 +47,7 @@ impl NetworkNode {
             recv_message_channel: AsyncChannel::new(),
             send_message_channel: AsyncChannel::new(),
             broadcast_message_channel: AsyncChannel::new(),
+            event_channel: AsyncChannel::new(),
             error_channel: AsyncChannel::new(),
             shutdown_channel: AsyncChannel::new(),
             cancel_flag: Arc::new(AtomicBool::new(false)),

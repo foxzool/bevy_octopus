@@ -8,9 +8,10 @@ use bevy::{prelude::*, tasks::IoTaskPool};
 use bytes::Bytes;
 use kanal::{AsyncReceiver, AsyncSender};
 
-use crate::network::{LocalSocket, NetworkEvent, RemoteSocket};
+use crate::network::{LocalSocket, RemoteSocket};
 use crate::network_manager::NetworkNode;
-use crate::prelude::NetworkProtocol;
+use crate::prelude::{NetworkEvent, NetworkProtocol};
+use crate::shared::NetworkNodeEvent;
 use crate::{error::NetworkError, network::NetworkRawPacket, AsyncChannel};
 
 pub struct UdpPlugin;
@@ -396,7 +397,7 @@ fn control_udp_node(
         ),
         Added<NetworkNode>,
     >,
-    mut network_event: EventWriter<NetworkEvent>,
+    mut network_event: EventWriter<NetworkNodeEvent>,
 ) {
     for (entity, mut udp_node, mut net_node, opt_local_socket) in q_udp_node.iter_mut() {
         while let Ok(Some(socket)) = udp_node.new_socket.receiver.try_recv() {
@@ -413,14 +414,20 @@ fn control_udp_node(
                     socket.local_addr().unwrap(),
                     peer
                 );
-                network_event.send(NetworkEvent::Connected(entity));
+                network_event.send(NetworkNodeEvent {
+                    node: entity,
+                    event: NetworkEvent::Connected,
+                });
             } else {
                 debug!(
                     "Starting udp {:?} with no peer",
                     socket.local_addr().unwrap(),
                 );
 
-                network_event.send(NetworkEvent::Listen(entity));
+                network_event.send(NetworkNodeEvent {
+                    node: entity,
+                    event: NetworkEvent::Listen,
+                });
             }
 
             udp_node.start(socket, &mut net_node);

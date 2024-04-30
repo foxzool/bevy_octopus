@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use crate::error::NetworkError;
 use bevy::prelude::*;
 use tokio::runtime::Runtime;
 
@@ -32,4 +33,19 @@ impl Display for NetworkProtocol {
             }
         )
     }
+}
+
+#[derive(Debug, Event)]
+pub struct NetworkNodeEvent {
+    pub node: Entity,
+    pub event: NetworkEvent,
+}
+
+#[derive(Debug, Event)]
+/// A network event originating from a network node
+pub enum NetworkEvent {
+    Listen,
+    Connected,
+    Disconnected,
+    Error(NetworkError),
 }
