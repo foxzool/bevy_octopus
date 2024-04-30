@@ -2,9 +2,10 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
+use bytes::Bytes;
 
 use bevy_ecs_net::decoder::{DecodeWorker, NetworkMessageDecoder};
-use bevy_ecs_net::network::LocalSocket;
+use bevy_ecs_net::network::{LocalSocket, NetworkRawPacket, RemoteSocket};
 use bevy_ecs_net::prelude::{BincodeProvider, NetworkNode, NetworkProtocol, SerdeJsonProvider};
 
 use crate::common::*;
@@ -56,8 +57,25 @@ fn setup_server(mut commands: Commands) {
     ));
 }
 
-fn broadcast_message(q_net_node: Query<&NetworkNode, (With<ServerMarker>, With<RawPacketMarker>)>) {
-    for net in q_net_node.iter() {
-        net.broadcast(b"broadcast message\r");
+fn broadcast_message(
+    q_net_node: Query<(&NetworkNode, &Children), (With<ServerMarker>, With<RawPacketMarker>)>,
+    q_child: Query<(&NetworkNode, &RemoteSocket)>,
+) {
+    for (net, children) in q_net_node.iter() {
+        for &child in children.iter() {
+            let message = b"broadcast message!";
+
+            let (child_net_node, child_remote_addr) =
+                q_child.get(child).expect("Child node not found.");
+
+            child_net_node
+                .send_message_channel
+                .sender
+                .try_send(NetworkRawPacket {
+                    socket: **child_remote_addr,
+                    bytes: Bytes::from_static(message),
+                })
+                .expect("Message channel has closed.");
+        }
     }
 }

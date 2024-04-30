@@ -2,7 +2,6 @@
 // #![warn(missing_docs)]
 
 use std::fmt::{Debug, Display};
-use std::sync::atomic::Ordering;
 
 use bevy::app::{App, Plugin, Update};
 use bevy::hierarchy::DespawnRecursiveExt;
@@ -10,7 +9,6 @@ use bevy::prelude::{Commands, Entity, EventWriter, Query};
 use bevy::reflect::Reflect;
 use kanal::{unbounded, Receiver, Sender};
 
-use crate::error::NetworkError;
 use crate::network_manager::NetworkNode;
 use crate::prelude::NetworkEvent;
 use crate::shared::NetworkNodeEvent;

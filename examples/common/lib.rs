@@ -7,21 +7,6 @@ use serde::{Deserialize, Serialize};
 
 use bevy_ecs_net::prelude::*;
 
-#[derive(Component)]
-pub struct ClientMarker;
-
-#[derive(Component)]
-pub struct ServerMarker;
-
-#[derive(Component)]
-pub struct RawPacketMarker;
-
-#[derive(Component)]
-pub struct JsonMarker;
-
-#[derive(Component)]
-pub struct BincodeMarker;
-
 /// shared app setup
 #[cfg(not(feature = "inspect"))]
 pub fn shared_setup(app: &mut App) {
@@ -47,6 +32,21 @@ pub fn shared_setup(app: &mut App) {
     .add_plugins(BevyNetPlugin);
 }
 
+#[derive(Component)]
+pub struct ClientMarker;
+
+#[derive(Component)]
+pub struct ServerMarker;
+
+#[derive(Component)]
+pub struct RawPacketMarker;
+
+#[derive(Component)]
+pub struct JsonMarker;
+
+#[derive(Component)]
+pub struct BincodeMarker;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerInformation {
     pub health: usize,
@@ -59,11 +59,11 @@ impl NetworkMessage for PlayerInformation {
 
 pub fn handle_node_events(
     mut new_network_events: EventReader<NetworkNodeEvent>,
-    // q_net_node: Query<&NetworkNode>,
+    q_net_node: Query<&NetworkNode>,
 ) {
     for event in new_network_events.read() {
-        // let net = q_net_node.get(event.entity()).unwrap();
-        info!("got event: {:?}", event);
+        let net = q_net_node.get(event.node).unwrap();
+        info!("{:?} {} got event: {:?}", event.node, net, event.event);
     }
 }
 

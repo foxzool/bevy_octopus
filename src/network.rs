@@ -5,8 +5,6 @@ use bevy::prelude::{Component, Deref, Entity, Event};
 use bytes::Bytes;
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::error::NetworkError;
-
 /// Any type that should be sent over the wire has to implement [`NetworkMessage`].
 ///
 /// ## Example

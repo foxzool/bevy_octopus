@@ -1,16 +1,10 @@
 use std::net::SocketAddr;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 use bevy::prelude::*;
-use bevy::tasks::IoTaskPool;
 use bytes::Bytes;
-use kanal::{bounded_async, AsyncReceiver, AsyncSender};
+use kanal::{AsyncReceiver, AsyncSender};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
-use tokio::task;
+use tokio::net::{TcpListener, TcpStream};
 
 use crate::error::NetworkError;
 use crate::network::{LocalSocket, NetworkRawPacket};
@@ -25,12 +19,7 @@ impl Plugin for TcpPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            (
-                spawn_tcp_client,
-                spawn_tcp_server,
-                handle_endpoint,
-                broadcast_message,
-            ),
+            (spawn_tcp_client, spawn_tcp_server, handle_endpoint),
         );
     }
 }
@@ -40,93 +29,6 @@ pub struct TcpNode {
     new_connection_channel: AsyncChannel<(TcpStream, SocketAddr)>,
 }
 
-// impl Default for TcpNode {
-//     fn default() -> Self {
-//         Self::new()
-//     }
-// }
-
-// impl TcpNode {
-//     pub fn new() -> Self {
-//         Self {
-//             new_connections: AsyncChannel::new(),
-//         }
-//     }
-//
-//     pub fn connect(
-//         &self,
-//         addr: SocketAddr,
-//         error_sender: AsyncSender<NetworkError>,
-//         cancel_flag: Arc<AtomicBool>,
-//     ) {
-//         let new_connection_sender = self.new_connections.sender.clone_async();
-//         IoTaskPool::get()
-//             .spawn(async move {
-//                 match TcpStream::connect(addr).await {
-//                     Ok(stream) => {
-//                         debug!(
-//                             "Starting TCP Client on {:?} => {:?}",
-//                             stream.local_addr().unwrap(),
-//                             stream.peer_addr().unwrap(),
-//                         );
-//                         loop {
-//                             if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
-//                                 stream.shutdown(std::net::Shutdown::Both).unwrap();
-//                                 break;
-//                             }
-//                         }
-//                         new_connection_sender.send(stream).await.unwrap();
-//                     }
-//                     Err(e) => {
-//                         // error_sender
-//                         //     .send(NetworkError::Connection(e))
-//                         //     .await
-//                         //     .expect("Error channel has been closed");
-//                     }
-//                 }
-//             })
-//             .detach();
-//     }
-//
-//     pub fn stream(entity: Entity, stream: TcpStream, net_node: &NetworkNode) {
-//         let sender_rx = net_node.send_channel().receiver.clone_async();
-//         let error_tx = net_node.error_channel().sender.clone_async();
-//         let cancel_flag = net_node.cancel_flag.clone();
-//         let send_stream = stream.clone();
-//         IoTaskPool::get()
-//             .spawn(async move {
-//                 send_loop(
-//                     entity,
-//                     send_stream,
-//                     sender_rx.clone(),
-//                     error_tx.clone(),
-//                     cancel_flag.clone(),
-//                 )
-//                 .await;
-//             })
-//             .detach();
-//
-//         let receiver = net_node.recv_channel().sender.clone_async();
-//         let error_tx = net_node.error_channel().sender.clone_async();
-//         let cancel_flag = net_node.cancel_flag.clone();
-//         let recv_stream = stream.clone();
-//         let max_packet_size = net_node.max_packet_size;
-//         // IoTaskPool::get()
-//         //     .spawn(async move {
-//         //         recv_loop(
-//         //             entity,
-//         //             recv_stream,
-//         //             receiver,
-//         //             error_tx,
-//         //             cancel_flag,
-//         //             max_packet_size,
-//         //         )
-//         //         .await;
-//         //     })
-//         //     .detach();
-//     }
-// }
-
 impl TcpNode {
     pub fn new() -> Self {
         Self {
@@ -135,8 +37,6 @@ impl TcpNode {
     }
     pub async fn listen(
         addr: SocketAddr,
-        message_rx: AsyncReceiver<NetworkRawPacket>,
-        recv_tx: AsyncSender<NetworkRawPacket>,
         new_connection_tx: AsyncSender<(TcpStream, SocketAddr)>,
         shutdown_rx: AsyncReceiver<()>,
     ) -> Result<(), NetworkError> {
@@ -224,7 +124,7 @@ async fn handle_connection(
 
     let write_task = async move {
         while let Ok(data) = message_rx.recv().await {
-            trace!("write data {:?} to {} ", data.bytes.len(), addr);
+            trace!("write {} bytes to {} ", data.bytes.len(), addr);
             if let Err(e) = writer.write_all(&data.bytes).await {
                 eprintln!("Failed to write data to socket: {}", e);
                 event_tx
@@ -266,20 +166,10 @@ fn spawn_tcp_server(
         let local_addr = local_addr.0.clone();
         let event_tx = net_node.event_channel.sender.clone_async();
         let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
-        let message_rx_clone = net_node.send_message_channel.receiver.clone_async();
-        let recv_tx = net_node.recv_message_channel.sender.clone_async();
         let tcp_node = TcpNode::new();
         let new_connection_tx = tcp_node.new_connection_channel.sender.clone_async();
         rt.spawn(async move {
-            match TcpNode::listen(
-                local_addr,
-                message_rx_clone,
-                recv_tx,
-                new_connection_tx,
-                shutdown_clone,
-            )
-            .await
-            {
+            match TcpNode::listen(local_addr, new_connection_tx, shutdown_clone).await {
                 Ok(_) => {}
                 Err(err) => {
                     event_tx
@@ -317,8 +207,15 @@ fn spawn_tcp_client(
         let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
 
         rt.spawn(async move {
-            let tcp_stream = TcpStream::connect(addr).await.unwrap();
-            handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
+            match TcpStream::connect(addr).await {
+                Ok(tcp_stream) => {
+                    handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
+                }
+                Err(err) => event_tx
+                    .send(NetworkEvent::Error(NetworkError::Connection(err)))
+                    .await
+                    .expect("event channel has closed"),
+            }
         });
 
         commands.entity(e).insert(new_net_node);
@@ -363,32 +260,6 @@ fn handle_endpoint(
                 node: entity,
                 event: NetworkEvent::Connected,
             });
-        }
-    }
-}
-
-fn broadcast_message(
-    q_server: Query<(&NetworkNode, Option<&Children>)>,
-    q_child: Query<(&NetworkNode, &RemoteSocket)>,
-) {
-    for (net_node, opt_children) in q_server.iter() {
-        while let Ok(Some(message)) = net_node.broadcast_channel().receiver.try_recv() {
-            if let Some(children) = opt_children {
-                for &child in children.iter() {
-                    trace!("Broadcasting message: {:?} to {:?}", message, child);
-                    let (child_net_node, child_remote_addr) =
-                        q_child.get(child).expect("Child node not found.");
-
-                    child_net_node
-                        .send_message_channel
-                        .sender
-                        .try_send(NetworkRawPacket {
-                            socket: **child_remote_addr,
-                            bytes: message.bytes.clone(),
-                        })
-                        .expect("Message channel has closed.");
-                }
-            }
         }
     }
 }

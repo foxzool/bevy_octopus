@@ -17,8 +17,6 @@ pub struct NetworkNode {
     pub recv_message_channel: AsyncChannel<NetworkRawPacket>,
     /// Channel for sending messages for peer
     pub send_message_channel: AsyncChannel<NetworkRawPacket>,
-    /// Channel for broadcasting messages
-    pub broadcast_message_channel: AsyncChannel<NetworkRawPacket>,
     /// Channel for events
     pub event_channel: AsyncChannel<NetworkEvent>,
     /// Channel for errors
@@ -46,7 +44,6 @@ impl NetworkNode {
         Self {
             recv_message_channel: AsyncChannel::new(),
             send_message_channel: AsyncChannel::new(),
-            broadcast_message_channel: AsyncChannel::new(),
             event_channel: AsyncChannel::new(),
             error_channel: AsyncChannel::new(),
             shutdown_channel: AsyncChannel::new(),
@@ -102,16 +99,6 @@ impl NetworkNode {
             .expect("Message channel has closed.");
     }
 
-    pub fn broadcast(&self, bytes: &[u8]) {
-        self.broadcast_message_channel
-            .sender
-            .try_send(NetworkRawPacket {
-                socket: self.local_addr.unwrap(),
-                bytes: Bytes::copy_from_slice(bytes),
-            })
-            .expect("Message channel has closed.");
-    }
-
     pub fn recv_channel(&self) -> &AsyncChannel<NetworkRawPacket> {
         &self.recv_message_channel
     }
@@ -122,10 +109,6 @@ impl NetworkNode {
 
     pub fn error_channel(&self) -> &AsyncChannel<NetworkError> {
         &self.error_channel
-    }
-
-    pub fn broadcast_channel(&self) -> &AsyncChannel<NetworkRawPacket> {
-        &self.broadcast_message_channel
     }
 
     pub fn schema(&self) -> String {

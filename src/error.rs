@@ -18,9 +18,8 @@ pub enum NetworkError {
     #[error("An error occurred while trying to listen: {0}")]
     Listen(io::Error),
     //
-    // /// An error occurred when trying to connect.
-    // Connection(std::io::Error),
-    //
+    #[error("An error occurred when trying to connect.")]
+    Connection(io::Error),
     #[error("Failed to send data over a closed internal channel")]
     SendError,
     //
@@ -28,8 +27,6 @@ pub enum NetworkError {
     Serialization(String),
     #[error("Failed to deserialize data: {0}")]
     DeserializeError(String),
-    // /// No peer found
-    // NoPeer,
     #[error("Failed to read/write file(s)")]
     IoError(#[from] io::Error),
 }

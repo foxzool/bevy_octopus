@@ -5,7 +5,7 @@ use bevy::time::common_conditions::on_timer;
 
 use bevy_ecs_net::decoder::NetworkMessageDecoder;
 use bevy_ecs_net::network::RemoteSocket;
-use bevy_ecs_net::prelude::{BincodeProvider, NetworkProtocol, SerdeJsonProvider, TcpNode};
+use bevy_ecs_net::prelude::{BincodeProvider, NetworkProtocol, SerdeJsonProvider};
 
 use crate::common::*;
 
