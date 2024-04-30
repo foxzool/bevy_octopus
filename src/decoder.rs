@@ -1,7 +1,8 @@
 use std::marker::PhantomData;
 
+use bevy::app::PreUpdate;
 use bevy::{
-    app::{App, PostUpdate},
+    app::App,
     log::debug,
     prelude::{Component, Entity, EventWriter, Query},
 };
@@ -52,7 +53,7 @@ impl NetworkMessageDecoder for App {
         debug!("Registering {} decoder for {}", D::NAME, T::NAME);
 
         self.add_event::<NetworkData<T>>();
-        self.add_systems(PostUpdate, decode_system::<T, D>);
+        self.add_systems(PreUpdate, decode_system::<T, D>);
         self
     }
 }

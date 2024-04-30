@@ -33,7 +33,7 @@ fn main() {
 fn setup_server(mut commands: Commands) {
     // broadcast udp receiver
     commands.spawn((
-        UdpNode::new(),
+        NetworkProtocol::UDP,
         UdpBroadcast,
         LocalSocket::new("0.0.0.0:60002"),
         // example marker for query filter
@@ -43,7 +43,7 @@ fn setup_server(mut commands: Commands) {
 
     // multicast udp receiver
     commands.spawn((
-        UdpNode::new(),
+        NetworkProtocol::UDP,
         MulticastV4Setting::new(Ipv4Addr::new(239, 1, 2, 3), Ipv4Addr::UNSPECIFIED),
         LocalSocket::new("0.0.0.0:60003"),
         // example marker for query filter
@@ -54,7 +54,7 @@ fn setup_server(mut commands: Commands) {
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
-        UdpNode::new(),
+        NetworkProtocol::UDP,
         UdpBroadcast,
         RemoteSocket::new("255.255.255.255:60002"),
         // example marker for query filter
@@ -63,7 +63,7 @@ fn setup_clients(mut commands: Commands) {
     ));
 
     commands.spawn((
-        UdpNode::new(),
+        NetworkProtocol::UDP,
         UdpBroadcast,
         // example marker for query filter
         ClientMarker,
@@ -71,7 +71,7 @@ fn setup_clients(mut commands: Commands) {
     ));
 
     commands.spawn((
-        UdpNode::new(),
+        NetworkProtocol::UDP,
         MulticastV4Setting::new(Ipv4Addr::new(239, 1, 2, 3), Ipv4Addr::UNSPECIFIED),
         // example marker for query filter
         ClientMarker,
@@ -86,6 +86,7 @@ fn send_broadcast_messages(
     >,
 ) {
     for (net_node, local_addr, opt_remote_addr) in q_client.iter() {
+        println!("send_broadcast_messages");
         if opt_remote_addr.is_some() {
             net_node.send(format!("broadcast message from {}", local_addr.0).as_bytes());
         } else {

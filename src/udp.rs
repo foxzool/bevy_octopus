@@ -1,212 +1,45 @@
-use std::{
-    net::{Ipv4Addr, Ipv6Addr, SocketAddr},
-    sync::{atomic::AtomicBool, Arc},
-};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
 
 use async_net::UdpSocket;
-use bevy::{prelude::*, tasks::IoTaskPool};
+use bevy::prelude::*;
 use bytes::Bytes;
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::network::{LocalSocket, RemoteSocket};
 use crate::network_manager::NetworkNode;
 use crate::prelude::{NetworkEvent, NetworkProtocol};
-use crate::shared::NetworkNodeEvent;
-use crate::{error::NetworkError, network::NetworkRawPacket, AsyncChannel};
+use crate::shared::AsyncRuntime;
+use crate::{error::NetworkError, network::NetworkRawPacket};
 
 pub struct UdpPlugin;
 
 impl Plugin for UdpPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, (spawn_udp_socket, control_udp_node));
+        app.add_systems(
+            PostUpdate,
+            (
+                spawn_udp_socket,
+                // control_udp_node
+            ),
+        );
     }
 }
 
-#[derive(Component)]
-pub struct UdpNode {
-    new_socket: AsyncChannel<UdpSocket>,
-}
-
-impl Default for UdpNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+#[derive(Component, Deref, DerefMut)]
+pub struct UdpNode(pub UdpSocket);
 
 #[derive(Component)]
 pub struct UdpBroadcast;
 
-impl UdpNode {
-    pub fn new() -> Self {
-        Self {
-            new_socket: AsyncChannel::new(),
-        }
-    }
-
-    /// Start the UDP node
-    pub fn start(&mut self, socket: UdpSocket, net_node: &mut NetworkNode) {
-        let socket1 = socket.clone();
-        let cancel_flag = net_node.cancel_flag.clone();
-        let recv_sender = net_node.recv_channel().sender.clone_async();
-        let error_sender = net_node.error_channel().sender.clone_async();
-        IoTaskPool::get()
-            .spawn(async move {
-                recv_loop(
-                    socket1.clone(),
-                    recv_sender,
-                    error_sender.clone(),
-                    cancel_flag.clone(),
-                    65_507,
-                )
-                .await;
-            })
-            .detach();
-
-        let socket = socket.clone();
-        let cancel_flag = net_node.cancel_flag.clone();
-        let message_receiver = net_node.send_channel().receiver.clone_async();
-        let error_sender = net_node.error_channel().sender.clone_async();
-        IoTaskPool::get()
-            .spawn(async move {
-                send_loop(socket, message_receiver, error_sender, cancel_flag).await;
-            })
-            .detach();
-
-        net_node.start();
-    }
-
-    pub fn stop(&mut self, local_addr: SocketAddr, net_node: &mut NetworkNode) {
-        // this is a hack to send a message to the server to shut down
-        net_node
-            .send_channel()
-            .sender
-            .try_send(NetworkRawPacket {
-                socket: local_addr,
-                bytes: Bytes::from_static(b"shutdown"),
-            })
-            .expect("Message channel has closed.");
-
-        // net_node.stop();
-    }
-
-    //
-    // pub fn join_multicast_v4(
-    //     &self,
-    //     net_node: &NetworkNode,
-    //     multi_addr: Ipv4Addr,
-    //     interface: Ipv4Addr,
-    // ) {
-    //     let socket = self.socket.clone();
-    //     let error_sender = net_node.error_channel().sender.clone();
-    //     match socket.join_multicast_v4(multi_addr, interface) {
-    //         Ok(_) => {
-    //             debug!(
-    //                 "{} Joined multicast group {} on interface {}",
-    //                 socket.local_addr().unwrap(),
-    //                 multi_addr,
-    //                 interface
-    //             );
-    //         }
-    //         Err(e) => {
-    //             error_sender
-    //                 .send(NetworkError::Error(format!(
-    //                     "Failed to join multicast group: {}",
-    //                     e
-    //                 )))
-    //                 .expect("Error channel has closed.");
-    //         }
-    //     }
-    // }
-    //
-    // pub fn leave_multicast_v4(
-    //     &self,
-    //     net_node: &NetworkNode,
-    //     multi_addr: Ipv4Addr,
-    //     interface: Ipv4Addr,
-    // ) {
-    //     let socket = self.socket.clone();
-    //     let error_sender = net_node.error_channel().sender.clone();
-    //     match socket.leave_multicast_v4(multi_addr, interface) {
-    //         Ok(_) => {
-    //             debug!(
-    //                 "{} Left multicast group {} on interface {}",
-    //                 socket.local_addr().unwrap(),
-    //                 multi_addr,
-    //                 interface
-    //             );
-    //         }
-    //         Err(e) => {
-    //             error_sender
-    //                 .send(NetworkError::Error(format!(
-    //                     "Failed to leave multicast group: {}",
-    //                     e
-    //                 )))
-    //                 .expect("Error channel has closed.");
-    //         }
-    //     }
-    // }
-    //
-    // pub fn join_multicast_v6(&self, net_node: &NetworkNode, multi_addr: Ipv6Addr, interface: u32) {
-    //     let socket = self.socket.clone();
-    //     let error_sender = net_node.error_channel().sender.clone();
-    //     match socket.join_multicast_v6(&multi_addr, interface) {
-    //         Ok(_) => {
-    //             debug!(
-    //                 "{} Joined multicast group {} on interface {}",
-    //                 socket.local_addr().unwrap(),
-    //                 multi_addr,
-    //                 interface
-    //             );
-    //         }
-    //         Err(e) => {
-    //             error_sender
-    //                 .send(NetworkError::Error(format!(
-    //                     "Failed to join multicast group: {}",
-    //                     e
-    //                 )))
-    //                 .expect("Error channel has closed.");
-    //         }
-    //     }
-    // }
-    //
-    // pub fn leave_multicast_v6(&self, net_node: &NetworkNode, multi_addr: Ipv6Addr, interface: u32) {
-    //     let socket = self.socket.clone();
-    //     let error_sender = net_node.error_channel().sender.clone();
-    //     match socket.leave_multicast_v6(&multi_addr, interface) {
-    //         Ok(_) => {
-    //             debug!(
-    //                 "{} Left multicast group {} on interface {}",
-    //                 socket.local_addr().unwrap(),
-    //                 multi_addr,
-    //                 interface
-    //             );
-    //         }
-    //         Err(e) => {
-    //             error_sender
-    //                 .send(NetworkError::Error(format!(
-    //                     "Failed to leave multicast group: {}",
-    //                     e
-    //                 )))
-    //                 .expect("Error channel has closed.");
-    //         }
-    //     }
-    // }
-}
-
 async fn recv_loop(
     socket: UdpSocket,
-    message_sender: AsyncSender<NetworkRawPacket>,
-    error_sender: AsyncSender<NetworkError>,
-    cancel_flag: Arc<AtomicBool>,
+    recv_tx: AsyncSender<NetworkRawPacket>,
+    event_tx: AsyncSender<NetworkEvent>,
     max_packet_size: usize,
 ) {
     let mut buf: Vec<u8> = vec![0; max_packet_size];
 
     loop {
-        if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
-            break;
-        }
-
         match socket.recv_from(&mut buf).await {
             Ok((len, from_addr)) => {
                 let bytes = Bytes::copy_from_slice(&buf[..len]);
@@ -216,7 +49,7 @@ async fn recv_loop(
                     len,
                     from_addr
                 );
-                message_sender
+                recv_tx
                     .send(NetworkRawPacket {
                         socket: from_addr,
                         bytes,
@@ -225,8 +58,8 @@ async fn recv_loop(
                     .expect("Message channel has closed.");
             }
             Err(e) => {
-                error_sender
-                    .send(NetworkError::Listen(e))
+                event_tx
+                    .send(NetworkEvent::Error(NetworkError::Listen(e)))
                     .await
                     .expect("Error channel has closed.");
             }
@@ -237,14 +70,9 @@ async fn recv_loop(
 async fn send_loop(
     socket: UdpSocket,
     message_receiver: AsyncReceiver<NetworkRawPacket>,
-    error_sender: AsyncSender<NetworkError>,
-    cancel_flag: Arc<AtomicBool>,
+    event_tx: AsyncSender<NetworkEvent>,
 ) {
     loop {
-        if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
-            break;
-        }
-
         while let Ok(packet) = message_receiver.recv().await {
             trace!(
                 "{} Sending {} bytes to {:?}",
@@ -254,8 +82,8 @@ async fn send_loop(
             );
 
             if let Err(_e) = socket.send_to(packet.bytes.as_ref(), packet.socket).await {
-                error_sender
-                    .send(NetworkError::SendError)
+                event_tx
+                    .send(NetworkEvent::Error(NetworkError::SendError))
                     .await
                     .expect("Error channel has closed.");
             }
@@ -295,25 +123,30 @@ impl MulticastV6Setting {
 
 #[allow(clippy::type_complexity)]
 fn spawn_udp_socket(
+    rt: Res<AsyncRuntime>,
     mut commands: Commands,
     q_udp: Query<
         (
             Entity,
-            &UdpNode,
+            &NetworkProtocol,
             Option<&LocalSocket>,
             Option<&RemoteSocket>,
             Option<&UdpBroadcast>,
             Option<&MulticastV4Setting>,
             Option<&MulticastV6Setting>,
         ),
-        Added<UdpNode>,
+        Added<NetworkProtocol>,
     >,
 ) {
-    for (entity, udp_node, opt_local_addr, opt_remote_addr, opt_broadcast, opt_v4, opt_v6) in
+    for (entity, protocol, opt_local_addr, opt_remote_addr, opt_broadcast, opt_v4, opt_v6) in
         q_udp.iter()
     {
+        if *protocol != NetworkProtocol::UDP {
+            continue;
+        }
+
         let local_addr = opt_local_addr.cloned().unwrap_or_else(LocalSocket::default);
-        let remote_addr = opt_remote_addr.cloned();
+        let remote_addr = opt_remote_addr.cloned().map(|addr| addr.0);
         let net_node = NetworkNode::new(
             NetworkProtocol::UDP,
             Some(local_addr.0),
@@ -323,52 +156,53 @@ fn spawn_udp_socket(
         let has_broadcast = opt_broadcast.is_some();
         let opt_v4 = opt_v4.cloned();
         let opt_v6 = opt_v6.cloned();
-
         let listener_socket = local_addr.0;
-        let error_sender = net_node.error_channel().sender.clone_async();
+        let recv_tx = net_node.recv_message_channel.sender.clone_async();
+        let send_rx = net_node.send_message_channel.receiver.clone_async();
+        let event_tx = net_node.event_channel.sender.clone_async();
+        let shutdown_rx = net_node.shutdown_channel.receiver.clone_async();
 
-        let new_socket = udp_node.new_socket.sender.clone_async();
-        IoTaskPool::get()
-            .spawn(async move {
-                match listen(remote_addr, has_broadcast, opt_v4, opt_v6, listener_socket).await {
-                    Ok(socket) => {
-                        new_socket
-                            .send(socket)
-                            .await
-                            .expect("Socket channel has closed.");
-                    }
+        rt.spawn(async move {
+            listen(
+                listener_socket,
+                remote_addr,
+                has_broadcast,
+                opt_v4,
+                opt_v6,
+                recv_tx,
+                send_rx,
+                event_tx,
+                shutdown_rx,
+            )
+            .await
+        });
 
-                    Err(e) => {
-                        error_sender
-                            .send(NetworkError::Listen(e))
-                            .await
-                            .expect("Error channel has closed.");
-                    }
-                }
-            })
-            .detach();
-        commands.entity(entity).insert(net_node);
+        commands
+            .entity(entity)
+            .insert((net_node, LocalSocket(*local_addr)));
     }
 }
 
 async fn listen(
-    remote_addr: Option<RemoteSocket>,
+    listener_socket: SocketAddr,
+    bind: Option<SocketAddr>,
     has_broadcast: bool,
     opt_v4: Option<MulticastV4Setting>,
     opt_v6: Option<MulticastV6Setting>,
-    listener_socket: SocketAddr,
-) -> Result<UdpSocket, std::io::Error> {
-    debug!("Listening on {:?}", listener_socket);
+    recv_tx: AsyncSender<NetworkRawPacket>,
+    send_rx: AsyncReceiver<NetworkRawPacket>,
+    event_tx: AsyncSender<NetworkEvent>,
+    shutdown_rx: AsyncReceiver<()>,
+) -> Result<(), std::io::Error> {
     let socket = UdpSocket::bind(listener_socket).await?;
 
     if has_broadcast {
         socket.set_broadcast(true)?;
     }
 
-    if let Some(remote_addr) = remote_addr {
-        socket.connect(remote_addr.0).await?;
+    if let Some(remote_addr) = bind {
+        socket.connect(remote_addr).await?;
     }
-
     if let Some(multi_v4) = opt_v4 {
         debug!(
             "Joining multicast group {:?} on interface {:?}",
@@ -382,55 +216,43 @@ async fn listen(
         );
         socket.join_multicast_v6(&multi_v6.multi_addr, multi_v6.interface)?;
     }
+    let shutdown_rx_clone = shutdown_rx.clone();
+    let server = async move {
+        debug!(
+            "UDP listening on {} peer: {:?}",
+            socket.local_addr().unwrap(),
+            socket.peer_addr().ok()
+        );
 
-    Ok(socket)
-}
+        let event_tx_clone = event_tx.clone();
 
-fn control_udp_node(
-    mut commands: Commands,
-    mut q_udp_node: Query<
-        (
-            Entity,
-            &mut UdpNode,
-            &mut NetworkNode,
-            Option<&mut LocalSocket>,
-        ),
-        Added<NetworkNode>,
-    >,
-    mut network_event: EventWriter<NetworkNodeEvent>,
-) {
-    for (entity, mut udp_node, mut net_node, opt_local_socket) in q_udp_node.iter_mut() {
-        while let Ok(Some(socket)) = udp_node.new_socket.receiver.try_recv() {
-            if opt_local_socket.is_none() {
-                commands
-                    .entity(entity)
-                    .insert(LocalSocket(socket.local_addr().unwrap()));
+        loop {
+            tokio::select! {
+                // handle shutdown signal
+                _ = shutdown_rx_clone.recv() => {
+                    break;
+                }
+                // process new connection
+                _ = send_loop(socket.clone(), send_rx, event_tx_clone) => {
+                    break;
+                }
+
+                _ = recv_loop(socket, recv_tx, event_tx, 65_507) => {
+                    break;
+                }
             }
-            if let Ok(peer) = socket.peer_addr() {
-                net_node.peer_addr = Some(peer);
-
-                debug!(
-                    "Starting udp {:?} peer {:?} ",
-                    socket.local_addr().unwrap(),
-                    peer
-                );
-                network_event.send(NetworkNodeEvent {
-                    node: entity,
-                    event: NetworkEvent::Connected,
-                });
-            } else {
-                debug!(
-                    "Starting udp {:?} with no peer",
-                    socket.local_addr().unwrap(),
-                );
-
-                network_event.send(NetworkNodeEvent {
-                    node: entity,
-                    event: NetworkEvent::Listen,
-                });
-            }
-
-            udp_node.start(socket, &mut net_node);
         }
+
+        println!("over");
+
+        Ok::<(), NetworkError>(())
+    };
+
+    tokio::spawn(server);
+
+    if let Ok(()) = shutdown_rx.recv().await {
+        println!("Shutting down TCP server...");
     }
+
+    Ok(())
 }

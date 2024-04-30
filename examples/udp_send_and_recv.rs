@@ -43,20 +43,20 @@ fn main() {
 
 fn setup_server(mut commands: Commands) {
     commands.spawn((
-        UdpNode::new(),
+        NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:6001"),
         ServerMarker,
         RawPacketMarker,
     ));
     commands.spawn((
-        UdpNode::new(),
+        NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:6002"),
         ServerMarker,
         DecodeWorker::<PlayerInformation, SerdeJsonProvider>::new(),
     ));
 
     commands.spawn((
-        UdpNode::new(),
+        NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:6003"),
         ServerMarker,
         DecodeWorker::<PlayerInformation, BincodeProvider>::new(),
@@ -65,7 +65,7 @@ fn setup_server(mut commands: Commands) {
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
-        UdpNode::new(),
+        NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:7006"),
         RemoteSocket::new("127.0.0.1:6001"),
         ClientMarker,
@@ -73,7 +73,7 @@ fn setup_clients(mut commands: Commands) {
         RawPacketMarker,
     ));
     commands.spawn((
-        UdpNode::new(),
+        NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:0"),
         RemoteSocket::new("127.0.0.1:6001"),
         ClientMarker,
@@ -81,7 +81,7 @@ fn setup_clients(mut commands: Commands) {
         RawPacketMarker,
     ));
     commands.spawn((
-        UdpNode::new(),
+        NetworkProtocol::UDP,
         RemoteSocket::new("127.0.0.1:6001"),
         ClientMarker,
         // marker to send raw bytes
@@ -89,7 +89,7 @@ fn setup_clients(mut commands: Commands) {
     ));
 
     commands.spawn((
-        UdpNode::new(),
+        NetworkProtocol::UDP,
         RemoteSocket::new("127.0.0.1:6002"),
         ClientMarker,
         // marker to send json
@@ -97,7 +97,7 @@ fn setup_clients(mut commands: Commands) {
     ));
 
     commands.spawn((
-        UdpNode::new(),
+        NetworkProtocol::UDP,
         RemoteSocket::new("127.0.0.1:6003"),
         ClientMarker,
         // marker to send bincode

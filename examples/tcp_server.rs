@@ -61,7 +61,7 @@ fn broadcast_message(
     q_net_node: Query<(&NetworkNode, &Children), (With<ServerMarker>, With<RawPacketMarker>)>,
     q_child: Query<(&NetworkNode, &RemoteSocket)>,
 ) {
-    for (net, children) in q_net_node.iter() {
+    for (_net, children) in q_net_node.iter() {
         for &child in children.iter() {
             let message = b"broadcast message!";
 
