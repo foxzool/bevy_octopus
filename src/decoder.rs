@@ -76,7 +76,7 @@ fn decode_system<T: NetworkMessage, D: DecoderProvider>(
 ) {
     for (entity, network_node, decoder) in query.iter() {
         let mut packets = vec![];
-        while let Ok(Some(packet)) = network_node.recv_channel().receiver.try_recv() {
+        while let Ok(Some(packet)) = network_node.recv_message_channel.receiver.try_recv() {
             packets.push(packet.bytes);
         }
 
