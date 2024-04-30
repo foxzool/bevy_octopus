@@ -13,12 +13,15 @@ use kanal::{unbounded, Receiver, Sender};
 use crate::error::NetworkError;
 use crate::network::NetworkEvent;
 use crate::network_manager::NetworkNode;
+use crate::shared::{AsyncRuntime, NetworkProtocol};
 
 pub mod decoder;
 pub mod error;
 pub mod network;
 pub mod network_manager;
 pub mod prelude;
+
+pub mod shared;
 
 #[cfg(feature = "udp")]
 pub mod udp;
@@ -32,7 +35,13 @@ pub struct BevyNetPlugin;
 
 impl Plugin for BevyNetPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<NetworkEvent>()
+        let async_runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        app.register_type::<NetworkProtocol>()
+            .insert_resource(AsyncRuntime(async_runtime))
+            .add_event::<NetworkEvent>()
             .add_systems(Update, node_error_event);
 
         #[cfg(feature = "udp")]
@@ -79,7 +88,7 @@ fn node_error_event(
     for (entity, net_node) in q_net.iter_mut() {
         while let Ok(Some(error)) = net_node.error_channel().receiver.try_recv() {
             match error {
-                NetworkError::ChannelClosed(_) | NetworkError::SendError => {
+                NetworkError::SendError => {
                     node_events.send(NetworkEvent::Disconnected(entity));
                     net_node.cancel_flag.store(true, Ordering::Relaxed);
                     commands.entity(entity).despawn_recursive();

@@ -6,4 +6,4 @@ pub use crate::decoder::serde_json::SerdeJsonProvider;
 pub use crate::tcp::TcpNode;
 #[cfg(feature = "udp")]
 pub use crate::udp::UdpNode;
-pub use crate::{network::*, network_manager::*, BevyNetPlugin};
+pub use crate::{network::*, network_manager::*, shared::*, BevyNetPlugin};

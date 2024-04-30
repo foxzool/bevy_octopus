@@ -1,23 +1,27 @@
-use crate::error::NetworkError;
-use crate::network::{NetworkProtocol, NetworkRawPacket};
-use crate::AsyncChannel;
-use bevy::prelude::Component;
-use bytes::Bytes;
 use std::fmt::Display;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
+use bevy::prelude::Component;
+use bytes::Bytes;
+
+use crate::error::NetworkError;
+use crate::network::NetworkRawPacket;
+use crate::shared::NetworkProtocol;
+use crate::AsyncChannel;
+
 #[derive(Component)]
 pub struct NetworkNode {
     /// Channel for receiving messages
-    recv_message_channel: AsyncChannel<NetworkRawPacket>,
+    pub recv_message_channel: AsyncChannel<NetworkRawPacket>,
     /// Channel for sending messages for peer
-    send_message_channel: AsyncChannel<NetworkRawPacket>,
+    pub send_message_channel: AsyncChannel<NetworkRawPacket>,
     /// Channel for broadcasting messages
-    broadcast_message_channel: AsyncChannel<NetworkRawPacket>,
+    pub broadcast_message_channel: AsyncChannel<NetworkRawPacket>,
     /// Channel for errors
-    error_channel: AsyncChannel<NetworkError>,
+    pub error_channel: AsyncChannel<NetworkError>,
+    pub shutdown_channel: AsyncChannel<()>,
     /// A flag to cancel the node
     pub cancel_flag: Arc<AtomicBool>,
     /// Whether the node is running or not
@@ -41,6 +45,7 @@ impl NetworkNode {
             send_message_channel: AsyncChannel::new(),
             broadcast_message_channel: AsyncChannel::new(),
             error_channel: AsyncChannel::new(),
+            shutdown_channel: AsyncChannel::new(),
             cancel_flag: Arc::new(AtomicBool::new(false)),
             running: false,
             local_addr,
@@ -65,10 +70,10 @@ impl NetworkNode {
     pub fn send(&self, bytes: &[u8]) {
         match self.peer_addr {
             None => {
-                self.error_channel
-                    .sender
-                    .try_send(NetworkError::NoPeer)
-                    .expect("Error channel has closed");
+                // self.error_channel
+                //     .sender
+                //     .try_send(NetworkError::NoPeer)
+                //     .expect("Error channel has closed");
             }
             Some(remote_addr) => {
                 self.send_message_channel

@@ -38,25 +38,25 @@ fn main() {
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
-        TcpNode::new(),
+        TcpNode::start(),
         RemoteSocket::new("127.0.0.1:6003"),
         ClientMarker,
         RawPacketMarker,
     ));
     commands.spawn((
-        TcpNode::new(),
+        TcpNode::start(),
         RemoteSocket::new("127.0.0.1:6003"),
         ClientMarker,
         RawPacketMarker,
     ));
     commands.spawn((
-        TcpNode::new(),
+        TcpNode::start(),
         RemoteSocket::new("127.0.0.1:6004"),
         ClientMarker,
         JsonMarker,
     ));
     commands.spawn((
-        TcpNode::new(),
+        TcpNode::start(),
         RemoteSocket::new("127.0.0.1:6005"),
         ClientMarker,
         BincodeMarker,

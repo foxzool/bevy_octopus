@@ -1,12 +1,7 @@
 use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
-use std::{
-    fmt::{Debug, Display},
-    net::SocketAddr,
-    ops::Deref,
-};
+use std::{fmt::Debug, net::SocketAddr, ops::Deref};
 
 use bevy::prelude::{Component, Deref, Entity, Event};
-use bevy::reflect::Reflect;
 use bytes::Bytes;
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -103,31 +98,6 @@ impl Debug for NetworkRawPacket {
             .field("socket", &self.socket)
             .field("len", &self.bytes.len())
             .finish()
-    }
-}
-
-#[derive(Debug, Component, Ord, PartialOrd, Eq, PartialEq, Reflect)]
-pub enum NetworkProtocol {
-    UDP,
-    TCP,
-    SSL,
-    WS,
-    WSS,
-}
-
-impl Display for NetworkProtocol {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                NetworkProtocol::UDP => "udp",
-                NetworkProtocol::TCP => "tcp",
-                NetworkProtocol::SSL => "ssl",
-                NetworkProtocol::WS => "ws",
-                NetworkProtocol::WSS => "wss",
-            }
-        )
     }
 }
 

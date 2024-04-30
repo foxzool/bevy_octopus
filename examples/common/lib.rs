@@ -1,9 +1,7 @@
 #![allow(dead_code)]
 
 use std::ops::Deref;
-use std::time::Duration;
 
-use bevy::app::ScheduleRunnerPlugin;
 use bevy::{log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
@@ -28,9 +26,9 @@ pub struct BincodeMarker;
 #[cfg(not(feature = "inspect"))]
 pub fn shared_setup(app: &mut App) {
     app.add_plugins((
-        MinimalPlugins.set(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(
-            1.0 / 60.0,
-        ))),
+        MinimalPlugins.set(bevy::app::ScheduleRunnerPlugin::run_loop(
+            std::time::Duration::from_secs_f64(1.0 / 60.0),
+        )),
         LogPlugin {
             filter: "bevy_ecs_net=debug".to_string(),
             ..default()
@@ -81,11 +79,12 @@ pub fn handle_message_events(
 }
 
 /// if you recv message directly from receiver,  typed message to wait handled may be missed
-pub fn receive_raw_messages(q_server: Query<&NetworkNode, With<RawPacketMarker>>) {
-    for net_node in q_server.iter() {
-        while let Ok(Some(packet)) = net_node.recv_channel().receiver.try_recv() {
+pub fn receive_raw_messages(q_server: Query<(Entity, &NetworkNode)>) {
+    for (entity, net_node) in q_server.iter() {
+        while let Ok(Some(packet)) = net_node.recv_message_channel.receiver.try_recv() {
             info!(
-                "{} Received: {:?}",
+                "{:?} {} Received: {:?}",
+                entity,
                 net_node,
                 String::from_utf8(packet.bytes.to_vec())
                     .unwrap_or_else(|e| format!("Error: {:?}", e))

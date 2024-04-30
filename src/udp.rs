@@ -10,11 +10,8 @@ use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::network::{LocalSocket, NetworkEvent, RemoteSocket};
 use crate::network_manager::NetworkNode;
-use crate::{
-    error::NetworkError,
-    network::{NetworkProtocol, NetworkRawPacket},
-    AsyncChannel,
-};
+use crate::prelude::NetworkProtocol;
+use crate::{error::NetworkError, network::NetworkRawPacket, AsyncChannel};
 
 pub struct UdpPlugin;
 
