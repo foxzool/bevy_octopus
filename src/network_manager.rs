@@ -24,7 +24,6 @@ pub struct NetworkNode {
     pub local_addr: Option<SocketAddr>,
     pub peer_addr: Option<SocketAddr>,
     pub max_packet_size: usize,
-    pub auto_start: bool,
     protocol: NetworkProtocol,
 }
 
@@ -43,7 +42,6 @@ impl NetworkNode {
             local_addr,
             peer_addr,
             max_packet_size: 65535,
-            auto_start: true,
             protocol,
         }
     }

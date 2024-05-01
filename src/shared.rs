@@ -4,30 +4,8 @@ use bevy::prelude::*;
 use kanal::{Receiver, Sender, unbounded};
 use tokio::runtime::Runtime;
 
-use crate::{tcp, udp};
 use crate::error::NetworkError;
 use crate::network_manager::NetworkNode;
-
-pub struct BevyNetPlugin;
-
-impl Plugin for BevyNetPlugin {
-    fn build(&self, app: &mut App) {
-        let async_runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        app.register_type::<NetworkProtocol>()
-            .insert_resource(AsyncRuntime(async_runtime))
-            .add_event::<NetworkNodeEvent>()
-            .add_systems(Update, network_node_event);
-
-        #[cfg(feature = "udp")]
-        app.add_plugins(udp::UdpPlugin);
-
-        #[cfg(feature = "tcp")]
-        app.add_plugins(tcp::TcpPlugin);
-    }
-}
 
 #[derive(Reflect)]
 pub struct AsyncChannel<T> {
@@ -96,7 +74,7 @@ pub enum NetworkEvent {
 }
 
 /// send network node error channel to events
-fn network_node_event(
+pub(crate) fn network_node_event(
     mut commands: Commands,
     mut q_net: Query<(Entity, &mut NetworkNode)>,
     mut node_events: EventWriter<NetworkNodeEvent>,
