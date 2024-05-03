@@ -4,7 +4,7 @@ use bevy::ecs::reflect::ReflectComponent;
 use bevy::prelude::{Component, Reflect};
 
 ///
-#[derive(Clone, PartialEq, Eq, Hash, Default, Component, Reflect)]
+#[derive(Clone, PartialEq, Eq, Hash, Default, Component, Reflect, Copy, Debug)]
 #[reflect(Component)]
 pub struct ChannelId(pub u32);
 

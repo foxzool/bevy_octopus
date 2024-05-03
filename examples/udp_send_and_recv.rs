@@ -6,7 +6,7 @@ use bevy_ecs_net::{
     network::{LocalSocket, RemoteSocket},
     network_manager::NetworkNode,
     shared::NetworkProtocol,
-    transformer::{BincodeProvider, CodingWorker, NetworkMessageDecoder, SerdeJsonProvider},
+    transformer::{BincodeProvider, NetworkMessageTransformer, SerdeJsonProvider},
 };
 
 use crate::common::*;
@@ -14,13 +14,12 @@ use crate::common::*;
 #[path = "common/lib.rs"]
 mod common;
 
-
 fn main() {
     let mut app = App::new();
     shared_setup(&mut app);
 
-    app.register_transformer::<PlayerInformation, SerdeJsonProvider>()
-        .register_transformer::<PlayerInformation, BincodeProvider>()
+    app.register_channel_transformer::<PlayerInformation, SerdeJsonProvider>(JSON_CHANNEL)
+        .register_channel_transformer::<PlayerInformation, BincodeProvider>(BINCODE_CHANNEL)
         .add_systems(Startup, (setup_clients, setup_server))
         .add_systems(
             Update,
@@ -53,7 +52,6 @@ fn setup_server(mut commands: Commands) {
         JSON_CHANNEL,
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:6002"),
-        CodingWorker::<PlayerInformation, SerdeJsonProvider>::new(),
     ));
 
     commands.spawn((

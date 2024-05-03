@@ -5,7 +5,7 @@ use bevy_ecs_net::{
     network::{LocalSocket, NetworkRawPacket, RemoteSocket},
     network_manager::NetworkNode,
     shared::NetworkProtocol,
-    transformer::{BincodeProvider, CodingWorker, NetworkMessageDecoder, SerdeJsonProvider},
+    transformer::{BincodeProvider, NetworkMessageTransformer, SerdeJsonProvider},
 };
 use bevy_ecs_net::connections::NetworkPeer;
 use bevy_ecs_net::prelude::{ChannelId, ChannelPacket};
@@ -20,9 +20,8 @@ fn main() {
 
     shared_setup(&mut app);
 
-    app.register_transformer::<PlayerInformation, SerdeJsonProvider>()
-        .register_transformer::<PlayerInformation, BincodeProvider>()
-        .add_systems(Startup, setup_server)
+    app.register_channel_transformer::<PlayerInformation, SerdeJsonProvider>(JSON_CHANNEL)
+        .register_channel_transformer::<PlayerInformation, BincodeProvider>(BINCODE_CHANNEL).add_systems(Startup, setup_server)
         .add_systems(
             Update,
             (
@@ -48,13 +47,11 @@ fn setup_server(mut commands: Commands) {
         JSON_CHANNEL,
         NetworkProtocol::TCP,
         LocalSocket::new("0.0.0.0:6004"),
-        CodingWorker::<PlayerInformation, SerdeJsonProvider>::new(),
     ));
     commands.spawn((
         BINCODE_CHANNEL,
         NetworkProtocol::TCP,
         LocalSocket::new("0.0.0.0:6005"),
-        CodingWorker::<PlayerInformation, BincodeProvider>::new(),
     ));
 }
 
