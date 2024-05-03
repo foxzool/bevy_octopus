@@ -47,21 +47,6 @@ pub const JSON_CHANNEL: ChannelId = ChannelId(2);
 /// this channel is sending and receiving bincode packet
 pub const BINCODE_CHANNEL: ChannelId = ChannelId(3);
 
-#[derive(Component)]
-pub struct ClientMarker;
-
-#[derive(Component)]
-pub struct ServerMarker;
-
-#[derive(Component)]
-pub struct RawPacketMarker;
-
-#[derive(Component)]
-pub struct JsonMarker;
-
-#[derive(Component)]
-pub struct BincodeMarker;
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerInformation {
     pub health: usize,
@@ -92,7 +77,7 @@ pub fn handle_message_events(
     for event in new_network_events.read() {
         let (channel_id, net) = q_net_node.get(event.source).unwrap();
         let player_info = event.deref();
-        info!("{} {} Received: {:?}",channel_id, net, &player_info);
+        info!("{} {} Received: {:?}", channel_id, net, &player_info);
     }
 }
 
@@ -106,27 +91,29 @@ pub fn receive_raw_messages(q_server: Query<(Entity, &NetworkNode)>) {
 
 #[cfg(feature = "serde_json")]
 /// send json message to server
-pub fn send_json_message(q_client: Query<&NetworkNode, (With<ClientMarker>, With<JsonMarker>)>) {
-    for client in q_client.iter() {
-        let player_info = PlayerInformation {
-            health: 100,
-            position: (1, 2, 3),
-        };
-        client.send(serde_json::to_string(&player_info).unwrap().as_bytes());
+pub fn send_json_message(q_nodes: Query<(&NetworkNode, &ChannelId), With<NetworkPeer>>) {
+    for (node, channel_id) in q_nodes.iter() {
+        if channel_id == &JSON_CHANNEL {
+            let player_info = PlayerInformation {
+                health: 100,
+                position: (1, 2, 3),
+            };
+            node.send(serde_json::to_string(&player_info).unwrap().as_bytes());
+        }
     }
 }
 
 #[cfg(feature = "bincode")]
 /// send bincode message
-pub fn send_bincode_message(
-    q_client: Query<&NetworkNode, (With<ClientMarker>, With<BincodeMarker>)>,
-) {
-    for client in q_client.iter() {
-        let player_info = PlayerInformation {
-            health: 200,
-            position: (4, 5, 6),
-        };
-        client.send(&bincode::serialize(&player_info).unwrap());
+pub fn send_bincode_message(q_nodes: Query<(&NetworkNode, &ChannelId), With<NetworkPeer>>) {
+    for (node, channel_id) in q_nodes.iter() {
+        if channel_id == &BINCODE_CHANNEL {
+            let player_info = PlayerInformation {
+                health: 200,
+                position: (4, 5, 6),
+            };
+            node.send(&bincode::serialize(&player_info).unwrap());
+        }
     }
 }
 

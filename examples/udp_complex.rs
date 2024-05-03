@@ -40,9 +40,6 @@ fn setup_server(mut commands: Commands) {
         NetworkProtocol::UDP,
         UdpBroadcast,
         LocalSocket::new("0.0.0.0:60002"),
-        // example marker for query filter
-        ServerMarker,
-        RawPacketMarker,
     ));
 
     // multicast udp receiver
@@ -50,9 +47,6 @@ fn setup_server(mut commands: Commands) {
         NetworkProtocol::UDP,
         MulticastV4Setting::new(Ipv4Addr::new(239, 1, 2, 3), Ipv4Addr::UNSPECIFIED),
         LocalSocket::new("0.0.0.0:60003"),
-        // example marker for query filter
-        ServerMarker,
-        RawPacketMarker,
     ));
 }
 
@@ -90,7 +84,6 @@ fn send_broadcast_messages(
     >,
 ) {
     for (net_node, local_addr, opt_remote_addr) in q_client.iter() {
-        println!("send_broadcast_messages");
         if opt_remote_addr.is_some() {
             net_node.send(format!("broadcast message from {}", local_addr.0).as_bytes());
         } else {

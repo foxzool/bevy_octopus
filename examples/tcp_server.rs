@@ -10,7 +10,9 @@ use bevy_ecs_net::{
     network_manager::NetworkNode,
     shared::NetworkProtocol,
 };
+use bevy_ecs_net::connections::NetworkPeer;
 use bevy_ecs_net::network_manager::ChannelMessage;
+use bevy_ecs_net::prelude::ChannelId;
 
 use crate::common::*;
 
@@ -45,21 +47,17 @@ fn setup_server(mut commands: Commands) {
         RAW_CHANNEL,
         NetworkProtocol::TCP,
         LocalSocket::new("0.0.0.0:6003"),
-        ServerMarker,
-        RawPacketMarker,
     ));
     commands.spawn((
         JSON_CHANNEL,
         NetworkProtocol::TCP,
         LocalSocket::new("0.0.0.0:6004"),
-        ServerMarker,
         DecodeWorker::<PlayerInformation, SerdeJsonProvider>::new(),
     ));
     commands.spawn((
         BINCODE_CHANNEL,
         NetworkProtocol::TCP,
         LocalSocket::new("0.0.0.0:6005"),
-        ServerMarker,
         DecodeWorker::<PlayerInformation, BincodeProvider>::new(),
     ));
 }
@@ -71,10 +69,13 @@ fn channel_message(mut channel_events: EventWriter<ChannelMessage>) {
 
 /// handle send message to connected clients
 fn broadcast_message(
-    q_net_node: Query<(&NetworkNode, &Children), (With<ServerMarker>, With<RawPacketMarker>)>,
+    q_net_node: Query<(&ChannelId, &NetworkNode, &Children), Without<NetworkPeer>>,
     q_child: Query<(&NetworkNode, &RemoteSocket)>,
 ) {
-    for (_net, children) in q_net_node.iter() {
+    for (channel_id, _net, children) in q_net_node.iter() {
+        if channel_id != &RAW_CHANNEL {
+            continue;
+        }
         for &child in children.iter() {
             let message = b"broadcast message!\r\n";
 

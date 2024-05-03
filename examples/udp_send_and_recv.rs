@@ -48,14 +48,11 @@ fn setup_server(mut commands: Commands) {
         RAW_CHANNEL,
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:6001"),
-        ServerMarker,
-        RawPacketMarker,
     ));
     commands.spawn((
         JSON_CHANNEL,
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:6002"),
-        ServerMarker,
         DecodeWorker::<PlayerInformation, SerdeJsonProvider>::new(),
     ));
 
@@ -63,7 +60,6 @@ fn setup_server(mut commands: Commands) {
         BINCODE_CHANNEL,
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:6003"),
-        ServerMarker,
         DecodeWorker::<PlayerInformation, BincodeProvider>::new(),
     ));
 }
@@ -74,44 +70,29 @@ fn setup_clients(mut commands: Commands) {
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:7006"),
         RemoteSocket::new("127.0.0.1:6001"),
-        ClientMarker,
-        // marker to send raw bytes
-        RawPacketMarker,
     ));
     commands.spawn((
         RAW_CHANNEL,
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:0"),
         RemoteSocket::new("127.0.0.1:6001"),
-        ClientMarker,
-        // marker to send raw bytes
-        RawPacketMarker,
     ));
     commands.spawn((
         RAW_CHANNEL,
         NetworkProtocol::UDP,
         RemoteSocket::new("127.0.0.1:6001"),
-        ClientMarker,
-        // marker to send raw bytes
-        RawPacketMarker,
     ));
 
     commands.spawn((
         JSON_CHANNEL,
         NetworkProtocol::UDP,
         RemoteSocket::new("127.0.0.1:6002"),
-        ClientMarker,
-        // marker to send json
-        JsonMarker,
     ));
 
     commands.spawn((
         BINCODE_CHANNEL,
         NetworkProtocol::UDP,
         RemoteSocket::new("127.0.0.1:6003"),
-        ClientMarker,
-        // marker to send bincode
-        BincodeMarker,
     ));
 }
 

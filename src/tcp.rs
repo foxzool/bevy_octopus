@@ -51,6 +51,7 @@ impl TcpNode {
 
         let server = async move {
             let listener = TcpListener::bind(addr).await?;
+
             debug!("TCP Server listening on {}", addr);
 
             loop {
@@ -63,9 +64,9 @@ impl TcpNode {
                     result = listener.accept() => {
                         match result {
                             Ok((tcp_stream, socket)) => {
+                                 tcp_stream.set_nodelay(true).expect("set_nodelay call failed");
                                 new_connection_tx.send((tcp_stream, socket)).await.unwrap();
 
-                                // tokio::spawn(handle_connection(tcp_stream, recv_tx.clone(), message_rx.clone()));
                             }
                             Err(e) => {
                                 eprintln!("Failed to accept client connection: {}", e);
@@ -89,14 +90,14 @@ impl TcpNode {
 }
 
 async fn handle_connection(
-    mut socket: TcpStream,
+    mut stream: TcpStream,
     recv_tx: AsyncSender<NetworkRawPacket>,
     message_rx: AsyncReceiver<NetworkRawPacket>,
     event_tx: AsyncSender<NetworkEvent>,
     shutdown_rx: AsyncReceiver<()>,
 ) {
-    let addr = socket.peer_addr().unwrap();
-    let (mut reader, mut writer) = socket.split();
+    let addr = stream.peer_addr().unwrap();
+    let (mut reader, mut writer) = stream.split();
 
     let event_tx_clone = event_tx.clone();
     let read_task = async {
@@ -215,6 +216,7 @@ fn spawn_tcp_client(
         rt.spawn(async move {
             match TcpStream::connect(addr).await {
                 Ok(tcp_stream) => {
+                    tcp_stream.set_nodelay(true).expect("set_nodelay call failed");
                     handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
                 }
                 Err(err) => event_tx
@@ -261,7 +263,7 @@ fn handle_endpoint(
                 NetworkProtocol::TCP,
                 new_net_node,
                 channel_id.clone(),
-                peer
+                peer,
             ));
 
             // Add the client to the server's children
