@@ -10,8 +10,14 @@ use bevy_ecs_net::{
     network_manager::NetworkNode,
     shared::NetworkProtocol,
 };
+use bevy_ecs_net::network_manager::ChannelMessage;
+use bevy_ecs_net::prelude::*;
 
 use crate::common::*;
+
+const CHANNEL_1: ChannelId = ChannelId(1);
+const CHANNEL_2: ChannelId = ChannelId(2);
+const CHANNEL_3: ChannelId = ChannelId(3);
 
 #[path = "common/lib.rs"]
 mod common;
@@ -34,25 +40,28 @@ fn main() {
         )
         .add_systems(
             Update,
-            broadcast_message.run_if(on_timer(Duration::from_secs_f64(1.0))),
+            (broadcast_message, channel_message).run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
         .run()
 }
 
 fn setup_server(mut commands: Commands) {
     commands.spawn((
+        CHANNEL_1,
         NetworkProtocol::TCP,
         LocalSocket::new("0.0.0.0:6003"),
         ServerMarker,
         RawPacketMarker,
     ));
     commands.spawn((
+        CHANNEL_2,
         NetworkProtocol::TCP,
         LocalSocket::new("0.0.0.0:6004"),
         ServerMarker,
         DecodeWorker::<PlayerInformation, SerdeJsonProvider>::new(),
     ));
     commands.spawn((
+        CHANNEL_3,
         NetworkProtocol::TCP,
         LocalSocket::new("0.0.0.0:6005"),
         ServerMarker,
@@ -60,6 +69,12 @@ fn setup_server(mut commands: Commands) {
     ));
 }
 
+/// broadcast message to all connected clients in channel
+fn channel_message(mut channel_events: EventWriter<ChannelMessage>) {
+    channel_events.send(ChannelMessage::new(CHANNEL_1, b"channel 1 message"));
+}
+
+/// handle send message to connected clients
 fn broadcast_message(
     q_net_node: Query<(&NetworkNode, &Children), (With<ServerMarker>, With<RawPacketMarker>)>,
     q_child: Query<(&NetworkNode, &RemoteSocket)>,
@@ -75,7 +90,7 @@ fn broadcast_message(
                 .send_message_channel
                 .sender
                 .try_send(NetworkRawPacket {
-                    socket: **child_remote_addr,
+                    addr: **child_remote_addr,
                     bytes: Bytes::from_static(message),
                 })
                 .expect("Message channel has closed.");

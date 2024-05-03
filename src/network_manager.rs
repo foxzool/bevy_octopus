@@ -1,9 +1,10 @@
 use std::fmt::Display;
 use std::net::{SocketAddr, ToSocketAddrs};
 
-use bevy::prelude::Component;
+use bevy::prelude::{Component, Event};
 use bytes::Bytes;
 
+use crate::channels::ChannelId;
 use crate::error::NetworkError;
 use crate::network::NetworkRawPacket;
 use crate::shared::{AsyncChannel, NetworkEvent, NetworkProtocol};
@@ -25,6 +26,21 @@ pub struct NetworkNode {
     pub peer_addr: Option<SocketAddr>,
     pub max_packet_size: usize,
     protocol: NetworkProtocol,
+}
+
+#[derive(Event)]
+pub struct ChannelMessage {
+    pub channel_id: ChannelId,
+    pub bytes: Bytes,
+}
+
+impl ChannelMessage {
+    pub fn new(channel_id: ChannelId, bytes: &[u8]) -> Self {
+        Self {
+            channel_id,
+            bytes: Bytes::copy_from_slice(bytes),
+        }
+    }
 }
 
 impl NetworkNode {
@@ -65,7 +81,7 @@ impl NetworkNode {
                 self.send_message_channel
                     .sender
                     .try_send(NetworkRawPacket {
-                        socket: remote_addr,
+                        addr: remote_addr,
                         bytes: Bytes::copy_from_slice(bytes),
                     })
                     .expect("Message channel has closed.");
@@ -78,7 +94,7 @@ impl NetworkNode {
         self.send_message_channel
             .sender
             .try_send(NetworkRawPacket {
-                socket: remote_addr,
+                addr: remote_addr,
                 bytes: Bytes::copy_from_slice(bytes),
             })
             .expect("Message channel has closed.");

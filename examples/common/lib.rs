@@ -67,8 +67,11 @@ pub fn handle_node_events(
     q_net_node: Query<&NetworkNode>,
 ) {
     for event in new_network_events.read() {
-        let net = q_net_node.get(event.node).unwrap();
-        info!("{:?} {} got event: {:?}", event.node, net, event.event);
+        if let Ok(net) = q_net_node.get(event.node) {
+            info!("{:?} {} got event: {:?}", event.node, net, event.event);
+        } else {
+            info!("{:?} got event: {:?}", event.node, event.event);
+        }
     }
 }
 

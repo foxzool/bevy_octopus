@@ -5,16 +5,18 @@ use bevy::prelude::*;
 use bytes::Bytes;
 use kanal::{AsyncReceiver, AsyncSender};
 
+use crate::{error::NetworkError, network::NetworkRawPacket};
 use crate::network::{LocalSocket, RemoteSocket};
 use crate::network_manager::NetworkNode;
+use crate::providers::{AppNetProvider, NetworkProvider};
 use crate::shared::{NetworkEvent, NetworkProtocol};
 use crate::shared::AsyncRuntime;
-use crate::{error::NetworkError, network::NetworkRawPacket};
 
 pub struct UdpPlugin;
 
 impl Plugin for UdpPlugin {
     fn build(&self, app: &mut App) {
+        app.register_network_provider::<UdpNode>();
         app.add_systems(
             PostUpdate,
             (
@@ -23,6 +25,11 @@ impl Plugin for UdpPlugin {
             ),
         );
     }
+}
+
+
+impl NetworkProvider for UdpNode {
+    const NAME: &'static str = "UDP";
 }
 
 #[derive(Component, Deref, DerefMut)]
@@ -51,7 +58,7 @@ async fn recv_loop(
                 );
                 recv_tx
                     .send(NetworkRawPacket {
-                        socket: from_addr,
+                        addr: from_addr,
                         bytes,
                     })
                     .await
@@ -78,10 +85,10 @@ async fn send_loop(
                 "{} Sending {} bytes to {:?}",
                 socket.local_addr().unwrap(),
                 packet.bytes.len(),
-                packet.socket,
+                packet.addr,
             );
 
-            if let Err(_e) = socket.send_to(packet.bytes.as_ref(), packet.socket).await {
+            if let Err(_e) = socket.send_to(packet.bytes.as_ref(), packet.addr).await {
                 event_tx
                     .send(NetworkEvent::Error(NetworkError::SendError))
                     .await
@@ -139,7 +146,7 @@ fn spawn_udp_socket(
     >,
 ) {
     for (entity, protocol, opt_local_addr, opt_remote_addr, opt_broadcast, opt_v4, opt_v6) in
-        q_udp.iter()
+    q_udp.iter()
     {
         if *protocol != NetworkProtocol::UDP {
             continue;
@@ -174,7 +181,7 @@ fn spawn_udp_socket(
                 event_tx,
                 shutdown_rx,
             )
-            .await
+                .await
         });
 
         commands

@@ -6,6 +6,8 @@ use kanal::{AsyncReceiver, AsyncSender};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
+use crate::channels::ChannelId;
+use crate::connections::NetworkPeer;
 use crate::error::NetworkError;
 use crate::network::{LocalSocket, NetworkRawPacket};
 use crate::network::RemoteSocket;
@@ -113,7 +115,7 @@ async fn handle_connection(
                     let data = buffer[..n].to_vec();
                     recv_tx
                         .send(NetworkRawPacket {
-                            socket: addr,
+                            addr: addr,
                             bytes: Bytes::copy_from_slice(&data),
                         })
                         .await
@@ -229,10 +231,10 @@ fn spawn_tcp_client(
 fn handle_endpoint(
     rt: Res<AsyncRuntime>,
     mut commands: Commands,
-    q_tcp_server: Query<(Entity, &TcpNode, &NetworkNode)>,
+    q_tcp_server: Query<(Entity, &TcpNode, &NetworkNode, &ChannelId)>,
     mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
-    for (entity, tcp_node, _net_node) in q_tcp_server.iter() {
+    for (entity, tcp_node, _net_node, channel_id) in q_tcp_server.iter() {
         while let Ok(Some((tcp_stream, socket))) =
             tcp_node.new_connection_channel.receiver.try_recv()
         {
@@ -246,6 +248,7 @@ fn handle_endpoint(
             rt.spawn(async move {
                 handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
             });
+            let peer = NetworkPeer {};
 
             debug!(
                 "new TCP client {:?} connected {:?}",
@@ -255,6 +258,8 @@ fn handle_endpoint(
                 RemoteSocket(socket),
                 NetworkProtocol::TCP,
                 new_net_node,
+                channel_id.clone(),
+                peer
             ));
 
             // Add the client to the server's children
