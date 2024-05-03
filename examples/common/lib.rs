@@ -87,12 +87,12 @@ pub fn handle_node_events(
 
 pub fn handle_message_events(
     mut new_network_events: EventReader<NetworkData<PlayerInformation>>,
-    q_net_node: Query<&NetworkNode>,
+    q_net_node: Query<(&ChannelId, &NetworkNode)>,
 ) {
     for event in new_network_events.read() {
-        let net = q_net_node.get(event.source).unwrap();
+        let (channel_id, net) = q_net_node.get(event.source).unwrap();
         let player_info = event.deref();
-        info!("{} Received: {:?}", net, &player_info);
+        info!("{} {} Received: {:?}",channel_id, net, &player_info);
     }
 }
 
@@ -131,10 +131,10 @@ pub fn send_bincode_message(
 }
 
 /// send raw message to server
-pub fn send_raw_message(
-    q_client: Query<&NetworkNode, (With<NetworkPeer>, With<RawPacketMarker>)>,
-) {
-    for node in q_client.iter() {
-        node.send(format!("raw packet from {}", node).as_bytes());
+pub fn send_raw_message_to_channel(q_client: Query<(&NetworkNode, &ChannelId), With<NetworkPeer>>) {
+    for (node, channel_id) in q_client.iter() {
+        if channel_id == &RAW_CHANNEL {
+            node.send(format!("raw packet from {}", node).as_bytes());
+        }
     }
 }

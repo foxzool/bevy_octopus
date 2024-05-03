@@ -8,16 +8,12 @@ use bevy_ecs_net::{
     network_manager::NetworkNode,
     shared::NetworkProtocol,
 };
-use bevy_ecs_net::prelude::*;
 
 use crate::common::*;
 
 #[path = "common/lib.rs"]
 mod common;
 
-const UDP_CHANNEL: ChannelId = ChannelId(1);
-const CHANNEL_2: ChannelId = ChannelId(2);
-const CHANNEL_3: ChannelId = ChannelId(3);
 
 fn main() {
     let mut app = App::new();
@@ -29,7 +25,7 @@ fn main() {
         .add_systems(
             Update,
             (
-                send_raw_message,
+                send_raw_message_to_channel,
                 send_json_message,
                 send_bincode_message,
                 send_socket_packet,
@@ -49,14 +45,14 @@ fn main() {
 
 fn setup_server(mut commands: Commands) {
     commands.spawn((
-        UDP_CHANNEL,
+        RAW_CHANNEL,
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:6001"),
         ServerMarker,
         RawPacketMarker,
     ));
     commands.spawn((
-        CHANNEL_2,
+        JSON_CHANNEL,
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:6002"),
         ServerMarker,
@@ -64,7 +60,7 @@ fn setup_server(mut commands: Commands) {
     ));
 
     commands.spawn((
-        CHANNEL_3,
+        BINCODE_CHANNEL,
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:6003"),
         ServerMarker,
@@ -74,7 +70,7 @@ fn setup_server(mut commands: Commands) {
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
-        UDP_CHANNEL,
+        RAW_CHANNEL,
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:7006"),
         RemoteSocket::new("127.0.0.1:6001"),
@@ -83,7 +79,7 @@ fn setup_clients(mut commands: Commands) {
         RawPacketMarker,
     ));
     commands.spawn((
-        UDP_CHANNEL,
+        RAW_CHANNEL,
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:0"),
         RemoteSocket::new("127.0.0.1:6001"),
@@ -92,7 +88,7 @@ fn setup_clients(mut commands: Commands) {
         RawPacketMarker,
     ));
     commands.spawn((
-        UDP_CHANNEL,
+        RAW_CHANNEL,
         NetworkProtocol::UDP,
         RemoteSocket::new("127.0.0.1:6001"),
         ClientMarker,
@@ -101,7 +97,7 @@ fn setup_clients(mut commands: Commands) {
     ));
 
     commands.spawn((
-        CHANNEL_2,
+        JSON_CHANNEL,
         NetworkProtocol::UDP,
         RemoteSocket::new("127.0.0.1:6002"),
         ClientMarker,
@@ -110,7 +106,7 @@ fn setup_clients(mut commands: Commands) {
     ));
 
     commands.spawn((
-        CHANNEL_3,
+        BINCODE_CHANNEL,
         NetworkProtocol::UDP,
         RemoteSocket::new("127.0.0.1:6003"),
         ClientMarker,
@@ -119,7 +115,7 @@ fn setup_clients(mut commands: Commands) {
     ));
 }
 
-fn send_socket_packet(q_client: Query<&NetworkNode, (With<ClientMarker>, With<RawPacketMarker>)>) {
+fn send_socket_packet(q_client: Query<&NetworkNode, With<RemoteSocket>>) {
     for client in q_client.iter() {
         client.send_to(
             "I can send message to specify socket".as_bytes(),
