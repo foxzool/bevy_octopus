@@ -2,8 +2,8 @@ use bevy::app::{App, Plugin, PostUpdate, PreUpdate};
 use bevy::prelude::{IntoSystemConfigs, IntoSystemSetConfigs};
 
 use crate::{tcp, udp};
+use crate::channels::{ChannelId, ChannelPacket};
 use crate::channels::systems::send_channel_message_system;
-use crate::network_manager::ChannelMessage;
 use crate::scheduler::NetworkSet;
 use crate::shared::{AsyncRuntime, NetworkNodeEvent, NetworkProtocol};
 
@@ -16,17 +16,18 @@ impl Plugin for BevyNetPlugin {
             .build()
             .unwrap();
         app.register_type::<NetworkProtocol>()
+            .register_type::<ChannelId>()
             .insert_resource(AsyncRuntime(async_runtime))
             .add_event::<NetworkNodeEvent>()
-            .add_event::<ChannelMessage>()
+            .add_event::<ChannelPacket>()
             .configure_sets(
                 PreUpdate,
-                (NetworkSet::Receive, NetworkSet::Process).chain(),
+                (NetworkSet::Receive, NetworkSet::Decoding).chain(),
             )
-            .configure_sets(PostUpdate, (NetworkSet::Process, NetworkSet::Send).chain())
+            .configure_sets(PostUpdate, (NetworkSet::Encoding, NetworkSet::Send).chain())
             .add_systems(
                 PreUpdate,
-                crate::shared::network_node_event.in_set(NetworkSet::Process),
+                crate::shared::network_node_event.in_set(NetworkSet::Decoding),
             )
             .add_systems(
                 PostUpdate,

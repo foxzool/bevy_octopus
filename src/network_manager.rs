@@ -1,10 +1,9 @@
 use std::fmt::Display;
 use std::net::{SocketAddr, ToSocketAddrs};
 
-use bevy::prelude::{Component, Event};
+use bevy::prelude::Component;
 use bytes::Bytes;
 
-use crate::channels::ChannelId;
 use crate::error::NetworkError;
 use crate::network::NetworkRawPacket;
 use crate::shared::{AsyncChannel, NetworkEvent, NetworkProtocol};
@@ -28,20 +27,6 @@ pub struct NetworkNode {
     protocol: NetworkProtocol,
 }
 
-#[derive(Event)]
-pub struct ChannelMessage {
-    pub channel_id: ChannelId,
-    pub bytes: Bytes,
-}
-
-impl ChannelMessage {
-    pub fn new(channel_id: ChannelId, bytes: &[u8]) -> Self {
-        Self {
-            channel_id,
-            bytes: Bytes::copy_from_slice(bytes),
-        }
-    }
-}
 
 impl NetworkNode {
     pub fn new(

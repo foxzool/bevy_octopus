@@ -1,13 +1,13 @@
 use bevy::ecs::prelude::*;
 
-use crate::channels::ChannelId;
+use crate::channels::{ChannelId, ChannelPacket};
 use crate::connections::NetworkPeer;
 use crate::network::NetworkRawPacket;
-use crate::network_manager::{ChannelMessage, NetworkNode};
+use crate::network_manager::NetworkNode;
 
 pub(crate) fn send_channel_message_system(
     q_net: Query<(&ChannelId, &NetworkNode), With<NetworkPeer>>,
-    mut channel_events: EventReader<ChannelMessage>,
+    mut channel_events: EventReader<ChannelPacket>,
 ) {
     for channel_ev in channel_events.read() {
         q_net.par_iter().for_each(|(channel_id, net_node)| {

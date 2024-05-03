@@ -9,8 +9,8 @@ use serde::{de::DeserializeOwned, Serialize};
 ///
 /// ## Example
 /// ```rust
-/// use bevy_ecs_net::prelude::NetworkMessage;
 /// use serde::{Serialize, Deserialize};
+/// use bevy_ecs_net::network::NetworkMessage;
 ///
 /// #[derive(Serialize, Deserialize, Debug)]
 /// struct PlayerInformation {

@@ -2,7 +2,7 @@
 // #![warn(missing_docs)]
 
 pub mod channels;
-pub mod decoder;
+pub mod transformer;
 pub mod error;
 pub mod network;
 pub mod network_manager;

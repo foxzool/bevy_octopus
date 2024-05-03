@@ -3,10 +3,10 @@ use std::time::Duration;
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
 use bevy_ecs_net::{
-    decoder::{BincodeProvider, DecodeWorker, NetworkMessageDecoder, SerdeJsonProvider},
     network::{LocalSocket, RemoteSocket},
     network_manager::NetworkNode,
     shared::NetworkProtocol,
+    transformer::{BincodeProvider, CodingWorker, NetworkMessageDecoder, SerdeJsonProvider},
 };
 
 use crate::common::*;
@@ -19,8 +19,8 @@ fn main() {
     let mut app = App::new();
     shared_setup(&mut app);
 
-    app.register_decoder::<PlayerInformation, SerdeJsonProvider>()
-        .register_decoder::<PlayerInformation, BincodeProvider>()
+    app.register_transformer::<PlayerInformation, SerdeJsonProvider>()
+        .register_transformer::<PlayerInformation, BincodeProvider>()
         .add_systems(Startup, (setup_clients, setup_server))
         .add_systems(
             Update,
@@ -53,14 +53,14 @@ fn setup_server(mut commands: Commands) {
         JSON_CHANNEL,
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:6002"),
-        DecodeWorker::<PlayerInformation, SerdeJsonProvider>::new(),
+        CodingWorker::<PlayerInformation, SerdeJsonProvider>::new(),
     ));
 
     commands.spawn((
         BINCODE_CHANNEL,
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:6003"),
-        DecodeWorker::<PlayerInformation, BincodeProvider>::new(),
+        CodingWorker::<PlayerInformation, BincodeProvider>::new(),
     ));
 }
 

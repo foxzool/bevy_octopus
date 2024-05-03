@@ -21,7 +21,7 @@ pub fn shared_setup(app: &mut App) {
             std::time::Duration::from_secs_f64(1.0 / 60.0),
         )),
         LogPlugin {
-            filter: "bevy_ecs_net=debug".to_string(),
+            filter: "bevy_ecs_net=trace".to_string(),
             ..default()
         },
     ))
@@ -81,16 +81,15 @@ pub fn handle_message_events(
     }
 }
 
-pub fn receive_raw_messages(q_server: Query<(Entity, &NetworkNode)>) {
+pub fn receive_raw_messages(q_server: Query<(&ChannelId, &NetworkNode)>) {
     for (entity, net_node) in q_server.iter() {
         while let Ok(Some(packet)) = net_node.recv_message_channel.receiver.try_recv() {
-            info!("{:?} {} Received: {:?}", entity, net_node, packet.bytes);
+            info!("{} {} Received: {:?}", entity, net_node, packet.bytes);
         }
     }
 }
 
 #[cfg(feature = "serde_json")]
-/// send json message to server
 pub fn send_json_message(q_nodes: Query<(&NetworkNode, &ChannelId), With<NetworkPeer>>) {
     for (node, channel_id) in q_nodes.iter() {
         if channel_id == &JSON_CHANNEL {

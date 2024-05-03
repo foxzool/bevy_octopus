@@ -24,7 +24,7 @@ pub enum NetworkError {
     SendError,
     //
     #[error("Failed to serialize data: {0}")]
-    Serialization(String),
+    SerializeError(String),
     #[error("Failed to deserialize data: {0}")]
     DeserializeError(String),
     #[error("Failed to read/write file(s)")]

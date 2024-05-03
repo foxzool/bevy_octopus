@@ -1,18 +1,14 @@
-use std::time::Duration;
-
 use bevy::prelude::*;
-use bevy::time::common_conditions::on_timer;
 use bytes::Bytes;
 
 use bevy_ecs_net::{
-    decoder::{BincodeProvider, DecodeWorker, NetworkMessageDecoder, SerdeJsonProvider},
     network::{LocalSocket, NetworkRawPacket, RemoteSocket},
     network_manager::NetworkNode,
     shared::NetworkProtocol,
+    transformer::{BincodeProvider, CodingWorker, NetworkMessageDecoder, SerdeJsonProvider},
 };
 use bevy_ecs_net::connections::NetworkPeer;
-use bevy_ecs_net::network_manager::ChannelMessage;
-use bevy_ecs_net::prelude::ChannelId;
+use bevy_ecs_net::prelude::{ChannelId, ChannelPacket};
 
 use crate::common::*;
 
@@ -24,21 +20,21 @@ fn main() {
 
     shared_setup(&mut app);
 
-    app.register_decoder::<PlayerInformation, SerdeJsonProvider>()
-        .register_decoder::<PlayerInformation, BincodeProvider>()
+    app.register_transformer::<PlayerInformation, SerdeJsonProvider>()
+        .register_transformer::<PlayerInformation, BincodeProvider>()
         .add_systems(Startup, setup_server)
         .add_systems(
             Update,
             (
-                receive_raw_messages,
+                // receive_raw_messages,
                 handle_message_events,
                 handle_node_events,
             ),
         )
-        .add_systems(
-            Update,
-            (broadcast_message, channel_message).run_if(on_timer(Duration::from_secs_f64(1.0))),
-        )
+        // .add_systems(
+        //     Update,
+        //     (broadcast_message, channel_packet).run_if(on_timer(Duration::from_secs_f64(1.0))),
+        // )
         .run()
 }
 
@@ -52,19 +48,19 @@ fn setup_server(mut commands: Commands) {
         JSON_CHANNEL,
         NetworkProtocol::TCP,
         LocalSocket::new("0.0.0.0:6004"),
-        DecodeWorker::<PlayerInformation, SerdeJsonProvider>::new(),
+        CodingWorker::<PlayerInformation, SerdeJsonProvider>::new(),
     ));
     commands.spawn((
         BINCODE_CHANNEL,
         NetworkProtocol::TCP,
         LocalSocket::new("0.0.0.0:6005"),
-        DecodeWorker::<PlayerInformation, BincodeProvider>::new(),
+        CodingWorker::<PlayerInformation, BincodeProvider>::new(),
     ));
 }
 
 /// broadcast message to all connected clients in channel
-fn channel_message(mut channel_events: EventWriter<ChannelMessage>) {
-    channel_events.send(ChannelMessage::new(RAW_CHANNEL, b"channel 1 message\r\n"));
+fn channel_packet(mut channel_events: EventWriter<ChannelPacket>) {
+    channel_events.send(ChannelPacket::new(RAW_CHANNEL, b"channel 1 message\r\n"));
 }
 
 /// handle send message to connected clients

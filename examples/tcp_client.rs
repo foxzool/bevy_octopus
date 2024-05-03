@@ -4,8 +4,8 @@ use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
 use bevy_ecs_net::{
-    decoder::{BincodeProvider, NetworkMessageDecoder, SerdeJsonProvider},
     network::RemoteSocket,
+    transformer::{BincodeProvider, NetworkMessageDecoder, SerdeJsonProvider},
 };
 use bevy_ecs_net::shared::NetworkProtocol;
 
@@ -19,8 +19,8 @@ fn main() {
 
     shared_setup(&mut app);
 
-    app.register_decoder::<PlayerInformation, SerdeJsonProvider>()
-        .register_decoder::<PlayerInformation, BincodeProvider>()
+    app.register_transformer::<PlayerInformation, SerdeJsonProvider>()
+        .register_transformer::<PlayerInformation, BincodeProvider>()
         .add_systems(Startup, setup_clients)
         .add_systems(
             Update,
@@ -47,24 +47,20 @@ fn setup_clients(mut commands: Commands) {
         RAW_CHANNEL,
         NetworkProtocol::TCP,
         RemoteSocket::new("127.0.0.1:38551"),
-        ClientMarker,
     ));
     commands.spawn((
         RAW_CHANNEL,
         NetworkProtocol::TCP,
         RemoteSocket::new("127.0.0.1:6003"),
-        ClientMarker,
     ));
     commands.spawn((
         JSON_CHANNEL,
         NetworkProtocol::TCP,
         RemoteSocket::new("127.0.0.1:6004"),
-        ClientMarker,
     ));
     commands.spawn((
         BINCODE_CHANNEL,
         NetworkProtocol::TCP,
         RemoteSocket::new("127.0.0.1:6005"),
-        ClientMarker,
     ));
 }

@@ -96,6 +96,7 @@ async fn handle_connection(
     event_tx: AsyncSender<NetworkEvent>,
     shutdown_rx: AsyncReceiver<()>,
 ) {
+    let local_addr = stream.local_addr().unwrap();
     let addr = stream.peer_addr().unwrap();
     let (mut reader, mut writer) = stream.split();
 
@@ -114,6 +115,7 @@ async fn handle_connection(
                 }
                 Ok(n) => {
                     let data = buffer[..n].to_vec();
+                    trace!("{} read {} bytes from {}", local_addr, n, addr);
                     recv_tx
                         .send(NetworkRawPacket {
                             addr,
@@ -216,7 +218,9 @@ fn spawn_tcp_client(
         rt.spawn(async move {
             match TcpStream::connect(addr).await {
                 Ok(tcp_stream) => {
-                    tcp_stream.set_nodelay(true).expect("set_nodelay call failed");
+                    tcp_stream
+                        .set_nodelay(true)
+                        .expect("set_nodelay call failed");
                     handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
                 }
                 Err(err) => event_tx
@@ -238,14 +242,14 @@ fn handle_endpoint(
     q_tcp_server: Query<(Entity, &TcpNode, &NetworkNode, &ChannelId)>,
     mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
-    for (entity, tcp_node, _net_node, channel_id) in q_tcp_server.iter() {
+    for (entity, tcp_node, net_node, channel_id) in q_tcp_server.iter() {
         while let Ok(Some((tcp_stream, socket))) =
             tcp_node.new_connection_channel.receiver.try_recv()
         {
             let new_net_node = NetworkNode::new(NetworkProtocol::TCP, None, Some(socket));
             // Create a new entity for the client
             let child_tcp_client = commands.spawn_empty().id();
-            let recv_tx = new_net_node.recv_message_channel.sender.clone_async();
+            let recv_tx = net_node.recv_message_channel.sender.clone_async();
             let message_rx = new_net_node.send_message_channel.receiver.clone_async();
             let event_tx = new_net_node.event_channel.sender.clone_async();
             let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
