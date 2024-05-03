@@ -25,8 +25,4 @@ impl Transformer for SerdeJsonProvider {
             Err(e) => Err(NetworkError::DeserializeError(e.to_string())),
         }
     }
-
-    fn marker(&self) -> SerdeJsonMarker {
-        SerdeJsonMarker
-    }
 }

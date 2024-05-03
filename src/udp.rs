@@ -27,7 +27,6 @@ impl Plugin for UdpPlugin {
     }
 }
 
-
 impl NetworkProvider for UdpNode {
     const NAME: &'static str = "UDP";
 }
@@ -190,6 +189,7 @@ fn spawn_udp_socket(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn listen(
     listener_socket: SocketAddr,
     bind: Option<SocketAddr>,
@@ -233,20 +233,18 @@ async fn listen(
 
         let event_tx_clone = event_tx.clone();
 
-        loop {
-            tokio::select! {
-                // handle shutdown signal
-                _ = shutdown_rx_clone.recv() => {
-                    break;
-                }
-                // process new connection
-                _ = send_loop(socket.clone(), send_rx, event_tx_clone) => {
-                    break;
-                }
+        tokio::select! {
+            // handle shutdown signal
+            _ = shutdown_rx_clone.recv() => {
 
-                _ = recv_loop(socket, recv_tx, event_tx, 65_507) => {
-                    break;
-                }
+            }
+            // process new connection
+            _ = send_loop(socket.clone(), send_rx, event_tx_clone) => {
+
+            }
+
+            _ = recv_loop(socket, recv_tx, event_tx, 65_507) => {
+
             }
         }
 

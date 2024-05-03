@@ -266,7 +266,7 @@ fn handle_endpoint(
                 RemoteSocket(socket),
                 NetworkProtocol::TCP,
                 new_net_node,
-                channel_id.clone(),
+                *channel_id,
                 peer,
             ));
 

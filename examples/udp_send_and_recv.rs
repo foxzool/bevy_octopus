@@ -58,7 +58,6 @@ fn setup_server(mut commands: Commands) {
         BINCODE_CHANNEL,
         NetworkProtocol::UDP,
         LocalSocket::new("0.0.0.0:6003"),
-        CodingWorker::<PlayerInformation, BincodeProvider>::new(),
     ));
 }
 

@@ -1,10 +1,7 @@
 use std::any::TypeId;
 use std::collections::HashMap;
-use std::marker::PhantomData;
 use std::ops::Deref;
 
-use bevy::ecs::component::ComponentId;
-use bevy::ecs::component::SparseStorage;
 use bevy::prelude::*;
 use bevy::reflect::GetTypeRegistration;
 use serde::{Deserialize, Serialize};
@@ -37,8 +34,6 @@ pub trait Transformer:
     const NAME: &'static str;
     fn encode<T: Serialize>(&self, data: &T) -> Result<Vec<u8>, NetworkError>;
     fn decode<T: for<'a> Deserialize<'a>>(&self, bytes: &[u8]) -> Result<T, NetworkError>;
-
-    fn marker(&self) -> impl Component;
 }
 
 pub trait NetworkMessageTransformer {
@@ -95,14 +90,8 @@ impl NetworkMessageTransformer for App {
     }
 }
 
-#[derive(Resource, Deref, DerefMut, Debug)]
+#[derive(Resource, Deref, DerefMut, Debug, Default)]
 pub struct ChannelTransformers(pub HashMap<ChannelId, TypeId>);
-
-impl Default for ChannelTransformers {
-    fn default() -> Self {
-        Self(HashMap::new())
-    }
-}
 
 fn encode_system<M: NetworkMessage, T: Transformer + bevy::prelude::Resource>(
     type_registry: Res<AppTypeRegistry>,
@@ -125,7 +114,15 @@ fn encode_system<M: NetworkMessage, T: Transformer + bevy::prelude::Resource>(
                             bytes: bytes.into(),
                         })
                         .expect("send channel has closed"),
-                    Err(_) => {}
+                    Err(e) => {
+                        net_node
+                            .event_channel
+                            .sender
+                            .send(NetworkEvent::Error(NetworkError::SerializeError(
+                                e.to_string(),
+                            )))
+                            .expect("event channel has closed");
+                    }
                 }
             }
         }
@@ -205,17 +202,5 @@ fn decode_packets<M: NetworkMessage, T: Transformer>(
                 })
                 .collect::<Vec<_>>(),
         );
-    }
-}
-
-fn spawn_child_worker<D: Transformer>(
-    mut commands: Commands,
-    // q_parent: Query<&CodingWorker<T, D>, With<NetworkNode>>,
-    q_child: Query<(Entity, &Parent), Added<NetworkNode>>,
-) {
-    for (entity, parent) in q_child.iter() {
-        // if let Ok(worker) = q_parent.get(parent.get()) {
-        //     commands.entity(entity).insert(*worker.clone());
-        // }
     }
 }

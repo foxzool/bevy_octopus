@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
+use bevy::time::common_conditions::on_timer;
 use bytes::Bytes;
 
 use bevy_ecs_net::{
@@ -25,15 +28,15 @@ fn main() {
         .add_systems(
             Update,
             (
-                // receive_raw_messages,
+                receive_raw_messages,
                 handle_message_events,
                 handle_node_events,
             ),
         )
-        // .add_systems(
-        //     Update,
-        //     (broadcast_message, channel_packet).run_if(on_timer(Duration::from_secs_f64(1.0))),
-        // )
+        .add_systems(
+            Update,
+            (broadcast_message, channel_packet).run_if(on_timer(Duration::from_secs_f64(1.0))),
+        )
         .run()
 }
 

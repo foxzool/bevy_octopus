@@ -22,8 +22,4 @@ impl Transformer for BincodeProvider {
             Err(e) => Err(NetworkError::DeserializeError(e.to_string())),
         }
     }
-
-    fn marker(&self) -> BincodeMarker {
-        BincodeMarker
-    }
 }
