@@ -10,6 +10,7 @@ use bevy_ecs_net::{
     network_manager::NetworkNode,
     shared::NetworkNodeEvent,
 };
+use bevy_ecs_net::connections::NetworkPeer;
 use bevy_ecs_net::prelude::*;
 
 /// shared app setup
@@ -36,6 +37,15 @@ pub fn shared_setup(app: &mut App) {
         .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
         .add_plugins(BevyNetPlugin);
 }
+
+/// this channel is sending and receiving raw packet
+pub const RAW_CHANNEL: ChannelId = ChannelId(1);
+
+/// this channel is sending and receiving json packet
+pub const JSON_CHANNEL: ChannelId = ChannelId(2);
+
+/// this channel is sending and receiving bincode packet
+pub const BINCODE_CHANNEL: ChannelId = ChannelId(3);
 
 #[derive(Component)]
 pub struct ClientMarker;
@@ -122,7 +132,7 @@ pub fn send_bincode_message(
 
 /// send raw message to server
 pub fn send_raw_message(
-    q_client: Query<&NetworkNode, (With<ClientMarker>, With<RawPacketMarker>)>,
+    q_client: Query<&NetworkNode, (With<NetworkPeer>, With<RawPacketMarker>)>,
 ) {
     for node in q_client.iter() {
         node.send(format!("raw packet from {}", node).as_bytes());

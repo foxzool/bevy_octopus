@@ -14,6 +14,7 @@ use crate::common::*;
 #[path = "common/lib.rs"]
 mod common;
 
+
 fn main() {
     let mut app = App::new();
 
@@ -40,8 +41,9 @@ fn main() {
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
+        RAW_CHANNEL,
         NetworkProtocol::TCP,
-        RemoteSocket::new("127.0.0.1:6003"),
+        RemoteSocket::new("127.0.0.1:38551"),
         ClientMarker,
         RawPacketMarker,
     ));

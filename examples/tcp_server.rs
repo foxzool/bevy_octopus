@@ -11,13 +11,8 @@ use bevy_ecs_net::{
     shared::NetworkProtocol,
 };
 use bevy_ecs_net::network_manager::ChannelMessage;
-use bevy_ecs_net::prelude::*;
 
 use crate::common::*;
-
-const CHANNEL_1: ChannelId = ChannelId(1);
-const CHANNEL_2: ChannelId = ChannelId(2);
-const CHANNEL_3: ChannelId = ChannelId(3);
 
 #[path = "common/lib.rs"]
 mod common;
@@ -47,21 +42,21 @@ fn main() {
 
 fn setup_server(mut commands: Commands) {
     commands.spawn((
-        CHANNEL_1,
+        RAW_CHANNEL,
         NetworkProtocol::TCP,
         LocalSocket::new("0.0.0.0:6003"),
         ServerMarker,
         RawPacketMarker,
     ));
     commands.spawn((
-        CHANNEL_2,
+        JSON_CHANNEL,
         NetworkProtocol::TCP,
         LocalSocket::new("0.0.0.0:6004"),
         ServerMarker,
         DecodeWorker::<PlayerInformation, SerdeJsonProvider>::new(),
     ));
     commands.spawn((
-        CHANNEL_3,
+        BINCODE_CHANNEL,
         NetworkProtocol::TCP,
         LocalSocket::new("0.0.0.0:6005"),
         ServerMarker,
@@ -71,7 +66,7 @@ fn setup_server(mut commands: Commands) {
 
 /// broadcast message to all connected clients in channel
 fn channel_message(mut channel_events: EventWriter<ChannelMessage>) {
-    channel_events.send(ChannelMessage::new(CHANNEL_1, b"channel 1 message"));
+    channel_events.send(ChannelMessage::new(RAW_CHANNEL, b"channel 1 message\r\n"));
 }
 
 /// handle send message to connected clients
@@ -81,7 +76,7 @@ fn broadcast_message(
 ) {
     for (_net, children) in q_net_node.iter() {
         for &child in children.iter() {
-            let message = b"broadcast message!";
+            let message = b"broadcast message!\r\n";
 
             let (child_net_node, child_remote_addr) =
                 q_child.get(child).expect("Child node not found.");

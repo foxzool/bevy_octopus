@@ -115,7 +115,7 @@ async fn handle_connection(
                     let data = buffer[..n].to_vec();
                     recv_tx
                         .send(NetworkRawPacket {
-                            addr: addr,
+                            addr,
                             bytes: Bytes::copy_from_slice(&data),
                         })
                         .await
@@ -224,7 +224,9 @@ fn spawn_tcp_client(
             }
         });
 
-        commands.entity(e).insert(new_net_node);
+        let peer = NetworkPeer {};
+
+        commands.entity(e).insert((new_net_node, peer));
     }
 }
 
