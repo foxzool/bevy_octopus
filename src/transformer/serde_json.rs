@@ -4,13 +4,13 @@ use serde::{Deserialize, Serialize};
 use crate::{error::NetworkError, transformer::Transformer};
 
 #[derive(Resource, Default, Reflect)]
-pub struct SerdeJsonProvider;
+pub struct JsonTransformer;
 
 #[derive(Component)]
 pub struct SerdeJsonMarker;
 
-impl Transformer for SerdeJsonProvider {
-    const NAME: &'static str = "SerdeJson";
+impl Transformer for JsonTransformer {
+    const NAME: &'static str = "Json";
 
     fn encode<T: Serialize>(&self, data: &T) -> Result<Vec<u8>, NetworkError> {
         match serde_json::to_vec(data) {

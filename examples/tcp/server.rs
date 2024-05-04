@@ -8,14 +8,14 @@ use bevy_ecs_net::{
     network::{LocalSocket, NetworkRawPacket, RemoteSocket},
     network_manager::NetworkNode,
     shared::NetworkProtocol,
-    transformer::{BincodeProvider, NetworkMessageTransformer, SerdeJsonProvider},
+    transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };
 use bevy_ecs_net::connections::NetworkPeer;
 use bevy_ecs_net::prelude::{ChannelId, ChannelPacket};
 
 use crate::common::*;
 
-#[path = "common/lib.rs"]
+#[path = "../common/lib.rs"]
 mod common;
 
 fn main() {
@@ -23,8 +23,9 @@ fn main() {
 
     shared_setup(&mut app);
 
-    app.register_channel_transformer::<PlayerInformation, SerdeJsonProvider>(JSON_CHANNEL)
-        .register_channel_transformer::<PlayerInformation, BincodeProvider>(BINCODE_CHANNEL).add_systems(Startup, setup_server)
+    app.add_transformer::<PlayerInformation, JsonTransformer>(JSON_CHANNEL)
+        .add_transformer::<PlayerInformation, BincodeTransformer>(BINCODE_CHANNEL)
+        .add_systems(Startup, setup_server)
         .add_systems(
             Update,
             (
@@ -35,7 +36,8 @@ fn main() {
         )
         .add_systems(
             Update,
-            (broadcast_message, channel_packet).run_if(on_timer(Duration::from_secs_f64(1.0))),
+            (broadcast_message, send_channel_message, send_channel_packet)
+                .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
         .run()
 }
@@ -59,7 +61,7 @@ fn setup_server(mut commands: Commands) {
 }
 
 /// broadcast message to all connected clients in channel
-fn channel_packet(mut channel_events: EventWriter<ChannelPacket>) {
+fn send_channel_packet(mut channel_events: EventWriter<ChannelPacket>) {
     channel_events.send(ChannelPacket::new(RAW_CHANNEL, b"channel 1 message\r\n"));
 }
 

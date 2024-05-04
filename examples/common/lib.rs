@@ -59,11 +59,11 @@ impl NetworkMessage for PlayerInformation {
 
 pub fn handle_node_events(
     mut new_network_events: EventReader<NetworkNodeEvent>,
-    q_net_node: Query<&NetworkNode>,
+    q_net_node: Query<(&ChannelId, &NetworkNode)>,
 ) {
     for event in new_network_events.read() {
-        if let Ok(net) = q_net_node.get(event.node) {
-            info!("{:?} {} got event: {:?}", event.node, net, event.event);
+        if let Ok((channel_id, net)) = q_net_node.get(event.node) {
+            info!("{} {:?} {} got event: {:?}", channel_id, event.node, net, event.event);
         } else {
             info!("{:?} got event: {:?}", event.node, event.event);
         }
@@ -82,9 +82,9 @@ pub fn handle_message_events(
 }
 
 pub fn receive_raw_messages(q_server: Query<(&ChannelId, &NetworkNode)>) {
-    for (entity, net_node) in q_server.iter() {
+    for (channel_id, net_node) in q_server.iter() {
         while let Ok(Some(packet)) = net_node.recv_message_channel.receiver.try_recv() {
-            info!("{} {} Received: {:?}", entity, net_node, packet.bytes);
+            info!("{} {} Received: {:?}", channel_id, net_node, packet.bytes);
         }
     }
 }
@@ -115,6 +115,17 @@ pub fn send_bincode_message(q_nodes: Query<(&NetworkNode, &ChannelId), With<Netw
         }
     }
 }
+
+pub fn send_channel_message(mut channel_messages: EventWriter<ChannelMessage<PlayerInformation>>) {
+    channel_messages.send(ChannelMessage {
+        channel_id: JSON_CHANNEL,
+        message: PlayerInformation {
+            health: 300,
+            position: (4, 5, 6),
+        },
+    });
+}
+
 
 /// send raw message to server
 pub fn send_raw_message_to_channel(q_client: Query<(&NetworkNode, &ChannelId), With<NetworkPeer>>) {

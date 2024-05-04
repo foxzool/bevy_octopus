@@ -24,3 +24,12 @@ pub struct ChannelMessage<T> {
     pub channel_id: ChannelId,
     pub message: T,
 }
+
+impl<T> ChannelMessage<T> {
+    pub fn new(channel_id: ChannelId, message: T) -> Self {
+        Self {
+            channel_id,
+            message,
+        }
+    }
+}

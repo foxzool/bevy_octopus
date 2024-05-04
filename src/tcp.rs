@@ -134,7 +134,7 @@ async fn handle_connection(
 
     let write_task = async move {
         while let Ok(data) = message_rx.recv().await {
-            trace!("write {} bytes to {} ", data.bytes.len(), addr);
+            // trace!("write {} bytes to {} ", data.bytes.len(), addr);
             if let Err(e) = writer.write_all(&data.bytes).await {
                 eprintln!("Failed to write data to socket: {}", e);
                 event_tx

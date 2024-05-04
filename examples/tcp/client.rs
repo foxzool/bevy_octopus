@@ -5,13 +5,13 @@ use bevy::time::common_conditions::on_timer;
 
 use bevy_ecs_net::{
     network::RemoteSocket,
-    transformer::{BincodeProvider, NetworkMessageTransformer, SerdeJsonProvider},
+    transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };
 use bevy_ecs_net::shared::NetworkProtocol;
 
 use crate::common::*;
 
-#[path = "common/lib.rs"]
+#[path = "../common/lib.rs"]
 mod common;
 
 fn main() {
@@ -19,15 +19,15 @@ fn main() {
 
     shared_setup(&mut app);
 
-    app.register_channel_transformer::<PlayerInformation, SerdeJsonProvider>(JSON_CHANNEL)
-        .register_channel_transformer::<PlayerInformation, BincodeProvider>(BINCODE_CHANNEL)
+    app.add_transformer::<PlayerInformation, JsonTransformer>(JSON_CHANNEL)
+        .add_transformer::<PlayerInformation, BincodeTransformer>(BINCODE_CHANNEL)
         .add_systems(Startup, setup_clients)
         .add_systems(
             Update,
             (
                 send_raw_message_to_channel,
-                send_json_message,
-                send_bincode_message,
+                // send_json_message,
+                // send_bincode_message,
             )
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )

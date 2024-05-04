@@ -6,7 +6,7 @@ use bevy_ecs_net::{
     network::{LocalSocket, RemoteSocket},
     network_manager::NetworkNode,
     shared::NetworkProtocol,
-    transformer::{BincodeProvider, NetworkMessageTransformer, SerdeJsonProvider},
+    transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };
 
 use crate::common::*;
@@ -18,8 +18,8 @@ fn main() {
     let mut app = App::new();
     shared_setup(&mut app);
 
-    app.register_channel_transformer::<PlayerInformation, SerdeJsonProvider>(JSON_CHANNEL)
-        .register_channel_transformer::<PlayerInformation, BincodeProvider>(BINCODE_CHANNEL)
+    app.add_transformer::<PlayerInformation, JsonTransformer>(JSON_CHANNEL)
+        .add_transformer::<PlayerInformation, BincodeTransformer>(BINCODE_CHANNEL)
         .add_systems(Startup, (setup_clients, setup_server))
         .add_systems(
             Update,

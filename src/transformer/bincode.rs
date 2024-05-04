@@ -4,12 +4,12 @@ use serde::{Deserialize, Serialize};
 use crate::{error::NetworkError, transformer::Transformer};
 
 #[derive(Resource, Default, Reflect)]
-pub struct BincodeProvider;
+pub struct BincodeTransformer;
 
 #[derive(Component)]
 pub struct BincodeMarker;
 
-impl Transformer for BincodeProvider {
+impl Transformer for BincodeTransformer {
     const NAME: &'static str = "Bincode";
 
     fn encode<T: Serialize>(&self, data: &T) -> Result<Vec<u8>, NetworkError> {

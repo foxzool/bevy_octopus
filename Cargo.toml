@@ -68,13 +68,14 @@ required-features = ["udp", "serde_json", "bincode"]
 
 [[example]]
 name = "tcp_client"
-path = "examples/tcp_client.rs"
+path = "examples/tcp/client.rs"
 required-features = ["tcp", "serde_json", "bincode"]
 
 [[example]]
 name = "tcp_server"
-path = "examples/tcp_server.rs"
+path = "examples/tcp/server.rs"
 required-features = ["tcp", "serde_json", "bincode"]
+
 
 [profile.release]
 strip = true
