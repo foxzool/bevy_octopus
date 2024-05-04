@@ -8,7 +8,6 @@ use kanal::{AsyncReceiver, AsyncSender};
 use crate::{error::NetworkError, network::NetworkRawPacket};
 use crate::network::{LocalSocket, RemoteSocket};
 use crate::network_manager::NetworkNode;
-use crate::providers::{AppNetProvider, NetworkProvider};
 use crate::shared::{NetworkEvent, NetworkProtocol};
 use crate::shared::AsyncRuntime;
 
@@ -16,7 +15,6 @@ pub struct UdpPlugin;
 
 impl Plugin for UdpPlugin {
     fn build(&self, app: &mut App) {
-        app.register_network_provider::<UdpNode>();
         app.add_systems(
             PostUpdate,
             (
@@ -25,10 +23,6 @@ impl Plugin for UdpPlugin {
             ),
         );
     }
-}
-
-impl NetworkProvider for UdpNode {
-    const NAME: &'static str = "UDP";
 }
 
 #[derive(Component, Deref, DerefMut)]

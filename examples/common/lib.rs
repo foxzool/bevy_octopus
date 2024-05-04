@@ -21,7 +21,7 @@ pub fn shared_setup(app: &mut App) {
             std::time::Duration::from_secs_f64(1.0 / 60.0),
         )),
         LogPlugin {
-            filter: "bevy_ecs_net=trace".to_string(),
+            filter: "bevy_ecs_net=debug".to_string(),
             ..default()
         },
     ))

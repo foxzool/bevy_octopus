@@ -1,27 +1,10 @@
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 
-use bevy::app::App;
-use bevy::prelude::{Component, debug};
+use bevy::prelude::Component;
 
 use crate::network::NetworkRawPacket;
 use crate::shared::{AsyncChannel, NetworkEvent};
-
-pub trait AppNetProvider {
-    fn register_network_provider<NP: NetworkProvider>(&mut self) -> &mut Self;
-}
-
-impl AppNetProvider for App {
-    fn register_network_provider<NP: NetworkProvider>(&mut self) -> &mut Self {
-        debug!("Register network provider: {}", NP::NAME);
-        self
-    }
-}
-
-pub trait NetworkProvider {
-    const NAME: &'static str;
-}
-
 
 #[derive(Component)]
 pub struct NetworkNode<C> {
