@@ -15,7 +15,7 @@ homepage = "https://github.com/foxzool/bevy_ecs_net"
 documentation = "https://docs.rs/bevy_ecs_net"
 
 [features]
-default = ["udp", "tcp", "bincode"]
+default = ["udp", "tcp"]
 udp = []
 tcp = []
 inspect = ["bevy-inspector-egui"]
@@ -56,14 +56,18 @@ bevy = { version = "0.13.0", default-features = false, features = [
 
 
 [[example]]
-name = "udp_send_and_recv"
-path = "examples/udp_send_and_recv.rs"
+name = "udp_server"
+path = "examples/udp/server.rs"
 required-features = ["udp", "serde_json", "bincode"]
 
+[[example]]
+name = "udp_client"
+path = "examples/udp/client.rs"
+required-features = ["udp", "serde_json", "bincode"]
 
 [[example]]
 name = "udp-complex"
-path = "examples/udp_complex.rs"
+path = "examples/udp/udp_complex.rs"
 required-features = ["udp", "serde_json", "bincode"]
 
 [[example]]

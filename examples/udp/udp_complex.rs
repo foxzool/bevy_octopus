@@ -9,10 +9,11 @@ use bevy_ecs_net::{
     shared::NetworkProtocol,
     udp::{MulticastV4Setting, UdpBroadcast},
 };
+use bevy_ecs_net::channels::ChannelId;
 
 use crate::common::*;
 
-#[path = "common/lib.rs"]
+#[path = "../common/lib.rs"]
 mod common;
 
 #[derive(Component)]
@@ -20,6 +21,9 @@ struct BroadcastMarker;
 
 #[derive(Component)]
 struct MulticastMarker;
+
+pub const BROADCAST_CHANNEL: ChannelId = ChannelId(4);
+pub const MULTICAST_CHANNEL: ChannelId = ChannelId(5);
 
 fn main() {
     let mut app = App::new();
@@ -30,13 +34,17 @@ fn main() {
             (send_broadcast_messages, send_multicast_messages)
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
-        .add_systems(Update, (receive_raw_messages, handle_node_events))
+        .add_systems(
+            Update,
+            (handle_raw_packet, handle_raw_packet, handle_node_events),
+        )
         .run();
 }
 
 fn setup_server(mut commands: Commands) {
     // broadcast udp receiver
     commands.spawn((
+        BROADCAST_CHANNEL,
         NetworkProtocol::UDP,
         UdpBroadcast,
         LocalSocket::new("0.0.0.0:60002"),
@@ -44,6 +52,7 @@ fn setup_server(mut commands: Commands) {
 
     // multicast udp receiver
     commands.spawn((
+        MULTICAST_CHANNEL,
         NetworkProtocol::UDP,
         MulticastV4Setting::new(Ipv4Addr::new(239, 1, 2, 3), Ipv4Addr::UNSPECIFIED),
         LocalSocket::new("0.0.0.0:60003"),
@@ -52,6 +61,7 @@ fn setup_server(mut commands: Commands) {
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
+        BROADCAST_CHANNEL,
         NetworkProtocol::UDP,
         UdpBroadcast,
         RemoteSocket::new("255.255.255.255:60002"),
@@ -59,6 +69,7 @@ fn setup_clients(mut commands: Commands) {
     ));
 
     commands.spawn((
+        BROADCAST_CHANNEL,
         NetworkProtocol::UDP,
         UdpBroadcast,
         // example marker for query filter
@@ -66,6 +77,7 @@ fn setup_clients(mut commands: Commands) {
     ));
 
     commands.spawn((
+        MULTICAST_CHANNEL,
         NetworkProtocol::UDP,
         MulticastV4Setting::new(Ipv4Addr::new(239, 1, 2, 3), Ipv4Addr::UNSPECIFIED),
         // example marker foClientMarker,

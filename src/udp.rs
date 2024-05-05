@@ -5,11 +5,12 @@ use bevy::prelude::*;
 use bytes::Bytes;
 use kanal::{AsyncReceiver, AsyncSender};
 
-use crate::{error::NetworkError, network::NetworkRawPacket};
+use crate::connections::NetworkPeer;
 use crate::network::{LocalSocket, RemoteSocket};
 use crate::network_manager::NetworkNode;
-use crate::shared::{NetworkEvent, NetworkProtocol};
 use crate::shared::AsyncRuntime;
+use crate::shared::{NetworkEvent, NetworkProtocol};
+use crate::{error::NetworkError, network::NetworkRawPacket};
 
 pub struct UdpPlugin;
 
@@ -177,9 +178,10 @@ fn spawn_udp_socket(
                 .await
         });
 
+        let peer = NetworkPeer {};
         commands
             .entity(entity)
-            .insert((net_node, LocalSocket(*local_addr)));
+            .insert((net_node, LocalSocket(*local_addr), peer));
     }
 }
 

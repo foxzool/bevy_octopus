@@ -63,7 +63,10 @@ pub fn handle_node_events(
 ) {
     for event in new_network_events.read() {
         if let Ok((channel_id, net)) = q_net_node.get(event.node) {
-            info!("{} {:?} {} got event: {:?}", channel_id, event.node, net, event.event);
+            info!(
+                "{} {:?} {} got event: {:?}",
+                channel_id, event.node, net, event.event
+            );
         } else {
             info!("{:?} got event: {:?}", event.node, event.event);
         }
@@ -81,7 +84,7 @@ pub fn handle_message_events(
     }
 }
 
-pub fn receive_raw_messages(q_server: Query<(&ChannelId, &NetworkNode)>) {
+pub fn handle_raw_packet(q_server: Query<(&ChannelId, &NetworkNode)>) {
     for (channel_id, net_node) in q_server.iter() {
         while let Ok(Some(packet)) = net_node.recv_message_channel.receiver.try_recv() {
             info!("{} {} Received: {:?}", channel_id, net_node, packet.bytes);
@@ -125,7 +128,6 @@ pub fn send_channel_message(mut channel_messages: EventWriter<ChannelMessage<Pla
         },
     });
 }
-
 
 /// send raw message to server
 pub fn send_raw_message_to_channel(q_client: Query<(&NetworkNode, &ChannelId), With<NetworkPeer>>) {

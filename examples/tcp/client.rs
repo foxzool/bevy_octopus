@@ -34,7 +34,7 @@ fn main() {
         .add_systems(
             Update,
             (
-                receive_raw_messages,
+                handle_raw_packet,
                 handle_message_events,
                 handle_node_events,
             ),

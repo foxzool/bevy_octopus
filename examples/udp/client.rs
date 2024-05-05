@@ -11,7 +11,7 @@ use bevy_ecs_net::{
 
 use crate::common::*;
 
-#[path = "common/lib.rs"]
+#[path = "../common/lib.rs"]
 mod common;
 
 fn main() {
@@ -20,7 +20,7 @@ fn main() {
 
     app.add_transformer::<PlayerInformation, JsonTransformer>(JSON_CHANNEL)
         .add_transformer::<PlayerInformation, BincodeTransformer>(BINCODE_CHANNEL)
-        .add_systems(Startup, (setup_clients, setup_server))
+        .add_systems(Startup, setup_clients)
         .add_systems(
             Update,
             (
@@ -28,13 +28,14 @@ fn main() {
                 send_json_message,
                 send_bincode_message,
                 send_socket_packet,
+                send_channel_message
             )
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
         .add_systems(
             Update,
             (
-                receive_raw_messages,
+                handle_raw_packet,
                 handle_message_events,
                 handle_node_events,
             ),
@@ -42,24 +43,6 @@ fn main() {
         .run();
 }
 
-fn setup_server(mut commands: Commands) {
-    commands.spawn((
-        RAW_CHANNEL,
-        NetworkProtocol::UDP,
-        LocalSocket::new("0.0.0.0:6001"),
-    ));
-    commands.spawn((
-        JSON_CHANNEL,
-        NetworkProtocol::UDP,
-        LocalSocket::new("0.0.0.0:6002"),
-    ));
-
-    commands.spawn((
-        BINCODE_CHANNEL,
-        NetworkProtocol::UDP,
-        LocalSocket::new("0.0.0.0:6003"),
-    ));
-}
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
