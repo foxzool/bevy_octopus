@@ -4,6 +4,7 @@ use bevy::prelude::{IntoSystemConfigs, IntoSystemSetConfigs};
 use crate::{tcp, udp};
 use crate::channels::{ChannelId, ChannelPacket};
 use crate::channels::systems::send_channel_message_system;
+use crate::network_node::update_network_node;
 use crate::scheduler::NetworkSet;
 use crate::shared::{AsyncRuntime, NetworkNodeEvent, NetworkProtocol};
 
@@ -32,7 +33,8 @@ impl Plugin for BevyNetPlugin {
             .add_systems(
                 PostUpdate,
                 send_channel_message_system.in_set(NetworkSet::Send),
-            );
+            )
+            .add_systems(PostUpdate, update_network_node);
 
         #[cfg(feature = "udp")]
         app.add_plugins(udp::UdpPlugin);

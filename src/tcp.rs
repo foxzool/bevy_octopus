@@ -170,7 +170,7 @@ fn spawn_tcp_server(
             continue;
         }
 
-        let net_node = NetworkNode::new(NetworkProtocol::TCP, Some(**local_addr), None);
+        let net_node = NetworkNode::default();
 
         let local_addr = local_addr.0;
         let event_tx = net_node.event_channel.sender.clone_async();
@@ -207,7 +207,7 @@ fn spawn_tcp_client(
             continue;
         }
 
-        let new_net_node = NetworkNode::new(NetworkProtocol::TCP, None, Some(**remote_socket));
+        let new_net_node = NetworkNode::default();
 
         let addr = remote_socket.0;
         let recv_tx = new_net_node.recv_message_channel.sender.clone_async();
@@ -246,7 +246,7 @@ fn handle_endpoint(
         while let Ok(Some((tcp_stream, socket))) =
             tcp_node.new_connection_channel.receiver.try_recv()
         {
-            let new_net_node = NetworkNode::new(NetworkProtocol::TCP, None, Some(socket));
+            let new_net_node = NetworkNode::default();
             // Create a new entity for the client
             let child_tcp_client = commands.spawn_empty().id();
             let recv_tx = net_node.recv_message_channel.sender.clone_async();

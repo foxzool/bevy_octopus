@@ -1,14 +1,14 @@
 use std::fmt::Display;
 use std::net::{SocketAddr, ToSocketAddrs};
 
-use bevy::prelude::Component;
+use bevy::prelude::{Added, Component, Query};
 use bytes::Bytes;
 
 use crate::error::NetworkError;
-use crate::network::NetworkRawPacket;
+use crate::network::{LocalSocket, NetworkRawPacket, RemoteSocket};
 use crate::shared::{AsyncChannel, NetworkEvent, NetworkProtocol};
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct NetworkNode {
     /// Channel for receiving messages
     pub recv_message_channel: AsyncChannel<NetworkRawPacket>,
@@ -27,25 +27,7 @@ pub struct NetworkNode {
     protocol: NetworkProtocol,
 }
 
-
 impl NetworkNode {
-    pub fn new(
-        protocol: NetworkProtocol,
-        local_addr: Option<SocketAddr>,
-        peer_addr: Option<SocketAddr>,
-    ) -> Self {
-        Self {
-            recv_message_channel: AsyncChannel::new(),
-            send_message_channel: AsyncChannel::new(),
-            event_channel: AsyncChannel::new(),
-            shutdown_channel: AsyncChannel::new(),
-            running: false,
-            local_addr,
-            peer_addr,
-            max_packet_size: 65535,
-            protocol,
-        }
-    }
     pub fn start(&mut self) {
         self.running = true;
     }
@@ -109,5 +91,31 @@ impl NetworkNode {
 impl Display for NetworkNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.schema())
+    }
+}
+
+pub(crate) fn update_network_node(
+    mut q_net: Query<
+        (
+            &mut NetworkNode,
+            &NetworkProtocol,
+            Option<&LocalSocket>,
+            Option<&RemoteSocket>,
+        ),
+        Added<NetworkNode>,
+    >,
+) {
+    for (mut net_node, protocol, opt_local_socket, opt_remote_socket) in q_net.iter_mut() {
+        net_node.protocol = *protocol;
+        if let Some(local_socket) = opt_local_socket {
+            if net_node.local_addr.is_none() {
+                net_node.local_addr = Some(local_socket.0);
+            }
+        }
+        if let Some(remote_socket) = opt_remote_socket {
+            if net_node.peer_addr.is_none() {
+                net_node.peer_addr = Some(remote_socket.0);
+            }
+        }
     }
 }

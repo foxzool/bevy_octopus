@@ -33,9 +33,10 @@ pub struct AsyncRuntime(pub(crate) Runtime);
 #[derive(Resource, Deref, DerefMut)]
 pub struct RuntimeHandle(pub(crate) tokio::runtime::Handle);
 
-#[derive(Debug, Component, Ord, PartialOrd, Eq, PartialEq, Reflect)]
+#[derive(Debug, Clone, Copy, Component, Ord, PartialOrd, Eq, PartialEq, Reflect, Default)]
 pub enum NetworkProtocol {
     UDP,
+    #[default]
     TCP,
     SSL,
     WS,
