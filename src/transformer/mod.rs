@@ -18,7 +18,7 @@ use crate::{
 use crate::channels::{ChannelId, ChannelMessage};
 use crate::connections::NetworkPeer;
 use crate::network::{NetworkRawPacket, RemoteSocket};
-use crate::network_manager::NetworkNode;
+use crate::network_node::NetworkNode;
 use crate::shared::{NetworkEvent, NetworkNodeEvent};
 
 #[cfg(feature = "bincode")]

@@ -5,7 +5,7 @@ pub mod channels;
 pub mod transformer;
 pub mod error;
 pub mod network;
-pub mod network_manager;
+pub mod network_node;
 pub mod providers;
 pub mod prelude;
 pub mod plugin;

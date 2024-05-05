@@ -11,7 +11,7 @@ use crate::connections::NetworkPeer;
 use crate::error::NetworkError;
 use crate::network::{LocalSocket, NetworkRawPacket};
 use crate::network::RemoteSocket;
-use crate::network_manager::NetworkNode;
+use crate::network_node::NetworkNode;
 use crate::shared::{AsyncChannel, AsyncRuntime, NetworkEvent, NetworkNodeEvent, NetworkProtocol};
 
 pub struct TcpPlugin;

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use bevy_ecs_net::{
     network::{NetworkData, NetworkMessage},
-    network_manager::NetworkNode,
+    network_node::NetworkNode,
     shared::NetworkNodeEvent,
 };
 use bevy_ecs_net::connections::NetworkPeer;

@@ -4,7 +4,7 @@ use bevy::{prelude::*, time::common_conditions::on_timer};
 
 use bevy_ecs_net::{
     network::{LocalSocket, RemoteSocket},
-    network_manager::NetworkNode,
+    network_node::NetworkNode,
     shared::NetworkProtocol,
     transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };

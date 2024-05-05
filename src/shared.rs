@@ -5,7 +5,7 @@ use kanal::{Receiver, Sender, unbounded};
 use tokio::runtime::Runtime;
 
 use crate::error::NetworkError;
-use crate::network_manager::NetworkNode;
+use crate::network_node::NetworkNode;
 
 #[derive(Reflect)]
 pub struct AsyncChannel<T> {

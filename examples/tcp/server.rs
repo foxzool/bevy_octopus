@@ -6,7 +6,7 @@ use bytes::Bytes;
 
 use bevy_ecs_net::{
     network::{LocalSocket, NetworkRawPacket, RemoteSocket},
-    network_manager::NetworkNode,
+    network_node::NetworkNode,
     shared::NetworkProtocol,
     transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };

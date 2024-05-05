@@ -3,7 +3,7 @@ use bevy::ecs::prelude::*;
 use crate::channels::{ChannelId, ChannelPacket};
 use crate::connections::NetworkPeer;
 use crate::network::NetworkRawPacket;
-use crate::network_manager::NetworkNode;
+use crate::network_node::NetworkNode;
 
 pub(crate) fn send_channel_message_system(
     q_net: Query<(&ChannelId, &NetworkNode), With<NetworkPeer>>,
