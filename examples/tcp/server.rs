@@ -4,14 +4,14 @@ use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 use bytes::Bytes;
 
-use bevy_ecs_net::{
-    network::{LocalSocket, NetworkRawPacket, RemoteSocket},
-    network_node::NetworkNode,
-    shared::NetworkProtocol,
-    transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
-};
 use bevy_ecs_net::connections::NetworkPeer;
 use bevy_ecs_net::prelude::{ChannelId, ChannelPacket};
+use bevy_ecs_net::{
+    network::NetworkProtocol,
+    network::{LocalSocket, NetworkRawPacket, RemoteSocket},
+    network_node::NetworkNode,
+    transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
+};
 
 use crate::common::*;
 
@@ -28,11 +28,7 @@ fn main() {
         .add_systems(Startup, setup_server)
         .add_systems(
             Update,
-            (
-                handle_raw_packet,
-                handle_message_events,
-                handle_node_events,
-            ),
+            (handle_raw_packet, handle_message_events, handle_node_events),
         )
         .add_systems(
             Update,

@@ -1,7 +1,5 @@
-use std::fmt::Display;
-
 use bevy::prelude::*;
-use kanal::{Receiver, Sender, unbounded};
+use kanal::{unbounded, Receiver, Sender};
 use tokio::runtime::Runtime;
 
 use crate::error::NetworkError;
@@ -32,32 +30,6 @@ pub struct AsyncRuntime(pub(crate) Runtime);
 
 #[derive(Resource, Deref, DerefMut)]
 pub struct RuntimeHandle(pub(crate) tokio::runtime::Handle);
-
-#[derive(Debug, Clone, Copy, Component, Ord, PartialOrd, Eq, PartialEq, Reflect, Default)]
-pub enum NetworkProtocol {
-    UDP,
-    #[default]
-    TCP,
-    SSL,
-    WS,
-    WSS,
-}
-
-impl Display for NetworkProtocol {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                NetworkProtocol::UDP => "udp",
-                NetworkProtocol::TCP => "tcp",
-                NetworkProtocol::SSL => "ssl",
-                NetworkProtocol::WS => "ws",
-                NetworkProtocol::WSS => "wss",
-            }
-        )
-    }
-}
 
 #[derive(Debug, Event)]
 pub struct NetworkNodeEvent {

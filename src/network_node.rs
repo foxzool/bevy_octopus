@@ -5,8 +5,8 @@ use bevy::prelude::{Added, Component, Query};
 use bytes::Bytes;
 
 use crate::error::NetworkError;
-use crate::network::{LocalSocket, NetworkRawPacket, RemoteSocket};
-use crate::shared::{AsyncChannel, NetworkEvent, NetworkProtocol};
+use crate::network::{LocalSocket, NetworkProtocol, NetworkRawPacket, RemoteSocket};
+use crate::shared::{AsyncChannel, NetworkEvent};
 
 #[derive(Component, Default)]
 pub struct NetworkNode {
@@ -94,6 +94,7 @@ impl Display for NetworkNode {
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub(crate) fn update_network_node(
     mut q_net: Query<
         (

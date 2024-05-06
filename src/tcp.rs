@@ -10,9 +10,9 @@ use crate::channels::ChannelId;
 use crate::connections::NetworkPeer;
 use crate::error::NetworkError;
 use crate::network::{LocalSocket, NetworkRawPacket};
-use crate::network::RemoteSocket;
+use crate::network::{NetworkProtocol, RemoteSocket};
 use crate::network_node::NetworkNode;
-use crate::shared::{AsyncChannel, AsyncRuntime, NetworkEvent, NetworkNodeEvent, NetworkProtocol};
+use crate::shared::{AsyncChannel, AsyncRuntime, NetworkEvent, NetworkNodeEvent};
 
 pub struct TcpPlugin;
 

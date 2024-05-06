@@ -1,7 +1,8 @@
-use std::{fmt::Debug, net::SocketAddr, ops::Deref};
+use std::fmt::Display;
 use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
+use std::{fmt::Debug, net::SocketAddr, ops::Deref};
 
-use bevy::prelude::{Component, Deref, Entity, Event};
+use bevy::prelude::{Component, Deref, Entity, Event, Reflect};
 use bytes::Bytes;
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -116,5 +117,31 @@ impl RemoteSocket {
             .next()
             .expect("must have one socket addr");
         Self(socket)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Component, Ord, PartialOrd, Eq, PartialEq, Reflect, Default)]
+pub enum NetworkProtocol {
+    UDP,
+    #[default]
+    TCP,
+    SSL,
+    WS,
+    WSS,
+}
+
+impl Display for NetworkProtocol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                NetworkProtocol::UDP => "udp",
+                NetworkProtocol::TCP => "tcp",
+                NetworkProtocol::SSL => "ssl",
+                NetworkProtocol::WS => "ws",
+                NetworkProtocol::WSS => "wss",
+            }
+        )
     }
 }

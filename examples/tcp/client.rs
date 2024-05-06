@@ -4,10 +4,9 @@ use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
 use bevy_ecs_net::{
-    network::RemoteSocket,
+    network::{NetworkProtocol, RemoteSocket},
     transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };
-use bevy_ecs_net::shared::NetworkProtocol;
 
 use crate::common::*;
 
@@ -33,11 +32,7 @@ fn main() {
         )
         .add_systems(
             Update,
-            (
-                handle_raw_packet,
-                handle_message_events,
-                handle_node_events,
-            ),
+            (handle_raw_packet, handle_message_events, handle_node_events),
         )
         .run()
 }

@@ -3,13 +3,12 @@ use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
+use bevy_ecs_net::channels::ChannelId;
 use bevy_ecs_net::{
-    network::{LocalSocket, RemoteSocket},
+    network::{LocalSocket, NetworkProtocol, RemoteSocket},
     network_node::NetworkNode,
-    shared::NetworkProtocol,
     udp::{MulticastV4Setting, UdpBroadcast},
 };
-use bevy_ecs_net::channels::ChannelId;
 
 use crate::common::*;
 
