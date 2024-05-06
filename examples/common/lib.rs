@@ -5,13 +5,13 @@ use std::ops::Deref;
 use bevy::{log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use bevy_ecs_net::{
+use bevy_octopus::{
     network::{NetworkData, NetworkMessage},
     network_node::NetworkNode,
     shared::NetworkNodeEvent,
 };
-use bevy_ecs_net::connections::NetworkPeer;
-use bevy_ecs_net::prelude::*;
+use bevy_octopus::connections::NetworkPeer;
+use bevy_octopus::prelude::*;
 
 /// shared app setup
 #[cfg(not(feature = "inspect"))]
@@ -21,21 +21,21 @@ pub fn shared_setup(app: &mut App) {
             std::time::Duration::from_secs_f64(1.0 / 60.0),
         )),
         LogPlugin {
-            filter: "bevy_ecs_net=debug".to_string(),
+            filter: "bevy_octopus=debug".to_string(),
             ..default()
         },
     ))
-        .add_plugins(BevyNetPlugin);
+        .add_plugins(OctopusPlugin);
 }
 
 #[cfg(feature = "inspect")]
 pub fn shared_setup(app: &mut App) {
     app.add_plugins(DefaultPlugins.set(LogPlugin {
-        filter: "bevy_ecs_net=debug".to_string(),
+        filter: "bevy_octopus=debug".to_string(),
         ..default()
     }))
         .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
-        .add_plugins(BevyNetPlugin);
+        .add_plugins(OctopusPlugin);
 }
 
 /// this channel is sending and receiving raw packet

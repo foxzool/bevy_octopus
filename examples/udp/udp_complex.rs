@@ -3,8 +3,8 @@ use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
-use bevy_ecs_net::channels::ChannelId;
-use bevy_ecs_net::{
+use bevy_octopus::channels::ChannelId;
+use bevy_octopus::{
     network::{LocalSocket, NetworkProtocol, RemoteSocket},
     network_node::NetworkNode,
     udp::{MulticastV4Setting, UdpBroadcast},

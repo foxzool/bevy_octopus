@@ -1,4 +1,4 @@
-# bevy_ecs_net
+# bevy_octopus
 
 The ECS driven network plugin for Bevy.
 
@@ -16,8 +16,8 @@ You can define your own network protocol decoder.
 
 ### UDP Communication Types
 
-Support UDP [unicast](https://github.com/foxzool/bevy_ecs_net/blob/main/examples/udp_send_and_recv.rs), broadcast,
-multicast. [example](https://github.com/foxzool/bevy_ecs_net/blob/main/examples/udp_complex.rs)
+Support UDP [unicast](https://github.com/foxzool/bevy_octopus/blob/main/examples/udp_send_and_recv.rs), broadcast,
+multicast. [example](https://github.com/foxzool/bevy_octopus/blob/main/examples/udp_complex.rs)
 
 ## Supported Network Protocol
 
@@ -29,7 +29,7 @@ multicast. [example](https://github.com/foxzool/bevy_ecs_net/blob/main/examples/
 
 ## Supported Versions
 
-| bevy | bevy_ecs_net |
+| bevy | bevy_octopus |
 |------|--------------|
 | 0.13 | 0.1          |
 

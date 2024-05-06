@@ -1,5 +1,5 @@
 [package]
-name = "bevy_ecs_net"
+name = "bevy_octopus"
 version = "0.1.0"
 authors = [
     "ZoOL <zhooul@gmail.com>"
@@ -7,12 +7,12 @@ authors = [
 edition = "2021"
 description = "Event based networking library for Bevy"
 readme = "README.md"
-repository = "https://github.com/foxzool/bevy_ecs_net"
+repository = "https://github.com/foxzool/bevy_octopus"
 license = "MIT OR Apache-2.0"
 categories = ["game-development", "network-programming"]
 keywords = ["bevy", "networking", "ecs"]
-homepage = "https://github.com/foxzool/bevy_ecs_net"
-documentation = "https://docs.rs/bevy_ecs_net"
+homepage = "https://github.com/foxzool/bevy_octopus"
+documentation = "https://docs.rs/bevy_octopus"
 
 [features]
 default = ["udp", "tcp"]

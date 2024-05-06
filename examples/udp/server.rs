@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use bevy_ecs_net::{
+use bevy_octopus::{
     network::LocalSocket
     ,
     shared::NetworkProtocol,

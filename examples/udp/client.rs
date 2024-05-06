@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
-use bevy_ecs_net::{
+use bevy_octopus::{
     network::{LocalSocket, RemoteSocket},
     network_node::NetworkNode,
     shared::NetworkProtocol,

@@ -11,7 +11,7 @@ use serde::{de::DeserializeOwned, Serialize};
 /// ## Example
 /// ```rust
 /// use serde::{Serialize, Deserialize};
-/// use bevy_ecs_net::network::NetworkMessage;
+/// use bevy_octopus::network::NetworkMessage;
 ///
 /// #[derive(Serialize, Deserialize, Debug)]
 /// struct PlayerInformation {

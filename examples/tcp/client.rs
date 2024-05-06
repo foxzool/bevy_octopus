@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
-use bevy_ecs_net::{
+use bevy_octopus::{
     network::{NetworkProtocol, RemoteSocket},
     transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };

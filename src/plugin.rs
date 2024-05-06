@@ -11,9 +11,9 @@ use crate::{
     tcp, udp,
 };
 
-pub struct BevyNetPlugin;
+pub struct OctopusPlugin;
 
-impl Plugin for BevyNetPlugin {
+impl Plugin for OctopusPlugin {
     fn build(&self, app: &mut App) {
         let async_runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()

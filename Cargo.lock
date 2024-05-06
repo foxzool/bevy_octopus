@@ -608,25 +608,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_ecs_net"
-version = "0.1.0"
-dependencies = [
- "async-net",
- "async-trait",
- "bevy",
- "bevy-inspector-egui",
- "bincode",
- "bytes",
- "dashmap",
- "futures-lite",
- "kanal",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
-]
-
-[[package]]
 name = "bevy_egui"
 version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -800,6 +781,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a0d7ef7f2a826d0b19f059035831ce00a5e930435cc53c61e045773d0483f67a"
 dependencies = [
  "glam",
+]
+
+[[package]]
+name = "bevy_octopus"
+version = "0.1.0"
+dependencies = [
+ "async-net",
+ "async-trait",
+ "bevy",
+ "bevy-inspector-egui",
+ "bincode",
+ "bytes",
+ "dashmap",
+ "futures-lite",
+ "kanal",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]

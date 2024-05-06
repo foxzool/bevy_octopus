@@ -4,9 +4,9 @@ use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 use bytes::Bytes;
 
-use bevy_ecs_net::connections::NetworkPeer;
-use bevy_ecs_net::prelude::{ChannelId, ChannelPacket};
-use bevy_ecs_net::{
+use bevy_octopus::connections::NetworkPeer;
+use bevy_octopus::prelude::{ChannelId, ChannelPacket};
+use bevy_octopus::{
     network::NetworkProtocol,
     network::{LocalSocket, NetworkRawPacket, RemoteSocket},
     network_node::NetworkNode,
