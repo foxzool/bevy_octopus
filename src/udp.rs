@@ -142,7 +142,7 @@ fn spawn_udp_socket(
     >,
 ) {
     for (entity, protocol, opt_local_addr, opt_remote_addr, opt_broadcast, opt_v4, opt_v6) in
-        q_udp.iter()
+    q_udp.iter()
     {
         if *protocol != NetworkProtocol::UDP {
             continue;
@@ -173,13 +173,20 @@ fn spawn_udp_socket(
                 event_tx,
                 shutdown_rx,
             )
-            .await
+                .await
         });
 
-        let peer = NetworkPeer {};
-        commands
-            .entity(entity)
-            .insert((net_node, LocalSocket(*local_addr), peer));
+
+        if remote_addr.is_some() {
+            let peer = NetworkPeer {};
+            commands
+                .entity(entity)
+                .insert((net_node, LocalSocket(local_addr.0), peer));
+        } else {
+            commands
+                .entity(entity)
+                .insert((net_node, LocalSocket(*local_addr)));
+        }
     }
 }
 

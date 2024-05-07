@@ -6,7 +6,7 @@ use bevy::{log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
 use bevy_octopus::{
-    network::{NetworkData, NetworkMessage},
+    network::NetworkData,
     network_node::NetworkNode,
     shared::NetworkNodeEvent,
 };
@@ -53,9 +53,6 @@ pub struct PlayerInformation {
     pub position: (u32, u32, u32),
 }
 
-impl NetworkMessage for PlayerInformation {
-    const NAME: &'static str = "PlayerInfo";
-}
 
 pub fn handle_node_events(
     mut new_network_events: EventReader<NetworkNodeEvent>,

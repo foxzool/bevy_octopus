@@ -1,10 +1,12 @@
 use std::any::TypeId;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
 use std::ops::Deref;
 
 use bevy::prelude::*;
 use bevy::reflect::GetTypeRegistration;
 use serde::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
 
 #[cfg(feature = "bincode")]
 pub use bincode::BincodeTransformer;
@@ -12,14 +14,17 @@ pub use bincode::BincodeTransformer;
 pub use serde_json::JsonTransformer;
 
 use crate::{
+    channels::{ChannelId, ChannelMessage},
+    connections::NetworkPeer,
     error::NetworkError,
-    network::{NetworkData, NetworkMessage},
+    network::{
+        NetworkData,
+        NetworkRawPacket,
+        RemoteSocket,
+    },
+    network_node::NetworkNode,
+    shared::{NetworkEvent, NetworkNodeEvent},
 };
-use crate::channels::{ChannelId, ChannelMessage};
-use crate::connections::NetworkPeer;
-use crate::network::{NetworkRawPacket, RemoteSocket};
-use crate::network_node::NetworkNode;
-use crate::shared::{NetworkEvent, NetworkNodeEvent};
 
 #[cfg(feature = "bincode")]
 mod bincode;
@@ -37,21 +42,21 @@ pub trait Transformer:
 }
 
 pub trait NetworkMessageTransformer {
-    fn add_transformer<M: NetworkMessage, T: Transformer>(
+    fn add_transformer<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer>(
         &mut self,
         channel_id: ChannelId,
     ) -> &mut Self;
 }
 
 impl NetworkMessageTransformer for App {
-    fn add_transformer<M: NetworkMessage, T: Transformer>(
+    fn add_transformer<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer>(
         &mut self,
         channel_id: ChannelId,
     ) -> &mut Self {
         debug!(
             "Registering {} transformer for  {}  in {}",
             T::NAME,
-            M::NAME,
+            std::any::type_name::<M>(),
             channel_id
         );
         if self.world.get_resource::<T>().is_none() {
@@ -60,45 +65,55 @@ impl NetworkMessageTransformer for App {
 
         self.register_type::<T>();
 
-        if self
-            .world
-            .get_resource_ref::<ChannelTransformers>()
-            .is_none()
-        {
-            self.world.insert_resource(ChannelTransformers::default());
-        }
+        let transform_type_id = TypeId::of::<T>();
+        let message_type_id = TypeId::of::<M>();
 
-        debug!(
-            "Inserting {} into channel transformers {} {:?}",
-            channel_id,
-            T::NAME,
-            TypeId::of::<T>()
-        );
-        self.world
-            .resource_mut::<ChannelTransformers>()
-            .0
-            .insert(channel_id, TypeId::of::<T>());
+        let mut trans_map = self.world.resource_mut::<ChannelTransformerMap>();
+        if trans_map.0
+            .get(&channel_id).is_none() {
+            trans_map.insert(channel_id, transform_type_id);
+            self.add_systems(PostUpdate, spawn_marker::<T>);
+        };
+
+        let mut message_trans_res = self.world.resource_mut::<MessageTransformerSet>();
+        if !message_trans_res.contains(&(message_type_id, transform_type_id)) {
+            message_trans_res.0.insert((message_type_id, transform_type_id));
+            self.add_systems(PreUpdate, decode_system::<M, T>);
+            self.add_systems(PostUpdate, encode_system::<M, T>);
+        }
 
         self.add_event::<NetworkData<M>>();
         self.add_event::<ChannelMessage<M>>();
 
-        self.add_systems(PreUpdate, decode_system::<M, T>);
-        self.add_systems(PostUpdate, encode_system::<M, T>);
-        self.add_systems(PostUpdate, spawn_marker::<T>);
+
         self
     }
 }
 
+pub(crate) type TransformerTypeId = TypeId;
+pub(crate) type MessageTypeId = TypeId;
+
+
 #[derive(Resource, Deref, DerefMut, Debug, Default)]
-pub struct ChannelTransformers(pub HashMap<ChannelId, TypeId>);
+pub(crate) struct ChannelTransformerMap(pub HashMap<ChannelId, TransformerTypeId>);
+
+#[derive(Resource, Deref, DerefMut, Debug, Default)]
+pub(crate) struct MessageTransformerSet(pub HashSet<(MessageTypeId, TransformerTypeId)>);
 
 #[derive(Component)]
-pub struct ChannelTransformerMarker {
+pub struct TransformerSenderMarker {
     pub channel_id: ChannelId,
     pub transformer_id: TypeId,
 }
 
-fn encode_system<M: NetworkMessage, T: Transformer + bevy::prelude::Resource>(
+#[derive(Component)]
+pub struct TransformerRecvMarker {
+    pub channel_id: ChannelId,
+    pub transformer_id: TypeId,
+}
+
+
+fn encode_system<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer + bevy::prelude::Resource>(
     mut message_ev: EventReader<ChannelMessage<M>>,
     transformer: Res<T>,
     query: Query<
@@ -106,7 +121,7 @@ fn encode_system<M: NetworkMessage, T: Transformer + bevy::prelude::Resource>(
             &ChannelId,
             &NetworkNode,
             &RemoteSocket,
-            &ChannelTransformerMarker,
+            &TransformerSenderMarker,
         ),
         With<NetworkPeer>,
     >,
@@ -122,7 +137,7 @@ fn encode_system<M: NetworkMessage, T: Transformer + bevy::prelude::Resource>(
                 "{} {} Encoding message for {}",
                 channel_id,
                 T::NAME,
-                M::NAME
+                std::any::type_name::<M>(),
             );
             match transformer.encode(&message.message) {
                 Ok(bytes) => net_node
@@ -147,11 +162,11 @@ fn encode_system<M: NetworkMessage, T: Transformer + bevy::prelude::Resource>(
     }
 }
 
-fn decode_system<M: NetworkMessage, T: Transformer + bevy::prelude::Resource>(
+fn decode_system<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer + bevy::prelude::Resource>(
     mut data_events: EventWriter<NetworkData<M>>,
     mut node_events: EventWriter<NetworkNodeEvent>,
     transformer: Res<T>,
-    query: Query<(Entity, &ChannelId, &NetworkNode, &ChannelTransformerMarker)>,
+    query: Query<(Entity, &ChannelId, &NetworkNode, &TransformerRecvMarker)>,
 ) {
     for (entity, channel_id, network_node, channel_marker) in query.iter() {
         if channel_marker.channel_id != *channel_id
@@ -170,7 +185,7 @@ fn decode_system<M: NetworkMessage, T: Transformer + bevy::prelude::Resource>(
     }
 }
 
-fn decode_packets<M: NetworkMessage, T: Transformer>(
+fn decode_packets<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer>(
     entity: Entity,
     network_node: &NetworkNode,
     transformer: &T,
@@ -183,18 +198,17 @@ fn decode_packets<M: NetworkMessage, T: Transformer>(
     }
 
     if !packets.is_empty() {
-        debug!(
-            "{} Decoding {} packets for {}",
-            T::NAME,
-            packets.len(),
-            M::NAME
-        );
-
         let (messages, errors): (Vec<_>, Vec<_>) = packets
             .into_iter()
             .map(|msg| transformer.decode::<M>(&msg))
             .partition(Result::is_ok);
-
+        debug!(
+            "{} decoding {} packets error {} for {}",
+            T::NAME,
+            messages.len(),
+            errors.len(),
+            std::any::type_name::<M>(),
+        );
         data_events.send_batch(
             messages
                 .into_iter()
@@ -217,16 +231,23 @@ fn decode_packets<M: NetworkMessage, T: Transformer>(
 
 fn spawn_marker<T: Transformer>(
     mut commands: Commands,
-    transformer_index: Res<ChannelTransformers>,
-    q_channel: Query<(Entity, &ChannelId), Added<ChannelId>>,
+    transformer_index: Res<ChannelTransformerMap>,
+    q_channel: Query<(Entity, &ChannelId, Option<&RemoteSocket>), Added<ChannelId>>,
 ) {
-    for (entity, channel_id) in q_channel.iter() {
+    for (entity, channel_id, option_remote) in q_channel.iter() {
         if let Some(transformer_id) = transformer_index.0.get(channel_id) {
             if *transformer_id == TypeId::of::<T>() {
-                commands.entity(entity).insert(ChannelTransformerMarker {
-                    channel_id: *channel_id,
-                    transformer_id: TypeId::of::<T>(),
-                });
+                if option_remote.is_some() {
+                    commands.entity(entity).insert(TransformerSenderMarker {
+                        channel_id: *channel_id,
+                        transformer_id: TypeId::of::<T>(),
+                    });
+                } else {
+                    commands.entity(entity).insert(TransformerRecvMarker {
+                        channel_id: *channel_id,
+                        transformer_id: TypeId::of::<T>(),
+                    });
+                }
             }
         }
     }
