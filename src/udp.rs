@@ -1,9 +1,10 @@
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::sync::Arc;
 
-use async_net::UdpSocket;
 use bevy::prelude::*;
 use bytes::Bytes;
 use kanal::{AsyncReceiver, AsyncSender};
+use tokio::net::UdpSocket;
 
 use crate::{
     connections::NetworkPeer,
@@ -22,7 +23,6 @@ impl Plugin for UdpPlugin {
             PostUpdate,
             (
                 spawn_udp_socket,
-                // control_udp_node
             ),
         );
     }
@@ -35,7 +35,7 @@ pub struct UdpNode(pub UdpSocket);
 pub struct UdpBroadcast;
 
 async fn recv_loop(
-    socket: UdpSocket,
+    socket: Arc<UdpSocket>,
     recv_tx: AsyncSender<NetworkRawPacket>,
     event_tx: AsyncSender<NetworkEvent>,
     max_packet_size: usize,
@@ -60,6 +60,10 @@ async fn recv_loop(
                     .await
                     .expect("Message channel has closed.");
             }
+            #[cfg(target_os = "windows")]
+            Err(ref e) if e.kind() == std::io::ErrorKind::ConnectionReset => {
+                // ignore for windows 10054 error
+            }
             Err(e) => {
                 event_tx
                     .send(NetworkEvent::Error(NetworkError::Listen(e)))
@@ -71,7 +75,7 @@ async fn recv_loop(
 }
 
 async fn send_loop(
-    socket: UdpSocket,
+    socket: Arc<UdpSocket>,
     message_receiver: AsyncReceiver<NetworkRawPacket>,
     event_tx: AsyncSender<NetworkEvent>,
 ) {
@@ -202,7 +206,7 @@ async fn listen(
     event_tx: AsyncSender<NetworkEvent>,
     shutdown_rx: AsyncReceiver<()>,
 ) -> Result<(), std::io::Error> {
-    let socket = UdpSocket::bind(listener_socket).await?;
+    let socket = Arc::new(UdpSocket::bind(listener_socket).await?);
 
     if has_broadcast {
         socket.set_broadcast(true)?;

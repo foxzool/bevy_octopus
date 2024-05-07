@@ -1,11 +1,6 @@
 use bevy::prelude::*;
 
-use bevy_octopus::{
-    network::LocalSocket
-    ,
-    shared::NetworkProtocol,
-    transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
-};
+use bevy_octopus::prelude::*;
 
 use crate::common::*;
 

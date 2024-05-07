@@ -130,7 +130,7 @@ pub fn send_channel_message(mut channel_messages: EventWriter<ChannelMessage<Pla
 pub fn send_raw_message_to_channel(q_client: Query<(&NetworkNode, &ChannelId), With<NetworkPeer>>) {
     for (node, channel_id) in q_client.iter() {
         if channel_id == &RAW_CHANNEL {
-            node.send(format!("raw packet from {}", node).as_bytes());
+            node.send(format!("raw packet from {} to {}", node, channel_id).as_bytes());
         }
     }
 }

@@ -13,15 +13,13 @@ fn main() {
     let mut app = App::new();
     shared_setup(&mut app);
 
-    app.add_transformer::<PlayerInformation, JsonTransformer>(JSON_CHANNEL)
-        .add_transformer::<PlayerInformation, BincodeTransformer>(BINCODE_CHANNEL)
+    app
         .add_systems(Startup, setup_clients)
         .add_systems(
             Update,
             (
-                send_json_message,
-                send_bincode_message,
-                send_channel_message
+                send_raw_message_to_channel,
+                send_socket_packet,
             )
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
@@ -29,7 +27,6 @@ fn main() {
             Update,
             (
                 handle_raw_packet,
-                handle_message_events,
                 handle_node_events,
             ),
         )
@@ -39,14 +36,29 @@ fn main() {
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
-        JSON_CHANNEL,
+        RAW_CHANNEL,
         NetworkProtocol::UDP,
-        RemoteSocket::new("127.0.0.1:6002"),
+        LocalSocket::new("0.0.0.0:7006"),
+        RemoteSocket::new("127.0.0.1:6001"),
     ));
-
     commands.spawn((
-        BINCODE_CHANNEL,
+        RAW_CHANNEL,
         NetworkProtocol::UDP,
-        RemoteSocket::new("127.0.0.1:6003"),
+        LocalSocket::new("0.0.0.0:0"),
+        RemoteSocket::new("127.0.0.1:6001"),
     ));
+    commands.spawn((
+        RAW_CHANNEL,
+        NetworkProtocol::UDP,
+        RemoteSocket::new("127.0.0.1:6001"),
+    ));
+}
+
+fn send_socket_packet(q_client: Query<&NetworkNode, With<RemoteSocket>>) {
+    for client in q_client.iter() {
+        client.send_to(
+            "I can send message to specify socket".as_bytes(),
+            "127.0.0.1:6001",
+        );
+    }
 }

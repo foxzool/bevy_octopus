@@ -1,4 +1,4 @@
-use bevy::app::{App, Plugin, PostUpdate, PreUpdate};
+use bevy::app::{App, Last, Plugin, PostUpdate, PreUpdate};
 use bevy::prelude::{IntoSystemConfigs, IntoSystemSetConfigs};
 
 use crate::{
@@ -40,7 +40,7 @@ impl Plugin for OctopusPlugin {
                 PostUpdate,
                 send_channel_message_system.in_set(NetworkSet::Send),
             )
-            .add_systems(PostUpdate, update_network_node);
+            .add_systems(Last, update_network_node);
 
         #[cfg(feature = "udp")]
         app.add_plugins(udp::UdpPlugin);
