@@ -230,7 +230,7 @@ async fn listen(
     }
     let shutdown_rx_clone = shutdown_rx.clone();
     let server = async move {
-        debug!(
+        info!(
             "UDP listening on {} peer: {:?}",
             socket.local_addr().unwrap(),
             socket.peer_addr().ok()

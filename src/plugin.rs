@@ -10,7 +10,7 @@ use crate::{
     shared::{AsyncRuntime, NetworkNodeEvent},
     tcp, udp,
 };
-use crate::transformer::{ChannelTransformerMap, MessageTransformerSet};
+use crate::transformer::{TransformerForChannels, TransformerForMessages};
 
 pub struct OctopusPlugin;
 
@@ -23,8 +23,8 @@ impl Plugin for OctopusPlugin {
         app.register_type::<NetworkProtocol>()
             .register_type::<ChannelId>()
             .insert_resource(AsyncRuntime(async_runtime))
-            .init_resource::<ChannelTransformerMap>()
-            .init_resource::<MessageTransformerSet>()
+            .init_resource::<TransformerForChannels>()
+            .init_resource::<TransformerForMessages>()
             .add_event::<NetworkNodeEvent>()
             .add_event::<ChannelPacket>()
             .configure_sets(

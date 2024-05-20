@@ -1,5 +1,5 @@
 use std::any::TypeId;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::Deref;
 
@@ -68,18 +68,32 @@ impl NetworkMessageTransformer for App {
         let transform_type_id = TypeId::of::<T>();
         let message_type_id = TypeId::of::<M>();
 
-        let mut trans_map = self.world.resource_mut::<ChannelTransformerMap>();
-        if trans_map.0
-            .get(&channel_id).is_none() {
-            trans_map.insert(channel_id, transform_type_id);
-            self.add_systems(PostUpdate, spawn_marker::<T>);
-        };
+        let mut trans_for_channels = self.world.resource_mut::<TransformerForChannels>();
+        match trans_for_channels.0
+            .get_mut(&transform_type_id) {
+            None => {
+                trans_for_channels.insert(transform_type_id, vec![channel_id]);
+                self.add_systems(PostUpdate, spawn_marker::<T>);
+            }
+            Some(channels) => {
+                if !channels.contains(&channel_id) {
+                    channels.push(channel_id);
+                }
+            }
+        }
 
-        let mut message_trans_res = self.world.resource_mut::<MessageTransformerSet>();
-        if !message_trans_res.contains(&(message_type_id, transform_type_id)) {
-            message_trans_res.0.insert((message_type_id, transform_type_id));
-            self.add_systems(PreUpdate, decode_system::<M, T>);
-            self.add_systems(PostUpdate, encode_system::<M, T>);
+        let mut trans_for_messages = self.world.resource_mut::<TransformerForMessages>();
+        match trans_for_messages.get_mut(&transform_type_id) {
+            None => {
+                trans_for_messages.0.insert(transform_type_id, vec![message_type_id]);
+                self.add_systems(PreUpdate, decode_system::<M, T>);
+                self.add_systems(PostUpdate, encode_system::<M, T>);
+            }
+            Some(message_types) => {
+                if !message_types.contains(&message_type_id) {
+                    message_types.push(message_type_id);
+                }
+            }
         }
 
         self.add_event::<NetworkData<M>>();
@@ -95,10 +109,10 @@ pub(crate) type MessageTypeId = TypeId;
 
 
 #[derive(Resource, Deref, DerefMut, Debug, Default)]
-pub(crate) struct ChannelTransformerMap(pub HashMap<ChannelId, TransformerTypeId>);
+pub(crate) struct TransformerForChannels(pub HashMap<TransformerTypeId, Vec<ChannelId>>);
 
 #[derive(Resource, Deref, DerefMut, Debug, Default)]
-pub(crate) struct MessageTransformerSet(pub HashSet<(MessageTypeId, TransformerTypeId)>);
+pub(crate) struct TransformerForMessages(pub HashMap<TransformerTypeId, Vec<MessageTypeId>>);
 
 #[derive(Component)]
 pub struct TransformerSenderMarker {
@@ -128,34 +142,33 @@ fn encode_system<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static
 ) {
     for message in message_ev.read() {
         for (channel_id, net_node, remote_socket, channel_marker) in query.iter() {
-            if channel_marker.channel_id != *channel_id
-                || channel_marker.transformer_id != TypeId::of::<T>()
+            if *channel_id == message.channel_id
+                && channel_marker.transformer_id == TypeId::of::<T>()
             {
-                continue;
-            }
-            trace!(
+                trace!(
                 "{} {} Encoding message for {}",
                 channel_id,
                 T::NAME,
                 std::any::type_name::<M>(),
             );
-            match transformer.encode(&message.message) {
-                Ok(bytes) => net_node
-                    .send_message_channel
-                    .sender
-                    .send(NetworkRawPacket {
-                        addr: **remote_socket,
-                        bytes: bytes.into(),
-                    })
-                    .expect("send channel has closed"),
-                Err(e) => {
-                    net_node
-                        .event_channel
+                match transformer.encode(&message.message) {
+                    Ok(bytes) => net_node
+                        .send_message_channel
                         .sender
-                        .send(NetworkEvent::Error(NetworkError::SerializeError(
-                            e.to_string(),
-                        )))
-                        .expect("event channel has closed");
+                        .send(NetworkRawPacket {
+                            addr: **remote_socket,
+                            bytes: bytes.into(),
+                        })
+                        .expect("send channel has closed"),
+                    Err(e) => {
+                        net_node
+                            .event_channel
+                            .sender
+                            .send(NetworkEvent::Error(NetworkError::SerializeError(
+                                e.to_string(),
+                            )))
+                            .expect("event channel has closed");
+                    }
                 }
             }
         }
@@ -231,12 +244,15 @@ fn decode_packets<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'stati
 
 fn spawn_marker<T: Transformer>(
     mut commands: Commands,
-    transformer_index: Res<ChannelTransformerMap>,
+    transformer_index: Res<TransformerForChannels>,
     q_channel: Query<(Entity, &ChannelId, Option<&RemoteSocket>), Added<ChannelId>>,
 ) {
     for (entity, channel_id, option_remote) in q_channel.iter() {
-        if let Some(transformer_id) = transformer_index.0.get(channel_id) {
-            if *transformer_id == TypeId::of::<T>() {
+        if let Some(channels) = transformer_index.0.get(&TypeId::of::<T>()) {
+            if channels.contains(channel_id) {
+                trace!("{:?} Spawning marker for {} in {}", entity, T::NAME, channel_id);
+
+
                 if option_remote.is_some() {
                     commands.entity(entity).insert(TransformerSenderMarker {
                         channel_id: *channel_id,
