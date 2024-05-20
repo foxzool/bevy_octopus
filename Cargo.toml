@@ -5,7 +5,7 @@ authors = [
     "ZoOL <zhooul@gmail.com>"
 ]
 edition = "2021"
-description = "Event based networking library for Bevy"
+description = "ECS based networking library for Bevy"
 readme = "README.md"
 repository = "https://github.com/foxzool/bevy_octopus"
 license = "MIT OR Apache-2.0"
@@ -25,7 +25,6 @@ inspect = ["bevy-inspector-egui"]
 [dependencies]
 bevy = { version = "0.13.2", default-features = false, features = [] }
 bytes = "1.6.0"
-dashmap = { version = "5.5.3" }
 kanal = "0.1.0-pre8"
 futures-lite = "2.3.0"
 serde = { version = "1.0.198", features = ["derive"] }
