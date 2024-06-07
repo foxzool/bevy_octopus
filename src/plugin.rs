@@ -2,8 +2,8 @@ use bevy::app::{App, Last, Plugin, PostUpdate, PreUpdate};
 use bevy::prelude::{IntoSystemConfigs, IntoSystemSetConfigs};
 
 use crate::{
-    channels::systems::send_channel_message_system,
     channels::{ChannelId, ChannelPacket},
+    channels::systems::send_channel_message_system,
     network::NetworkProtocol,
     network_node::update_network_node,
     scheduler::NetworkSet,
@@ -47,5 +47,8 @@ impl Plugin for OctopusPlugin {
 
         #[cfg(feature = "tcp")]
         app.add_plugins(tcp::TcpPlugin);
+
+        #[cfg(feature = "websocket")]
+        app.add_plugins(crate::websocket::WebsocketPlugin);
     }
 }
