@@ -36,7 +36,7 @@ fn main() {
 }
 
 fn setup_clients(mut commands: Commands) {
-    commands.spawn((RAW_CHANNEL, ConnectTo::new("ws://127.0.0.1:38551")));
+    commands.spawn((RAW_CHANNEL, ConnectTo::new("wss://echo.websocket.org")));
     commands.spawn((RAW_CHANNEL, ConnectTo::new("ws://127.0.0.1:7003")));
     commands.spawn((JSON_CHANNEL, ConnectTo::new("ws://127.0.0.1:7004")));
     commands.spawn((BINCODE_CHANNEL, ConnectTo::new("ws://127.0.0.1:7005")));

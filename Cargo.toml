@@ -20,6 +20,7 @@ udp = []
 tcp = []
 websocket = ["async-tungstenite", "async-std"]
 inspect = ["bevy-inspector-egui"]
+async-tls = ["async-tungstenite/async-tls"]
 
 
 
@@ -95,7 +96,7 @@ required-features = ["websocket", "serde_json", "bincode"]
 [[example]]
 name = "ws_client"
 path = "examples/ws/client.rs"
-required-features = ["websocket", "serde_json", "bincode"]
+required-features = ["websocket", "async-tls", "serde_json", "bincode"]
 
 [profile.release]
 strip = true

@@ -25,7 +25,7 @@ multicast. [example](https://github.com/foxzool/bevy_octopus/blob/main/examples/
 - [x] TCP
 - [x] WebSocket
 - [ ] SSL
-- [ ] WebSocket SSL
+- [x] WebSocket SSL
 
 ## Supported Versions
 

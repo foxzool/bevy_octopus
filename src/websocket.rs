@@ -201,7 +201,7 @@ async fn handle_client_conn(
 
     let ws_to_output = {
         read.for_each(|message| async {
-            let data = message.unwrap().into_data();
+            let data = message?.into_data();
             recv_tx
                 .send(NetworkRawPacket {
                     addr: addr.clone(),
@@ -231,6 +231,7 @@ async fn handle_client_conn(
 
     Ok(())
 }
+
 async fn server_handle_conn(
     tcp_stream: TcpStream,
     addr: String,
