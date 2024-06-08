@@ -6,13 +6,10 @@ use bytes::Bytes;
 use kanal::{AsyncReceiver, AsyncSender};
 use tokio::net::UdpSocket;
 
+use crate::network::{ConnectTo, ListenTo};
 use crate::{
-    connections::NetworkPeer,
-    error::NetworkError,
-    network::{LocalSocket, NetworkProtocol, NetworkRawPacket, RemoteSocket},
-    network_node::NetworkNode,
-    shared::AsyncRuntime,
-    shared::NetworkEvent,
+    connections::NetworkPeer, error::NetworkError, network::NetworkRawPacket,
+    network_node::NetworkNode, shared::AsyncRuntime, shared::NetworkEvent,
 };
 
 pub struct UdpPlugin;
@@ -130,31 +127,41 @@ fn spawn_udp_socket(
     q_udp: Query<
         (
             Entity,
-            &NetworkProtocol,
-            Option<&LocalSocket>,
-            Option<&RemoteSocket>,
+            Option<&ListenTo>,
+            Option<&ConnectTo>,
             Option<&UdpBroadcast>,
             Option<&MulticastV4Setting>,
             Option<&MulticastV6Setting>,
         ),
-        Added<NetworkProtocol>,
+        Or<(Added<ListenTo>, Added<ConnectTo>)>,
     >,
 ) {
-    for (entity, protocol, opt_local_addr, opt_remote_addr, opt_broadcast, opt_v4, opt_v6) in
-        q_udp.iter()
-    {
-        if *protocol != NetworkProtocol::UDP {
-            continue;
-        }
+    for (entity, opt_listen_to, opt_connect_to, opt_broadcast, opt_v4, opt_v6) in q_udp.iter() {
+        let mut local_addr = "0.0.0.0:0".parse::<SocketAddr>().unwrap();
+        if let Some(listen_to) = opt_listen_to {
+            if listen_to.scheme == "udp" {
+                local_addr = listen_to.local_addr();
+            } else {
+                continue;
+            }
+        };
 
-        let local_addr = opt_local_addr.cloned().unwrap_or_else(LocalSocket::default);
-        let remote_addr = opt_remote_addr.cloned().map(|addr| addr.0);
+        let mut remote_addr = None;
+
+        if let Some(connect_to) = opt_connect_to {
+            if connect_to.scheme == "udp" {
+                remote_addr = Some(connect_to.peer_addr())
+            } else {
+                continue;
+            }
+        };
+
         let net_node = NetworkNode::default();
 
         let has_broadcast = opt_broadcast.is_some();
         let opt_v4 = opt_v4.cloned();
         let opt_v6 = opt_v6.cloned();
-        let listener_socket = local_addr.0;
+        let listener_socket = local_addr;
         let recv_tx = net_node.recv_message_channel.sender.clone_async();
         let send_rx = net_node.send_message_channel.receiver.clone_async();
         let event_tx = net_node.event_channel.sender.clone_async();
@@ -177,13 +184,9 @@ fn spawn_udp_socket(
 
         if remote_addr.is_some() {
             let peer = NetworkPeer {};
-            commands
-                .entity(entity)
-                .insert((net_node, LocalSocket(local_addr.0), peer));
+            commands.entity(entity).insert((net_node, peer));
         } else {
-            commands
-                .entity(entity)
-                .insert((net_node, LocalSocket(*local_addr)));
+            commands.entity(entity).insert((net_node,));
         }
     }
 }

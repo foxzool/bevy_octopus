@@ -3,8 +3,9 @@ use std::io;
 /// Internal errors used by Spicy
 #[derive(thiserror::Error, Debug)]
 pub enum NetworkError {
-    // /// A default networking error returned when no other more specific type can be determined
-    // Error(String),
+    /// A default networking error returned when no other more specific type can be determined
+    #[error("Common Error: {0}")]
+    CommonError(String),
     //
     // /// Error occurred when accepting a new connection.
     // Accept(io::Error),

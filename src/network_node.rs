@@ -1,11 +1,11 @@
 use std::fmt::Display;
-use std::net::{SocketAddr, ToSocketAddrs};
+use std::net::ToSocketAddrs;
 
-use bevy::prelude::{Added, Component, Query};
+use bevy::prelude::{Added, Component, Or, Query};
 use bytes::Bytes;
 
 use crate::error::NetworkError;
-use crate::network::{LocalSocket, NetworkProtocol, NetworkRawPacket, RemoteSocket};
+use crate::network::{ConnectTo, ListenTo, NetworkRawPacket};
 use crate::shared::{AsyncChannel, NetworkEvent};
 
 #[derive(Component, Default)]
@@ -20,11 +20,9 @@ pub struct NetworkNode {
     pub shutdown_channel: AsyncChannel<()>,
     /// Whether the node is running or not
     pub running: bool,
-    /// Local address
-    pub local_addr: Option<SocketAddr>,
-    pub peer_addr: Option<SocketAddr>,
     pub max_packet_size: usize,
-    protocol: NetworkProtocol,
+    pub listen_to: Option<ListenTo>,
+    pub connect_to: Option<ConnectTo>,
 }
 
 impl NetworkNode {
@@ -37,18 +35,20 @@ impl NetworkNode {
     }
 
     pub fn send(&self, bytes: &[u8]) {
-        match self.peer_addr {
+        match self.connect_to.as_ref() {
             None => {
+                println!("send error");
                 self.event_channel
                     .sender
                     .try_send(NetworkEvent::Error(NetworkError::SendError))
                     .expect("Error channel has closed");
             }
-            Some(remote_addr) => {
+            Some(connect_to) => {
+                let addr = connect_to.peer_addr();
                 self.send_message_channel
                     .sender
                     .try_send(NetworkRawPacket {
-                        addr: remote_addr,
+                        addr,
                         bytes: Bytes::copy_from_slice(bytes),
                     })
                     .expect("Message channel has closed.");
@@ -68,22 +68,12 @@ impl NetworkNode {
     }
 
     pub fn schema(&self) -> String {
-        if let Some(local_addr) = self.local_addr {
-            format!(
-                "{}://{}:{}",
-                self.protocol,
-                local_addr.ip(),
-                local_addr.port()
-            )
-        } else if let Some(peer_addr) = self.peer_addr {
-            format!(
-                "{}://{}:{}",
-                self.protocol,
-                peer_addr.ip(),
-                peer_addr.port()
-            )
+        if let Some(local_addr) = self.listen_to.as_ref() {
+            local_addr.to_string()
+        } else if let Some(connect_to) = self.connect_to.as_ref() {
+            connect_to.to_string()
         } else {
-            format!("{}://", self.protocol)
+            "".to_string()
         }
     }
 }
@@ -97,25 +87,19 @@ impl Display for NetworkNode {
 #[allow(clippy::type_complexity)]
 pub(crate) fn update_network_node(
     mut q_net: Query<
-        (
-            &mut NetworkNode,
-            &NetworkProtocol,
-            Option<&LocalSocket>,
-            Option<&RemoteSocket>,
-        ),
-        Added<NetworkNode>,
+        (&mut NetworkNode, Option<&ListenTo>, Option<&ConnectTo>),
+        Or<(Added<NetworkNode>, Added<NetworkNode>)>,
     >,
 ) {
-    for (mut net_node, protocol, opt_local_socket, opt_remote_socket) in q_net.iter_mut() {
-        net_node.protocol = *protocol;
-        if let Some(local_socket) = opt_local_socket {
-            if net_node.local_addr.is_none() {
-                net_node.local_addr = Some(local_socket.0);
+    for (mut net_node, opt_listen_to, opt_connect_to) in q_net.iter_mut() {
+        if let Some(listen_to) = opt_listen_to {
+            if net_node.listen_to.is_none() {
+                net_node.listen_to = Some(listen_to.clone());
             }
         }
-        if let Some(remote_socket) = opt_remote_socket {
-            if net_node.peer_addr.is_none() {
-                net_node.peer_addr = Some(remote_socket.0);
+        if let Some(connect_to) = opt_connect_to {
+            if net_node.connect_to.is_none() {
+                net_node.connect_to = Some(connect_to.clone());
             }
         }
     }

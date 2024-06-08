@@ -1,11 +1,9 @@
-use std::{
-    fmt::{Debug, Display},
-    net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs},
-    ops::Deref,
-};
+use std::net::ToSocketAddrs;
+use std::{fmt::Debug, net::SocketAddr, ops::Deref};
 
-use bevy::prelude::{Component, Deref, Entity, Event, Reflect};
+use bevy::prelude::{Component, Deref, Entity, Event};
 use bytes::Bytes;
+use url::Url;
 
 #[derive(Debug, Event)]
 /// [`NetworkData`] is what is sent over the bevy event system
@@ -45,68 +43,61 @@ impl Debug for NetworkRawPacket {
     }
 }
 
-#[derive(Component, Clone, Debug, Deref)]
-pub struct LocalSocket(pub SocketAddr);
+#[derive(Component, Deref, Clone, Debug)]
+pub struct ListenTo(pub Url);
 
-impl LocalSocket {
-    pub fn new(addr: impl ToSocketAddrs) -> Self {
-        let socket = addr
-            .to_socket_addrs()
-            .expect("not valid socket format")
-            .next()
-            .expect("must have one socket addr");
-        Self(socket)
+impl ListenTo {
+    pub fn new(input: &str) -> Self {
+        let url = Url::parse(input).expect("url format error");
+
+        Self(url)
+    }
+
+    pub fn local_addr(&self) -> SocketAddr {
+        let url_str = self.0.to_string();
+        let arr: Vec<&str> = url_str.split("//").collect();
+        let s = arr[1].split('/').collect::<Vec<&str>>()[0];
+        s.to_socket_addrs().unwrap().next().unwrap()
     }
 }
 
-impl Default for LocalSocket {
-    fn default() -> Self {
-        Self(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0))
+#[derive(Component, Deref, Clone, Debug)]
+pub struct ConnectTo(pub Url);
+
+impl ConnectTo {
+    pub fn new(input: &str) -> Self {
+        let url = Url::parse(input).expect("url format error");
+
+        Self(url)
+    }
+
+    pub fn peer_addr(&self) -> SocketAddr {
+        let url_str = self.0.to_string();
+        let arr: Vec<&str> = url_str.split("//").collect();
+        let s = arr[1].split('/').collect::<Vec<&str>>()[0];
+        s.to_socket_addrs().unwrap().next().unwrap()
     }
 }
 
-#[derive(Component, Clone, Debug, Deref)]
-pub struct RemoteSocket(pub SocketAddr);
+#[test]
+fn test_url() {
+    let str = "ws://127.0.0.1:44012/ws/";
+    let url = Url::parse(str).unwrap();
+    println!("{:#?}", url);
+    println!("{:?}", url.host());
+    println!("{:?}", url.port_or_default());
+    println!("{:?}", url.serialize_path());
+    println!("{:?}", url.serialize_host());
+    println!("{:?}", url.serialize_no_fragment());
+    println!("{:?}", url.serialize());
 
-impl Default for RemoteSocket {
-    fn default() -> Self {
-        Self(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0))
-    }
-}
-
-impl RemoteSocket {
-    pub fn new(addr: impl ToSocketAddrs) -> Self {
-        let socket = addr
-            .to_socket_addrs()
-            .expect("not valid socket format")
-            .next()
-            .expect("must have one socket addr");
-        Self(socket)
-    }
-}
-
-#[derive(Debug, Clone, Copy, Component, Ord, PartialOrd, Eq, PartialEq, Reflect, Default)]
-pub enum NetworkProtocol {
-    UDP,
-    #[default]
-    TCP,
-    SSL,
-    WS,
-    WSS,
-}
-
-impl Display for NetworkProtocol {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                NetworkProtocol::UDP => "udp",
-                NetworkProtocol::TCP => "tcp",
-                NetworkProtocol::SSL => "ssl",
-                NetworkProtocol::WS => "ws",
-                NetworkProtocol::WSS => "wss",
-            }
-        )
-    }
+    let str = "tcp://127.0.0.1:44012";
+    let url = Url::parse(str).unwrap();
+    println!("{:#?}", url);
+    println!("{:?}", url.host());
+    println!("{:?}", url.port_or_default());
+    println!("{:?}", url.serialize_path());
+    println!("{:?}", url.serialize_host());
+    println!("{:?}", url.serialize_no_fragment());
+    println!("{:?}", url.serialize());
 }

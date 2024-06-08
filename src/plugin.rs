@@ -1,12 +1,11 @@
 use bevy::app::{App, Last, Plugin, PostUpdate, PreUpdate};
 use bevy::prelude::{IntoSystemConfigs, IntoSystemSetConfigs};
 
+use crate::network_node::update_network_node;
 use crate::transformer::{TransformerForChannels, TransformerForMessages};
 use crate::{
     channels::systems::send_channel_message_system,
     channels::{ChannelId, ChannelPacket},
-    network::NetworkProtocol,
-    network_node::update_network_node,
     scheduler::NetworkSet,
     shared::{AsyncRuntime, NetworkNodeEvent},
     tcp, udp,
@@ -20,8 +19,7 @@ impl Plugin for OctopusPlugin {
             .enable_all()
             .build()
             .unwrap();
-        app.register_type::<NetworkProtocol>()
-            .register_type::<ChannelId>()
+        app.register_type::<ChannelId>()
             .insert_resource(AsyncRuntime(async_runtime))
             .init_resource::<TransformerForChannels>()
             .init_resource::<TransformerForMessages>()

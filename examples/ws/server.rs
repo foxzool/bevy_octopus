@@ -5,10 +5,9 @@ use bevy::time::common_conditions::on_timer;
 use bytes::Bytes;
 
 use bevy_octopus::connections::NetworkPeer;
-use bevy_octopus::prelude::{ChannelId, ChannelPacket};
+use bevy_octopus::prelude::{ChannelId, ChannelPacket, ConnectTo, ListenTo};
 use bevy_octopus::{
-    network::NetworkProtocol,
-    network::{LocalSocket, NetworkRawPacket, RemoteSocket},
+    network::NetworkRawPacket,
     network_node::NetworkNode,
     transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };
@@ -39,21 +38,9 @@ fn main() {
 }
 
 fn setup_server(mut commands: Commands) {
-    commands.spawn((
-        RAW_CHANNEL,
-        NetworkProtocol::WS,
-        LocalSocket::new("0.0.0.0:7003"),
-    ));
-    commands.spawn((
-        JSON_CHANNEL,
-        NetworkProtocol::WS,
-        LocalSocket::new("0.0.0.0:7004"),
-    ));
-    commands.spawn((
-        BINCODE_CHANNEL,
-        NetworkProtocol::WS,
-        LocalSocket::new("0.0.0.0:7005"),
-    ));
+    commands.spawn((RAW_CHANNEL, ListenTo::new("ws://0.0.0.0:7003")));
+    commands.spawn((JSON_CHANNEL, ListenTo::new("ws://0.0.0.0:7004")));
+    commands.spawn((BINCODE_CHANNEL, ListenTo::new("ws://0.0.0.0:7005")));
 }
 
 /// broadcast message to all connected clients in channel
@@ -64,7 +51,7 @@ fn send_channel_packet(mut channel_events: EventWriter<ChannelPacket>) {
 /// handle send message to connected websocket clients
 fn broadcast_message(
     q_net_node: Query<(&ChannelId, &NetworkNode, &Children), Without<NetworkPeer>>,
-    q_child: Query<(&NetworkNode, &RemoteSocket)>,
+    q_child: Query<(&NetworkNode, &ConnectTo)>,
 ) {
     for (channel_id, _net, children) in q_net_node.iter() {
         if channel_id != &RAW_CHANNEL {
@@ -73,14 +60,13 @@ fn broadcast_message(
         for &child in children.iter() {
             let message = b"broadcast message!\r\n";
 
-            let (child_net_node, child_remote_addr) =
-                q_child.get(child).expect("Child node not found.");
+            let (child_net_node, connect_to) = q_child.get(child).expect("Child node not found.");
 
             child_net_node
                 .send_message_channel
                 .sender
                 .try_send(NetworkRawPacket {
-                    addr: **child_remote_addr,
+                    addr: connect_to.peer_addr(),
                     bytes: Bytes::from_static(message),
                 })
                 .expect("Message channel has closed.");

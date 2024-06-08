@@ -33,15 +33,6 @@ fn main() {
 }
 
 fn setup_clients(mut commands: Commands) {
-    commands.spawn((
-        JSON_CHANNEL,
-        NetworkProtocol::UDP,
-        RemoteSocket::new("127.0.0.1:6002"),
-    ));
-
-    commands.spawn((
-        BINCODE_CHANNEL,
-        NetworkProtocol::UDP,
-        RemoteSocket::new("127.0.0.1:6003"),
-    ));
+    commands.spawn((JSON_CHANNEL, ConnectTo::new("udp://127.0.0.1:6002")));
+    commands.spawn((BINCODE_CHANNEL, ConnectTo::new("udp://127.0.0.1:6003")));
 }

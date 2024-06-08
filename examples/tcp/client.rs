@@ -3,10 +3,8 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
-use bevy_octopus::{
-    network::{NetworkProtocol, RemoteSocket},
-    transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
-};
+use bevy_octopus::network::ConnectTo;
+use bevy_octopus::transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer};
 
 use crate::common::*;
 
@@ -38,25 +36,8 @@ fn main() {
 }
 
 fn setup_clients(mut commands: Commands) {
-    commands.spawn((
-        RAW_CHANNEL,
-        NetworkProtocol::TCP,
-        RemoteSocket::new("127.0.0.1:38551"),
-    ));
-    commands.spawn((
-        RAW_CHANNEL,
-        NetworkProtocol::TCP,
-        RemoteSocket::new("127.0.0.1:6003"),
-    ));
-
-    commands.spawn((
-        JSON_CHANNEL,
-        NetworkProtocol::TCP,
-        RemoteSocket::new("127.0.0.1:6004"),
-    ));
-    commands.spawn((
-        BINCODE_CHANNEL,
-        NetworkProtocol::TCP,
-        RemoteSocket::new("127.0.0.1:6005"),
-    ));
+    commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:38551")));
+    commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:6003")));
+    commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:6004")));
+    commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:6005")));
 }

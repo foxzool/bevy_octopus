@@ -22,20 +22,7 @@ fn main() {
 }
 
 fn setup_server(mut commands: Commands) {
-    commands.spawn((
-        RAW_CHANNEL,
-        NetworkProtocol::UDP,
-        LocalSocket::new("0.0.0.0:6001"),
-    ));
-    commands.spawn((
-        JSON_CHANNEL,
-        NetworkProtocol::UDP,
-        LocalSocket::new("0.0.0.0:6002"),
-    ));
-
-    commands.spawn((
-        BINCODE_CHANNEL,
-        NetworkProtocol::UDP,
-        LocalSocket::new("0.0.0.0:6003"),
-    ));
+    commands.spawn((RAW_CHANNEL, ListenTo::new("udp://127.0.0.1:6001")));
+    commands.spawn((JSON_CHANNEL, ListenTo::new("udp://127.0.0.1:6002")));
+    commands.spawn((BINCODE_CHANNEL, ListenTo::new("udp://127.0.0.1:6003")));
 }

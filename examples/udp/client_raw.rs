@@ -26,24 +26,18 @@ fn main() {
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
         RAW_CHANNEL,
-        NetworkProtocol::UDP,
-        LocalSocket::new("0.0.0.0:7006"),
-        RemoteSocket::new("127.0.0.1:6001"),
+        ListenTo::new("udp://0.0.0.0:7006"),
+        ConnectTo::new("udp://127.0.0.1:6001"),
     ));
     commands.spawn((
         RAW_CHANNEL,
-        NetworkProtocol::UDP,
-        LocalSocket::new("0.0.0.0:0"),
-        RemoteSocket::new("127.0.0.1:6001"),
+        ListenTo::new("udp://0.0.0.0:0"),
+        ConnectTo::new("udp://127.0.0.1:6001"),
     ));
-    commands.spawn((
-        RAW_CHANNEL,
-        NetworkProtocol::UDP,
-        RemoteSocket::new("127.0.0.1:6001"),
-    ));
+    commands.spawn((RAW_CHANNEL, ConnectTo::new("udp://127.0.0.1:6001")));
 }
 
-fn send_socket_packet(q_client: Query<&NetworkNode, With<RemoteSocket>>) {
+fn send_socket_packet(q_client: Query<&NetworkNode, With<ConnectTo>>) {
     for client in q_client.iter() {
         client.send_to(
             "I can send message to specify socket".as_bytes(),

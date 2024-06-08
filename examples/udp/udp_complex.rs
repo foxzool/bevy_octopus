@@ -4,8 +4,8 @@ use std::time::Duration;
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
 use bevy_octopus::channels::ChannelId;
+use bevy_octopus::network::{ConnectTo, ListenTo};
 use bevy_octopus::{
-    network::{LocalSocket, NetworkProtocol, RemoteSocket},
     network_node::NetworkNode,
     udp::{MulticastV4Setting, UdpBroadcast},
 };
@@ -44,40 +44,37 @@ fn setup_server(mut commands: Commands) {
     // broadcast udp receiver
     commands.spawn((
         BROADCAST_CHANNEL,
-        NetworkProtocol::UDP,
         UdpBroadcast,
-        LocalSocket::new("0.0.0.0:60002"),
+        ListenTo::new("udp://127.0.0.1:60002"),
     ));
 
     // multicast udp receiver
     commands.spawn((
         MULTICAST_CHANNEL,
-        NetworkProtocol::UDP,
         MulticastV4Setting::new(Ipv4Addr::new(239, 1, 2, 3), Ipv4Addr::UNSPECIFIED),
-        LocalSocket::new("0.0.0.0:60003"),
+        ListenTo::new("udp://0.0.0.0:60003"),
     ));
 }
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
         BROADCAST_CHANNEL,
-        NetworkProtocol::UDP,
         UdpBroadcast,
-        RemoteSocket::new("255.255.255.255:60002"),
+        ConnectTo::new("udp://255.255.255.255:60002"),
         BroadcastMarker,
     ));
 
     commands.spawn((
         BROADCAST_CHANNEL,
-        NetworkProtocol::UDP,
         UdpBroadcast,
+        ListenTo::new("udp://0.0.0.0:0"),
         // example marker for query filter
         BroadcastMarker,
     ));
 
     commands.spawn((
         MULTICAST_CHANNEL,
-        NetworkProtocol::UDP,
+        ListenTo::new("udp://0.0.0.0:0"),
         MulticastV4Setting::new(Ipv4Addr::new(239, 1, 2, 3), Ipv4Addr::UNSPECIFIED),
         // example marker foClientMarker,
         MulticastMarker,
@@ -85,7 +82,7 @@ fn setup_clients(mut commands: Commands) {
 }
 
 fn send_broadcast_messages(
-    q_client: Query<(&NetworkNode, &LocalSocket, Option<&RemoteSocket>), With<BroadcastMarker>>,
+    q_client: Query<(&NetworkNode, &ListenTo, Option<&ConnectTo>), With<BroadcastMarker>>,
 ) {
     for (net_node, local_addr, opt_remote_addr) in q_client.iter() {
         if opt_remote_addr.is_some() {
@@ -100,7 +97,7 @@ fn send_broadcast_messages(
 }
 
 fn send_multicast_messages(
-    q_client: Query<(&NetworkNode, &LocalSocket, Option<&RemoteSocket>), With<MulticastMarker>>,
+    q_client: Query<(&NetworkNode, &ListenTo, Option<&ConnectTo>), With<MulticastMarker>>,
 ) {
     for (net_node, local_addr, opt_remote_addr) in q_client.iter() {
         if opt_remote_addr.is_some() {

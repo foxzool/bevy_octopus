@@ -15,8 +15,9 @@ use {
 use crate::channels::ChannelId;
 use crate::connections::NetworkPeer;
 use crate::error::NetworkError;
-use crate::network::{LocalSocket, NetworkProtocol, NetworkRawPacket, RemoteSocket};
+use crate::network::{ConnectTo, NetworkRawPacket};
 use crate::network_node::NetworkNode;
+use crate::prelude::ListenTo;
 use crate::shared::{AsyncChannel, AsyncRuntime, NetworkEvent, NetworkNodeEvent};
 
 pub struct WebsocketPlugin;
@@ -101,19 +102,16 @@ impl WebsocketNode {
 fn spawn_websocket_server(
     mut commands: Commands,
     rt: Res<AsyncRuntime>,
-    q_ws_server: Query<
-        (Entity, &NetworkProtocol, &LocalSocket),
-        (Added<LocalSocket>, Without<NetworkNode>),
-    >,
+    q_ws_server: Query<(Entity, &ListenTo), (Added<ListenTo>, Without<NetworkNode>)>,
 ) {
-    for (e, protocol, local_addr) in q_ws_server.iter() {
-        if *protocol != NetworkProtocol::WS && *protocol != NetworkProtocol::WSS {
+    for (e, listen_to) in q_ws_server.iter() {
+        if !["ws", "wss"].contains(&listen_to.scheme.as_str()) {
             continue;
         }
 
         let net_node = NetworkNode::default();
 
-        let local_addr = local_addr.0;
+        let local_addr = listen_to.local_addr();
         let event_tx = net_node.event_channel.sender.clone_async();
         let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
         let tcp_node = WebsocketNode::new();
@@ -137,31 +135,24 @@ fn spawn_websocket_server(
 fn spawn_websocket_client(
     rt: Res<AsyncRuntime>,
     mut commands: Commands,
-    q_ws_client: Query<
-        (Entity, &NetworkProtocol, &RemoteSocket),
-        (Added<RemoteSocket>, Without<NetworkNode>),
-    >,
+    q_ws_client: Query<(Entity, &ConnectTo), (Added<ConnectTo>, Without<NetworkNode>)>,
 ) {
-    for (e, protocol, remote_socket) in q_ws_client.iter() {
-        if *protocol != NetworkProtocol::WS && *protocol != NetworkProtocol::WSS {
+    for (e, connect_to) in q_ws_client.iter() {
+        if !["ws", "wss"].contains(&connect_to.scheme.as_str()) {
             continue;
         }
 
         let new_net_node = NetworkNode::default();
-        let remote_addr = remote_socket.0.clone();
-        let url_str = if *protocol == NetworkProtocol::WSS {
-            format!("wss://{}", remote_addr.to_string())
-        } else {
-            format!("ws://{}", remote_addr.to_string())
-        };
+        let remote_addr = connect_to.peer_addr();
 
         let recv_tx = new_net_node.recv_message_channel.sender.clone_async();
         let message_rx = new_net_node.send_message_channel.receiver.clone_async();
         let event_tx = new_net_node.event_channel.sender.clone_async();
         let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
 
+        let url_str = connect_to.0.to_string();
         rt.spawn(async move {
-            match connect_async(url_str).await {
+            match connect_async(&url_str).await {
                 Ok(stream) => {
                     let ws_stream = WsStream::new(stream.0);
                     handle_conn(
@@ -292,9 +283,9 @@ fn handle_endpoint(
                 "new TCP client {:?} connected {:?}",
                 socket, child_tcp_client
             );
+            let url_str = format!("tcp://{}", socket);
             commands.entity(child_tcp_client).insert((
-                RemoteSocket(socket),
-                NetworkProtocol::TCP,
+                ConnectTo::new(&url_str),
                 new_net_node,
                 *channel_id,
                 peer,

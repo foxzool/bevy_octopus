@@ -5,8 +5,8 @@ use std::ops::Deref;
 
 use bevy::prelude::*;
 use bevy::reflect::GetTypeRegistration;
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
 
 #[cfg(feature = "bincode")]
 pub use bincode::BincodeTransformer;
@@ -17,10 +17,11 @@ use crate::{
     channels::{ChannelId, ChannelMessage},
     connections::NetworkPeer,
     error::NetworkError,
-    network::{NetworkData, NetworkRawPacket, RemoteSocket},
+    network::{NetworkData, NetworkRawPacket},
     network_node::NetworkNode,
     shared::{NetworkEvent, NetworkNodeEvent},
 };
+use crate::network::ConnectTo;
 
 #[cfg(feature = "bincode")]
 mod bincode;
@@ -28,7 +29,6 @@ mod bincode;
 #[cfg(feature = "serde_json")]
 mod serde_json;
 
-///
 pub trait Transformer:
     'static + Send + Sync + Reflect + Resource + Default + GetTypeRegistration
 {
@@ -137,14 +137,14 @@ fn encode_system<
         (
             &ChannelId,
             &NetworkNode,
-            &RemoteSocket,
+            &ConnectTo,
             &TransformerSenderMarker,
         ),
         With<NetworkPeer>,
     >,
 ) {
     for message in message_ev.read() {
-        for (channel_id, net_node, remote_socket, channel_marker) in query.iter() {
+        for (channel_id, net_node, connect_to, channel_marker) in query.iter() {
             if *channel_id == message.channel_id
                 && channel_marker.transformer_id == TypeId::of::<T>()
             {
@@ -159,7 +159,7 @@ fn encode_system<
                         .send_message_channel
                         .sender
                         .send(NetworkRawPacket {
-                            addr: **remote_socket,
+                            addr: connect_to.peer_addr(),
                             bytes: bytes.into(),
                         })
                         .expect("send channel has closed"),
@@ -254,7 +254,7 @@ fn decode_packets<
 fn spawn_marker<T: Transformer>(
     mut commands: Commands,
     transformer_index: Res<TransformerForChannels>,
-    q_channel: Query<(Entity, &ChannelId, Option<&RemoteSocket>), Added<ChannelId>>,
+    q_channel: Query<(Entity, &ChannelId, Option<&ConnectTo>), Added<ChannelId>>,
 ) {
     for (entity, channel_id, option_remote) in q_channel.iter() {
         if let Some(channels) = transformer_index.0.get(&TypeId::of::<T>()) {
