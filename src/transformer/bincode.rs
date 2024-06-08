@@ -1,11 +1,10 @@
-use bevy::prelude::{ Reflect, Resource};
+use bevy::prelude::{Reflect, Resource};
 use serde::{Deserialize, Serialize};
 
 use crate::{error::NetworkError, transformer::Transformer};
 
 #[derive(Resource, Default, Reflect)]
 pub struct BincodeTransformer;
-
 
 impl Transformer for BincodeTransformer {
     const NAME: &'static str = "Bincode";

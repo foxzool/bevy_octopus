@@ -5,13 +5,9 @@ use std::ops::Deref;
 use bevy::{log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use bevy_octopus::{
-    network::NetworkData,
-    network_node::NetworkNode,
-    shared::NetworkNodeEvent,
-};
 use bevy_octopus::connections::NetworkPeer;
 use bevy_octopus::prelude::*;
+use bevy_octopus::{network::NetworkData, network_node::NetworkNode, shared::NetworkNodeEvent};
 
 /// shared app setup
 #[cfg(not(feature = "inspect"))]
@@ -25,7 +21,7 @@ pub fn shared_setup(app: &mut App) {
             ..default()
         },
     ))
-        .add_plugins(OctopusPlugin);
+    .add_plugins(OctopusPlugin);
 }
 
 #[cfg(feature = "inspect")]
@@ -34,8 +30,8 @@ pub fn shared_setup(app: &mut App) {
         filter: "bevy_octopus=debug".to_string(),
         ..default()
     }))
-        .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
-        .add_plugins(OctopusPlugin);
+    .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
+    .add_plugins(OctopusPlugin);
 }
 
 /// this channel is sending and receiving raw packet
@@ -52,7 +48,6 @@ pub struct PlayerInformation {
     pub health: usize,
     pub position: (u32, u32, u32),
 }
-
 
 pub fn handle_node_events(
     mut new_network_events: EventReader<NetworkNodeEvent>,

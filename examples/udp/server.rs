@@ -16,11 +16,7 @@ fn main() {
         .add_systems(Startup, setup_server)
         .add_systems(
             Update,
-            (
-                handle_raw_packet,
-                handle_message_events,
-                handle_node_events,
-            ),
+            (handle_raw_packet, handle_message_events, handle_node_events),
         )
         .run();
 }

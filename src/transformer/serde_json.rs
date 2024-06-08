@@ -6,7 +6,6 @@ use crate::{error::NetworkError, transformer::Transformer};
 #[derive(Resource, Default, Reflect)]
 pub struct JsonTransformer;
 
-
 impl Transformer for JsonTransformer {
     const NAME: &'static str = "Json";
 

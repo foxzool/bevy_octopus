@@ -5,8 +5,8 @@ use std::ops::Deref;
 
 use bevy::prelude::*;
 use bevy::reflect::GetTypeRegistration;
-use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "bincode")]
 pub use bincode::BincodeTransformer;
@@ -17,11 +17,7 @@ use crate::{
     channels::{ChannelId, ChannelMessage},
     connections::NetworkPeer,
     error::NetworkError,
-    network::{
-        NetworkData,
-        NetworkRawPacket,
-        RemoteSocket,
-    },
+    network::{NetworkData, NetworkRawPacket, RemoteSocket},
     network_node::NetworkNode,
     shared::{NetworkEvent, NetworkNodeEvent},
 };
@@ -34,7 +30,7 @@ mod serde_json;
 
 ///
 pub trait Transformer:
-'static + Send + Sync + Reflect + Resource + Default + GetTypeRegistration
+    'static + Send + Sync + Reflect + Resource + Default + GetTypeRegistration
 {
     const NAME: &'static str;
     fn encode<T: Serialize>(&self, data: &T) -> Result<Vec<u8>, NetworkError>;
@@ -42,14 +38,20 @@ pub trait Transformer:
 }
 
 pub trait NetworkMessageTransformer {
-    fn add_transformer<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer>(
+    fn add_transformer<
+        M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
+        T: Transformer,
+    >(
         &mut self,
         channel_id: ChannelId,
     ) -> &mut Self;
 }
 
 impl NetworkMessageTransformer for App {
-    fn add_transformer<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer>(
+    fn add_transformer<
+        M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
+        T: Transformer,
+    >(
         &mut self,
         channel_id: ChannelId,
     ) -> &mut Self {
@@ -69,8 +71,7 @@ impl NetworkMessageTransformer for App {
         let message_type_id = TypeId::of::<M>();
 
         let mut trans_for_channels = self.world.resource_mut::<TransformerForChannels>();
-        match trans_for_channels.0
-            .get_mut(&transform_type_id) {
+        match trans_for_channels.0.get_mut(&transform_type_id) {
             None => {
                 trans_for_channels.insert(transform_type_id, vec![channel_id]);
                 self.add_systems(PostUpdate, spawn_marker::<T>);
@@ -85,7 +86,9 @@ impl NetworkMessageTransformer for App {
         let mut trans_for_messages = self.world.resource_mut::<TransformerForMessages>();
         match trans_for_messages.get_mut(&transform_type_id) {
             None => {
-                trans_for_messages.0.insert(transform_type_id, vec![message_type_id]);
+                trans_for_messages
+                    .0
+                    .insert(transform_type_id, vec![message_type_id]);
                 self.add_systems(PreUpdate, decode_system::<M, T>);
                 self.add_systems(PostUpdate, encode_system::<M, T>);
             }
@@ -99,14 +102,12 @@ impl NetworkMessageTransformer for App {
         self.add_event::<NetworkData<M>>();
         self.add_event::<ChannelMessage<M>>();
 
-
         self
     }
 }
 
 pub(crate) type TransformerTypeId = TypeId;
 pub(crate) type MessageTypeId = TypeId;
-
 
 #[derive(Resource, Deref, DerefMut, Debug, Default)]
 pub(crate) struct TransformerForChannels(pub HashMap<TransformerTypeId, Vec<ChannelId>>);
@@ -126,8 +127,10 @@ pub struct TransformerRecvMarker {
     pub transformer_id: TypeId,
 }
 
-
-fn encode_system<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer + bevy::prelude::Resource>(
+fn encode_system<
+    M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
+    T: Transformer + bevy::prelude::Resource,
+>(
     mut message_ev: EventReader<ChannelMessage<M>>,
     transformer: Res<T>,
     query: Query<
@@ -146,11 +149,11 @@ fn encode_system<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static
                 && channel_marker.transformer_id == TypeId::of::<T>()
             {
                 trace!(
-                "{} {} Encoding message for {}",
-                channel_id,
-                T::NAME,
-                std::any::type_name::<M>(),
-            );
+                    "{} {} Encoding message for {}",
+                    channel_id,
+                    T::NAME,
+                    std::any::type_name::<M>(),
+                );
                 match transformer.encode(&message.message) {
                     Ok(bytes) => net_node
                         .send_message_channel
@@ -175,7 +178,10 @@ fn encode_system<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static
     }
 }
 
-fn decode_system<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer + bevy::prelude::Resource>(
+fn decode_system<
+    M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
+    T: Transformer + bevy::prelude::Resource,
+>(
     mut data_events: EventWriter<NetworkData<M>>,
     mut node_events: EventWriter<NetworkNodeEvent>,
     transformer: Res<T>,
@@ -198,7 +204,10 @@ fn decode_system<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static
     }
 }
 
-fn decode_packets<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer>(
+fn decode_packets<
+    M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
+    T: Transformer,
+>(
     entity: Entity,
     network_node: &NetworkNode,
     transformer: &T,
@@ -250,8 +259,12 @@ fn spawn_marker<T: Transformer>(
     for (entity, channel_id, option_remote) in q_channel.iter() {
         if let Some(channels) = transformer_index.0.get(&TypeId::of::<T>()) {
             if channels.contains(channel_id) {
-                trace!("{:?} Spawning marker for {} in {}", entity, T::NAME, channel_id);
-
+                trace!(
+                    "{:?} Spawning marker for {} in {}",
+                    entity,
+                    T::NAME,
+                    channel_id
+                );
 
                 if option_remote.is_some() {
                     commands.entity(entity).insert(TransformerSenderMarker {

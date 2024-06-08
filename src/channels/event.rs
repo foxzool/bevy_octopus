@@ -18,7 +18,6 @@ impl ChannelPacket {
     }
 }
 
-
 #[derive(Event)]
 pub struct ChannelMessage<T> {
     pub channel_id: ChannelId,

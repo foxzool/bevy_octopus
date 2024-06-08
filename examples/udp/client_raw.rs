@@ -13,26 +13,15 @@ fn main() {
     let mut app = App::new();
     shared_setup(&mut app);
 
-    app
-        .add_systems(Startup, setup_clients)
+    app.add_systems(Startup, setup_clients)
         .add_systems(
             Update,
-            (
-                send_raw_message_to_channel,
-                send_socket_packet,
-            )
+            (send_raw_message_to_channel, send_socket_packet)
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
-        .add_systems(
-            Update,
-            (
-                handle_raw_packet,
-                handle_node_events,
-            ),
-        )
+        .add_systems(Update, (handle_raw_packet, handle_node_events))
         .run();
 }
-
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
