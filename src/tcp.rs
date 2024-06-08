@@ -224,7 +224,7 @@ fn spawn_tcp_client(
                     handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
                 }
                 Err(err) => event_tx
-                    .send(NetworkEvent::Error(NetworkError::Connection(err)))
+                    .send(NetworkEvent::Error(NetworkError::Connection(err.to_string())))
                     .await
                     .expect("event channel has closed"),
             }

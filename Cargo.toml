@@ -92,6 +92,11 @@ name = "ws_server"
 path = "examples/ws/server.rs"
 required-features = ["websocket", "serde_json", "bincode"]
 
+[[example]]
+name = "ws_client"
+path = "examples/ws/client.rs"
+required-features = ["websocket", "serde_json", "bincode"]
+
 [profile.release]
 strip = true
 opt-level = "z"

@@ -19,7 +19,7 @@ pub enum NetworkError {
     Listen(io::Error),
     //
     #[error("An error occurred when trying to connect.")]
-    Connection(io::Error),
+    Connection(String),
     #[error("Failed to send data over a closed internal channel")]
     SendError,
     //

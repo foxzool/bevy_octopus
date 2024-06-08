@@ -1,6 +1,5 @@
-use bevy::app::{App, Plugin, PostUpdate};
-use bevy::log::{debug, trace};
-use bevy::prelude::{Added, Commands, Component, Entity, Query, Res, Without};
+use async_tungstenite::tokio::{connect_async, ConnectStream};
+use bevy::prelude::*;
 use bytes::Bytes;
 use futures::AsyncWriteExt;
 use kanal::{AsyncReceiver, AsyncSender};
@@ -13,17 +12,25 @@ use {
     ws_stream_tungstenite::*,
 };
 
+use crate::channels::ChannelId;
 use crate::connections::NetworkPeer;
 use crate::error::NetworkError;
 use crate::network::{LocalSocket, NetworkProtocol, NetworkRawPacket, RemoteSocket};
 use crate::network_node::NetworkNode;
-use crate::shared::{AsyncChannel, AsyncRuntime, NetworkEvent};
+use crate::shared::{AsyncChannel, AsyncRuntime, NetworkEvent, NetworkNodeEvent};
 
 pub struct WebsocketPlugin;
 
 impl Plugin for WebsocketPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, (spawn_websocket_server, spawn_websocket_client));
+        app.add_systems(
+            PostUpdate,
+            (
+                spawn_websocket_server,
+                spawn_websocket_client,
+                handle_endpoint,
+            ),
+        );
     }
 }
 
@@ -100,7 +107,7 @@ fn spawn_websocket_server(
     >,
 ) {
     for (e, protocol, local_addr) in q_ws_server.iter() {
-        if *protocol != NetworkProtocol::TCP {
+        if *protocol != NetworkProtocol::WS && *protocol != NetworkProtocol::WSS {
             continue;
         }
 
@@ -136,26 +143,30 @@ fn spawn_websocket_client(
     >,
 ) {
     for (e, protocol, remote_socket) in q_ws_client.iter() {
-        if *protocol != NetworkProtocol::TCP {
+        if *protocol != NetworkProtocol::WS && *protocol != NetworkProtocol::WSS {
             continue;
         }
 
         let new_net_node = NetworkNode::default();
+        let remote_addr = remote_socket.0.clone();
+        let url_str = if *protocol == NetworkProtocol::WSS {
+            format!("wss://{}", remote_addr.to_string())
+        } else {
+            format!("ws://{}", remote_addr.to_string())
+        };
 
-        let addr = remote_socket.0;
         let recv_tx = new_net_node.recv_message_channel.sender.clone_async();
         let message_rx = new_net_node.send_message_channel.receiver.clone_async();
         let event_tx = new_net_node.event_channel.sender.clone_async();
         let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
 
         rt.spawn(async move {
-            match TcpStream::connect(addr).await {
-                Ok(tcp_stream) => {
-                    tcp_stream
-                        .set_nodelay(true)
-                        .expect("set_nodelay call failed");
-                    crate::websocket::handle_connection(
-                        tcp_stream,
+            match connect_async(url_str).await {
+                Ok(stream) => {
+                    let ws_stream = WsStream::new(stream.0);
+                    handle_conn(
+                        ws_stream,
+                        remote_addr,
                         recv_tx,
                         message_rx,
                         event_tx,
@@ -164,7 +175,9 @@ fn spawn_websocket_client(
                     .await;
                 }
                 Err(err) => event_tx
-                    .send(NetworkEvent::Error(NetworkError::Connection(err)))
+                    .send(NetworkEvent::Error(NetworkError::Connection(
+                        err.to_string(),
+                    )))
                     .await
                     .expect("event channel has closed"),
             }
@@ -176,19 +189,14 @@ fn spawn_websocket_client(
     }
 }
 
-async fn handle_connection(
-    tcp_stream: TcpStream,
+async fn handle_conn(
+    ws_stream: WsStream<ConnectStream>,
+    addr: SocketAddr,
     recv_tx: AsyncSender<NetworkRawPacket>,
     message_rx: AsyncReceiver<NetworkRawPacket>,
     event_tx: AsyncSender<NetworkEvent>,
     shutdown_rx: AsyncReceiver<()>,
 ) {
-    let local_addr = tcp_stream.local_addr().unwrap();
-    let addr = tcp_stream.peer_addr().unwrap();
-    let socket = accept_async(TokioAdapter::new(tcp_stream))
-        .await
-        .expect("Failed TCP incoming connection");
-    let ws_stream = WsStream::new(socket);
     let (mut reader, mut writer) = ws_stream.split();
 
     let event_tx_clone = event_tx.clone();
@@ -206,7 +214,6 @@ async fn handle_connection(
                 }
                 Ok(n) => {
                     let data = buffer[..n].to_vec();
-                    trace!("{} read {} bytes from {}", local_addr, n, addr);
                     recv_tx
                         .send(NetworkRawPacket {
                             addr,
@@ -243,5 +250,63 @@ async fn handle_connection(
         }
         _ = read_task => (),
         _ = write_task => (),
+    }
+}
+
+fn handle_endpoint(
+    rt: Res<AsyncRuntime>,
+    mut commands: Commands,
+    q_ws_server: Query<(Entity, &WebsocketNode, &NetworkNode, &ChannelId)>,
+    mut node_events: EventWriter<NetworkNodeEvent>,
+) {
+    for (entity, ws_node, net_node, channel_id) in q_ws_server.iter() {
+        while let Ok(Some((tcp_stream, socket))) =
+            ws_node.new_connection_channel.receiver.try_recv()
+        {
+            let new_net_node = NetworkNode::default();
+            // Create a new entity for the client
+            let child_tcp_client = commands.spawn_empty().id();
+            let recv_tx = net_node.recv_message_channel.sender.clone_async();
+            let message_rx = new_net_node.send_message_channel.receiver.clone_async();
+            let event_tx = new_net_node.event_channel.sender.clone_async();
+            let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
+
+            rt.spawn(async move {
+                let s = accept_async(TokioAdapter::new(tcp_stream))
+                    .await
+                    .expect("Failed TCP incoming connection");
+                let ws_stream = WsStream::new(s);
+                handle_conn(
+                    ws_stream,
+                    socket,
+                    recv_tx,
+                    message_rx,
+                    event_tx,
+                    shutdown_rx,
+                )
+                .await;
+            });
+            let peer = NetworkPeer {};
+
+            debug!(
+                "new TCP client {:?} connected {:?}",
+                socket, child_tcp_client
+            );
+            commands.entity(child_tcp_client).insert((
+                RemoteSocket(socket),
+                NetworkProtocol::TCP,
+                new_net_node,
+                *channel_id,
+                peer,
+            ));
+
+            // Add the client to the server's children
+            commands.entity(entity).add_child(child_tcp_client);
+
+            node_events.send(NetworkNodeEvent {
+                node: entity,
+                event: NetworkEvent::Connected,
+            });
+        }
     }
 }

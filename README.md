@@ -23,7 +23,7 @@ multicast. [example](https://github.com/foxzool/bevy_octopus/blob/main/examples/
 
 - [x] UDP
 - [x] TCP
-- [ ] WebSocket
+- [x] WebSocket
 - [ ] SSL
 - [ ] WebSocket SSL
 
