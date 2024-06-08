@@ -44,7 +44,7 @@ impl NetworkNode {
                     .expect("Error channel has closed");
             }
             Some(connect_to) => {
-                let addr = connect_to.peer_addr();
+                let addr = connect_to.to_string();
                 self.send_message_channel
                     .sender
                     .try_send(NetworkRawPacket {
@@ -61,7 +61,7 @@ impl NetworkNode {
         self.send_message_channel
             .sender
             .try_send(NetworkRawPacket {
-                addr: remote_addr,
+                addr: remote_addr.to_string(),
                 bytes: Bytes::copy_from_slice(bytes),
             })
             .expect("Message channel has closed.");

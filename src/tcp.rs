@@ -117,7 +117,7 @@ async fn handle_connection(
                     trace!("{} read {} bytes from {}", local_addr, n, addr);
                     recv_tx
                         .send(NetworkRawPacket {
-                            addr,
+                            addr: addr.to_string(),
                             bytes: Bytes::copy_from_slice(&data),
                         })
                         .await

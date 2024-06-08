@@ -4,13 +4,13 @@ use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 use bytes::Bytes;
 
-use bevy_octopus::connections::NetworkPeer;
-use bevy_octopus::prelude::{ChannelId, ChannelPacket, ConnectTo, ListenTo};
 use bevy_octopus::{
     network::NetworkRawPacket,
     network_node::NetworkNode,
     transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };
+use bevy_octopus::connections::NetworkPeer;
+use bevy_octopus::prelude::{ChannelId, ChannelPacket, ConnectTo, ListenTo};
 
 use crate::common::*;
 
@@ -66,7 +66,7 @@ fn broadcast_message(
                 .send_message_channel
                 .sender
                 .try_send(NetworkRawPacket {
-                    addr: connect_to.peer_addr(),
+                    addr: connect_to.to_string(),
                     bytes: Bytes::from_static(message),
                 })
                 .expect("Message channel has closed.");

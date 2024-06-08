@@ -1,5 +1,5 @@
-use std::net::ToSocketAddrs;
-use std::{fmt::Debug, net::SocketAddr, ops::Deref};
+use std::{fmt::Debug, ops::Deref};
+use std::net::{SocketAddr, ToSocketAddrs};
 
 use bevy::prelude::{Component, Deref, Entity, Event};
 use bytes::Bytes;
@@ -30,7 +30,7 @@ impl<T> NetworkData<T> {
 
 /// [`NetworkRawPacket`]s are raw packets that are sent over the network.
 pub struct NetworkRawPacket {
-    pub addr: SocketAddr,
+    pub addr: String,
     pub bytes: Bytes,
 }
 

@@ -1,16 +1,14 @@
-use async_tungstenite::tokio::{connect_async, ConnectStream};
+use async_std::net::{TcpListener, TcpStream};
+use async_std::task;
+use async_tungstenite::async_std::connect_async;
+use async_tungstenite::tungstenite::Message;
 use bevy::prelude::*;
 use bytes::Bytes;
-use futures::AsyncWriteExt;
+use futures::pin_mut;
+use futures::prelude::*;
 use kanal::{AsyncReceiver, AsyncSender};
 
-use {
-    async_tungstenite::{accept_async, tokio::TokioAdapter},
-    futures::AsyncReadExt,
-    std::net::SocketAddr,
-    tokio::net::{TcpListener, TcpStream},
-    ws_stream_tungstenite::*,
-};
+use {async_tungstenite::accept_async, std::net::SocketAddr};
 
 use crate::channels::ChannelId;
 use crate::connections::NetworkPeer;
@@ -18,7 +16,7 @@ use crate::error::NetworkError;
 use crate::network::{ConnectTo, NetworkRawPacket};
 use crate::network_node::NetworkNode;
 use crate::prelude::ListenTo;
-use crate::shared::{AsyncChannel, AsyncRuntime, NetworkEvent, NetworkNodeEvent};
+use crate::shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent};
 
 pub struct WebsocketPlugin;
 
@@ -63,7 +61,15 @@ impl WebsocketNode {
             let listener = TcpListener::bind(addr).await?;
 
             debug!("Websocket Server listening on {}", addr);
-
+            while let Ok((tcp_stream, peer_addr)) = listener.accept().await {
+                tcp_stream
+                    .set_nodelay(true)
+                    .expect("set_nodelay call failed");
+                new_connection_tx
+                    .send((tcp_stream, peer_addr))
+                    .await
+                    .unwrap();
+            }
             loop {
                 tokio::select! {
                     // handle shutdown signal
@@ -89,7 +95,7 @@ impl WebsocketNode {
             Ok::<(), NetworkError>(())
         };
 
-        tokio::spawn(server);
+        async_std::task::spawn(server);
 
         if let Ok(()) = shutdown_rx.recv().await {
             println!("Shutting down TCP server...");
@@ -101,7 +107,6 @@ impl WebsocketNode {
 
 fn spawn_websocket_server(
     mut commands: Commands,
-    rt: Res<AsyncRuntime>,
     q_ws_server: Query<(Entity, &ListenTo), (Added<ListenTo>, Without<NetworkNode>)>,
 ) {
     for (e, listen_to) in q_ws_server.iter() {
@@ -116,7 +121,7 @@ fn spawn_websocket_server(
         let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
         let tcp_node = WebsocketNode::new();
         let new_connection_tx = tcp_node.new_connection_channel.sender.clone_async();
-        rt.spawn(async move {
+        async_std::task::spawn(async move {
             match WebsocketNode::listen(local_addr, new_connection_tx, shutdown_clone).await {
                 Ok(_) => {}
                 Err(err) => {
@@ -133,7 +138,6 @@ fn spawn_websocket_server(
 }
 
 fn spawn_websocket_client(
-    rt: Res<AsyncRuntime>,
     mut commands: Commands,
     q_ws_client: Query<(Entity, &ConnectTo), (Added<ConnectTo>, Without<NetworkNode>)>,
 ) {
@@ -143,7 +147,7 @@ fn spawn_websocket_client(
         }
 
         let new_net_node = NetworkNode::default();
-        let remote_addr = connect_to.peer_addr();
+        let remote_addr = connect_to.to_string();
 
         let recv_tx = new_net_node.recv_message_channel.sender.clone_async();
         let message_rx = new_net_node.send_message_channel.receiver.clone_async();
@@ -151,20 +155,24 @@ fn spawn_websocket_client(
         let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
 
         let url_str = connect_to.0.to_string();
-        rt.spawn(async move {
-            match connect_async(&url_str).await {
-                Ok(stream) => {
-                    let ws_stream = WsStream::new(stream.0);
-                    handle_conn(
-                        ws_stream,
-                        remote_addr,
-                        recv_tx,
-                        message_rx,
-                        event_tx,
-                        shutdown_rx,
-                    )
-                    .await;
-                }
+        async_std::task::spawn(async move {
+            let tasks = vec![
+                task::spawn(handle_client_conn(
+                    url_str,
+                    remote_addr,
+                    recv_tx,
+                    message_rx,
+                    event_tx.clone(),
+                )),
+                task::spawn(async move {
+                    while shutdown_rx.recv().await.is_ok() {
+                        break;
+                    }
+                    Ok(())
+                }),
+            ];
+            match future::try_join_all(tasks).await {
+                Ok(_) => {}
                 Err(err) => event_tx
                     .send(NetworkEvent::Error(NetworkError::Connection(
                         err.to_string(),
@@ -180,51 +188,34 @@ fn spawn_websocket_client(
     }
 }
 
-async fn handle_conn(
-    ws_stream: WsStream<ConnectStream>,
-    addr: SocketAddr,
+async fn handle_client_conn(
+    url: String,
+    addr: String,
     recv_tx: AsyncSender<NetworkRawPacket>,
     message_rx: AsyncReceiver<NetworkRawPacket>,
     event_tx: AsyncSender<NetworkEvent>,
-    shutdown_rx: AsyncReceiver<()>,
-) {
-    let (mut reader, mut writer) = ws_stream.split();
+) -> Result<(), NetworkError> {
+    let ws_stream = connect_async(url.clone()).await?;
 
-    let event_tx_clone = event_tx.clone();
-    let read_task = async {
-        let mut buffer = vec![0; 1024];
+    let (mut writer, read) = ws_stream.0.split();
 
-        loop {
-            match reader.read(&mut buffer).await {
-                Ok(0) => {
-                    event_tx_clone
-                        .send(NetworkEvent::Disconnected)
-                        .await
-                        .expect("ws event channel has closed");
-                    break;
-                }
-                Ok(n) => {
-                    let data = buffer[..n].to_vec();
-                    recv_tx
-                        .send(NetworkRawPacket {
-                            addr,
-                            bytes: Bytes::copy_from_slice(&data),
-                        })
-                        .await
-                        .unwrap();
-                }
-                Err(e) => {
-                    eprintln!("Failed to read data from socket: {}", e);
-                    break;
-                }
-            }
-        }
+    let ws_to_output = {
+        read.for_each(|message| async {
+            let data = message.unwrap().into_data();
+            recv_tx
+                .send(NetworkRawPacket {
+                    addr: addr.clone(),
+                    bytes: Bytes::copy_from_slice(&data),
+                })
+                .await
+                .unwrap();
+        })
     };
 
     let write_task = async move {
         while let Ok(data) = message_rx.recv().await {
             // trace!("write {} bytes to {} ", data.bytes.len(), addr);
-            if let Err(e) = writer.write_all(&data.bytes).await {
+            if let Err(e) = writer.send(Message::binary(data.bytes)).await {
                 eprintln!("Failed to write data to  ws socket: {}", e);
                 event_tx
                     .send(NetworkEvent::Error(NetworkError::SendError))
@@ -235,17 +226,55 @@ async fn handle_conn(
         }
     };
 
-    tokio::select! {
-        Ok(_) = shutdown_rx.recv() => {
-            debug!("shutdown connection");
+    pin_mut!(write_task, ws_to_output);
+    future::select(write_task, ws_to_output).await;
+
+    Ok(())
+}
+async fn server_handle_conn(
+    tcp_stream: TcpStream,
+    addr: String,
+    recv_tx: AsyncSender<NetworkRawPacket>,
+    message_rx: AsyncReceiver<NetworkRawPacket>,
+    event_tx: AsyncSender<NetworkEvent>,
+) {
+    let ws_stream = accept_async(tcp_stream)
+        .await
+        .expect("Failed TCP incoming connection");
+    let (mut writer, read) = ws_stream.split();
+
+    let ws_to_output = {
+        read.for_each(|message| async {
+            let data = message.unwrap().into_data();
+            recv_tx
+                .send(NetworkRawPacket {
+                    addr: addr.clone(),
+                    bytes: Bytes::copy_from_slice(&data),
+                })
+                .await
+                .unwrap();
+        })
+    };
+
+    let write_task = async move {
+        while let Ok(data) = message_rx.recv().await {
+            // trace!("write {} bytes to {} ", data.bytes.len(), addr);
+            if let Err(e) = writer.send(Message::binary(data.bytes)).await {
+                eprintln!("Failed to write data to  ws socket: {}", e);
+                event_tx
+                    .send(NetworkEvent::Error(NetworkError::SendError))
+                    .await
+                    .unwrap();
+                break;
+            }
         }
-        _ = read_task => (),
-        _ = write_task => (),
-    }
+    };
+
+    pin_mut!(write_task, ws_to_output);
+    future::select(write_task, ws_to_output).await;
 }
 
 fn handle_endpoint(
-    rt: Res<AsyncRuntime>,
     mut commands: Commands,
     q_ws_server: Query<(Entity, &WebsocketNode, &NetworkNode, &ChannelId)>,
     mut node_events: EventWriter<NetworkNodeEvent>,
@@ -262,21 +291,25 @@ fn handle_endpoint(
             let event_tx = new_net_node.event_channel.sender.clone_async();
             let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
 
-            rt.spawn(async move {
-                let s = accept_async(TokioAdapter::new(tcp_stream))
-                    .await
-                    .expect("Failed TCP incoming connection");
-                let ws_stream = WsStream::new(s);
-                handle_conn(
-                    ws_stream,
-                    socket,
-                    recv_tx,
-                    message_rx,
-                    event_tx,
-                    shutdown_rx,
-                )
-                .await;
+            task::spawn(async move {
+                let tasks = vec![
+                    task::spawn(server_handle_conn(
+                        tcp_stream,
+                        socket.to_string(),
+                        recv_tx,
+                        message_rx,
+                        event_tx,
+                    )),
+                    task::spawn(async move {
+                        while shutdown_rx.recv().await.is_ok() {
+                            break;
+                        }
+                    }),
+                ];
+
+                future::join_all(tasks).await
             });
+
             let peer = NetworkPeer {};
 
             debug!(

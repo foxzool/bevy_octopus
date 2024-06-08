@@ -159,7 +159,7 @@ fn encode_system<
                         .send_message_channel
                         .sender
                         .send(NetworkRawPacket {
-                            addr: connect_to.peer_addr(),
+                            addr: connect_to.to_string(),
                             bytes: bytes.into(),
                         })
                         .expect("send channel has closed"),

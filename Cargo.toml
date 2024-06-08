@@ -18,12 +18,13 @@ documentation = "https://docs.rs/bevy_octopus"
 default = ["udp", "tcp"]
 udp = []
 tcp = []
-websocket = ["ws_stream_tungstenite", "async-tungstenite"]
+websocket = ["async-tungstenite", "async-std"]
 inspect = ["bevy-inspector-egui"]
 
 
 
 [dependencies]
+anyhow = { version = "1.0.42" }
 bevy = { version = "0.13.2", default-features = false, features = [] }
 bytes = "1.6.0"
 kanal = "0.1.0-pre8"
@@ -36,9 +37,8 @@ url = "0.5.10"
 bincode = { version = "1.3.3", optional = true }
 serde_json = { version = "1.0.68", optional = true }
 bevy-inspector-egui = { version = "0.24.0", optional = true }
-ws_stream_tungstenite = { version = "0.13", features = ["tokio_io"], optional = true }
-async-tungstenite = { version = "^0.25", features = ["tokio-runtime"], optional = true }
-
+async-tungstenite = { version = "^0.25", features = ["async-std-runtime"], optional = true }
+async-std = { version = "1.10.0", optional = true }
 
 
 [dev-dependencies]

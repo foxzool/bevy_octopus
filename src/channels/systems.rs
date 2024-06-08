@@ -19,7 +19,7 @@ pub(crate) fn send_channel_message_system(
                         .sender
                         .send(NetworkRawPacket {
                             bytes: channel_ev.bytes.clone(),
-                            addr: connect_to.peer_addr(),
+                            addr: connect_to.to_string(),
                         })
                         .expect("send message channel has closed");
                 }

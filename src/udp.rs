@@ -46,7 +46,7 @@ async fn recv_loop(
                 );
                 recv_tx
                     .send(NetworkRawPacket {
-                        addr: from_addr,
+                        addr: from_addr.to_string(),
                         bytes,
                     })
                     .await
