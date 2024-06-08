@@ -1,4 +1,4 @@
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use bevy::prelude::*;
@@ -6,11 +6,11 @@ use bytes::Bytes;
 use kanal::{AsyncReceiver, AsyncSender};
 use tokio::net::UdpSocket;
 
-use crate::network::{ConnectTo, ListenTo};
 use crate::{
     connections::NetworkPeer, error::NetworkError, network::NetworkRawPacket,
     network_node::NetworkNode, shared::AsyncRuntime, shared::NetworkEvent,
 };
+use crate::network::{ConnectTo, ListenTo};
 
 pub struct UdpPlugin;
 
@@ -45,10 +45,7 @@ async fn recv_loop(
                     from_addr
                 );
                 recv_tx
-                    .send(NetworkRawPacket {
-                        addr: from_addr.to_string(),
-                        bytes,
-                    })
+                    .send(NetworkRawPacket::new(from_addr, bytes))
                     .await
                     .expect("Message channel has closed.");
             }
@@ -79,8 +76,11 @@ async fn send_loop(
                 packet.bytes.len(),
                 packet.addr,
             );
+            let arr: Vec<&str> = packet.addr.split("//").collect();
+            let s = arr[1].split('/').collect::<Vec<&str>>()[0];
+            let addr = s.to_socket_addrs().unwrap().next().unwrap();
 
-            if let Err(_e) = socket.send_to(packet.bytes.as_ref(), packet.addr).await {
+            if let Err(_e) = socket.send_to(packet.bytes.as_ref(), addr).await {
                 event_tx
                     .send(NetworkEvent::Error(NetworkError::SendError))
                     .await

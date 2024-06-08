@@ -47,9 +47,30 @@ impl NetworkNode {
                 let addr = connect_to.to_string();
                 self.send_message_channel
                     .sender
+                    .try_send(NetworkRawPacket::new(addr, Bytes::copy_from_slice(bytes)))
+                    .expect("Message channel has closed.");
+            }
+        }
+    }
+
+    #[cfg(feature = "websocket")]
+    pub fn send_text(&self, text: String) {
+        match self.connect_to.as_ref() {
+            None => {
+                println!("send error");
+                self.event_channel
+                    .sender
+                    .try_send(NetworkEvent::Error(NetworkError::SendError))
+                    .expect("Error channel has closed");
+            }
+            Some(connect_to) => {
+                let addr = connect_to.to_string();
+                self.send_message_channel
+                    .sender
                     .try_send(NetworkRawPacket {
                         addr,
-                        bytes: Bytes::copy_from_slice(bytes),
+                        bytes: Bytes::new(),
+                        text: Some(text),
                     })
                     .expect("Message channel has closed.");
             }
@@ -60,10 +81,10 @@ impl NetworkNode {
         let remote_addr = addr.to_socket_addrs().unwrap().next().unwrap();
         self.send_message_channel
             .sender
-            .try_send(NetworkRawPacket {
-                addr: remote_addr.to_string(),
-                bytes: Bytes::copy_from_slice(bytes),
-            })
+            .try_send(NetworkRawPacket::new(
+                remote_addr,
+                Bytes::copy_from_slice(bytes),
+            ))
             .expect("Message channel has closed.");
     }
 

@@ -140,6 +140,7 @@ fn spawn_websocket_server(
 fn spawn_websocket_client(
     mut commands: Commands,
     q_ws_client: Query<(Entity, &ConnectTo), (Added<ConnectTo>, Without<NetworkNode>)>,
+    mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
     for (e, connect_to) in q_ws_client.iter() {
         if !["ws", "wss"].contains(&connect_to.scheme.as_str()) {
@@ -185,6 +186,11 @@ fn spawn_websocket_client(
         let peer = NetworkPeer {};
 
         commands.entity(e).insert((new_net_node, peer));
+
+        node_events.send(NetworkNodeEvent {
+            node: e,
+            event: NetworkEvent::Connected,
+        });
     }
 }
 
@@ -201,21 +207,31 @@ async fn handle_client_conn(
 
     let ws_to_output = {
         read.for_each(|message| async {
-            let data = message?.into_data();
-            recv_tx
-                .send(NetworkRawPacket {
-                    addr: addr.clone(),
-                    bytes: Bytes::copy_from_slice(&data),
-                })
-                .await
-                .unwrap();
+            match message {
+                Ok(message) => {
+                    let data = message.into_data();
+                    recv_tx
+                        .send(NetworkRawPacket::new(addr.clone(), Bytes::from_iter(data)))
+                        .await
+                        .unwrap();
+                }
+                Err(err) => {
+                    error!("{} websocket error {:?}", addr, err);
+                }
+            }
         })
     };
 
     let write_task = async move {
         while let Ok(data) = message_rx.recv().await {
             // trace!("write {} bytes to {} ", data.bytes.len(), addr);
-            if let Err(e) = writer.send(Message::binary(data.bytes)).await {
+            let message = if let Some(text) = data.text {
+                Message::Text(text)
+            } else {
+                Message::binary(data.bytes)
+            };
+
+            if let Err(e) = writer.send(message).await {
                 eprintln!("Failed to write data to  ws socket: {}", e);
                 event_tx
                     .send(NetworkEvent::Error(NetworkError::SendError))
@@ -246,21 +262,29 @@ async fn server_handle_conn(
 
     let ws_to_output = {
         read.for_each(|message| async {
-            let data = message.unwrap().into_data();
-            recv_tx
-                .send(NetworkRawPacket {
-                    addr: addr.clone(),
-                    bytes: Bytes::copy_from_slice(&data),
-                })
-                .await
-                .unwrap();
+            match message {
+                Ok(message) => {
+                    let data = message.into_data();
+                    recv_tx
+                        .send(NetworkRawPacket::new(addr.clone(), Bytes::from_iter(data)))
+                        .await
+                        .unwrap();
+                }
+                Err(err) => {
+                    error!("{} websocket error {:?}", addr, err);
+                }
+            }
         })
     };
 
     let write_task = async move {
         while let Ok(data) = message_rx.recv().await {
-            // trace!("write {} bytes to {} ", data.bytes.len(), addr);
-            if let Err(e) = writer.send(Message::binary(data.bytes)).await {
+            let message = if let Some(text) = data.text {
+                Message::Text(text)
+            } else {
+                Message::binary(data.bytes)
+            };
+            if let Err(e) = writer.send(message).await {
                 eprintln!("Failed to write data to  ws socket: {}", e);
                 event_tx
                     .send(NetworkEvent::Error(NetworkError::SendError))

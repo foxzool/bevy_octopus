@@ -116,10 +116,7 @@ async fn handle_connection(
                     let data = buffer[..n].to_vec();
                     trace!("{} read {} bytes from {}", local_addr, n, addr);
                     recv_tx
-                        .send(NetworkRawPacket {
-                            addr: addr.to_string(),
-                            bytes: Bytes::copy_from_slice(&data),
-                        })
+                        .send(NetworkRawPacket::new(addr, Bytes::from_iter(data)))
                         .await
                         .unwrap();
                 }

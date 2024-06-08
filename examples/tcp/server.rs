@@ -4,14 +4,14 @@ use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 use bytes::Bytes;
 
-use bevy_octopus::connections::NetworkPeer;
-use bevy_octopus::network::{ConnectTo, ListenTo};
-use bevy_octopus::prelude::{ChannelId, ChannelPacket};
 use bevy_octopus::{
     network::NetworkRawPacket,
     network_node::NetworkNode,
     transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };
+use bevy_octopus::connections::NetworkPeer;
+use bevy_octopus::network::{ConnectTo, ListenTo};
+use bevy_octopus::prelude::{ChannelId, ChannelPacket};
 
 use crate::common::*;
 
@@ -39,9 +39,9 @@ fn main() {
 }
 
 fn setup_server(mut commands: Commands) {
-    commands.spawn((RAW_CHANNEL, ListenTo::new("tcp://0.0.0.0:6003")));
-    commands.spawn((JSON_CHANNEL, ListenTo::new("tcp://0.0.0.0:6004")));
-    commands.spawn((BINCODE_CHANNEL, ListenTo::new("tcp://0.0.0.0:6005")));
+    commands.spawn((RAW_CHANNEL, ListenTo::new("tcp://0.0.0.0:5003")));
+    commands.spawn((JSON_CHANNEL, ListenTo::new("tcp://0.0.0.0:5004")));
+    commands.spawn((BINCODE_CHANNEL, ListenTo::new("tcp://0.0.0.0:5005")));
 }
 
 /// broadcast message to all connected clients in channel
@@ -66,10 +66,10 @@ fn broadcast_message(
             child_net_node
                 .send_message_channel
                 .sender
-                .try_send(NetworkRawPacket {
-                    addr: connect_to.peer_addr(),
-                    bytes: Bytes::from_static(message),
-                })
+                .try_send(NetworkRawPacket::new(
+                    connect_to.to_string(),
+                    Bytes::from_static(message),
+                ))
                 .expect("Message channel has closed.");
         }
     }

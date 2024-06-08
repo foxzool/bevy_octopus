@@ -65,10 +65,10 @@ fn broadcast_message(
             child_net_node
                 .send_message_channel
                 .sender
-                .try_send(NetworkRawPacket {
-                    addr: connect_to.to_string(),
-                    bytes: Bytes::from_static(message),
-                })
+                .try_send(NetworkRawPacket::new(
+                    connect_to.to_string(),
+                    Bytes::from_static(message),
+                ))
                 .expect("Message channel has closed.");
         }
     }

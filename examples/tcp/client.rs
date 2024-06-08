@@ -37,7 +37,7 @@ fn main() {
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:38551")));
-    commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:6003")));
-    commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:6004")));
-    commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:6005")));
+    commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:5003")));
+    commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:5004")));
+    commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:5005")));
 }

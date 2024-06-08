@@ -20,6 +20,8 @@ pub(crate) fn send_channel_message_system(
                         .send(NetworkRawPacket {
                             bytes: channel_ev.bytes.clone(),
                             addr: connect_to.to_string(),
+                            #[cfg(feature = "websocket")]
+                            text: channel_ev.text.clone(),
                         })
                         .expect("send message channel has closed");
                 }

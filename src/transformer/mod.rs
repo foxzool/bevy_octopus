@@ -5,6 +5,7 @@ use std::ops::Deref;
 
 use bevy::prelude::*;
 use bevy::reflect::GetTypeRegistration;
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 
@@ -158,10 +159,10 @@ fn encode_system<
                     Ok(bytes) => net_node
                         .send_message_channel
                         .sender
-                        .send(NetworkRawPacket {
-                            addr: connect_to.to_string(),
-                            bytes: bytes.into(),
-                        })
+                        .send(NetworkRawPacket::new(
+                            connect_to.to_string(),
+                            Bytes::from_iter(bytes),
+                        ))
                         .expect("send channel has closed"),
                     Err(e) => {
                         net_node

@@ -7,6 +7,7 @@ use crate::channels::ChannelId;
 pub struct ChannelPacket {
     pub channel_id: ChannelId,
     pub bytes: Bytes,
+    pub text: Option<String>,
 }
 
 impl ChannelPacket {
@@ -14,6 +15,7 @@ impl ChannelPacket {
         Self {
             channel_id,
             bytes: Bytes::copy_from_slice(bytes),
+            text: None,
         }
     }
 }

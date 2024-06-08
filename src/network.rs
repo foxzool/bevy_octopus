@@ -32,6 +32,19 @@ impl<T> NetworkData<T> {
 pub struct NetworkRawPacket {
     pub addr: String,
     pub bytes: Bytes,
+    #[cfg(feature = "websocket")]
+    pub text: Option<String>,
+}
+
+impl NetworkRawPacket {
+    pub fn new(addr: impl ToString, bytes: Bytes) -> NetworkRawPacket {
+        NetworkRawPacket {
+            addr: addr.to_string(),
+            bytes,
+            #[cfg(feature = "websocket")]
+            text: None,
+        }
+    }
 }
 
 impl Debug for NetworkRawPacket {
