@@ -41,7 +41,7 @@ fn send_socket_packet(q_client: Query<&NetworkNode, With<ConnectTo>>) {
     for client in q_client.iter() {
         client.send_to(
             "I can send message to specify socket".as_bytes(),
-            "127.0.0.1:6001",
+            "udp://127.0.0.1:6001",
         );
     }
 }

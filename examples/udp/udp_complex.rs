@@ -3,12 +3,12 @@ use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
-use bevy_octopus::channels::ChannelId;
-use bevy_octopus::network::{ConnectTo, ListenTo};
 use bevy_octopus::{
     network_node::NetworkNode,
     udp::{MulticastV4Setting, UdpBroadcast},
 };
+use bevy_octopus::channels::ChannelId;
+use bevy_octopus::network::{ConnectTo, ListenTo};
 
 use crate::common::*;
 
@@ -90,7 +90,7 @@ fn send_broadcast_messages(
         } else {
             net_node.send_to(
                 format!("broadcast message from {} with send_to", local_addr.0).as_bytes(),
-                "255.255.255.255:60002",
+                "udp://255.255.255.255:60002",
             );
         }
     }
@@ -105,7 +105,7 @@ fn send_multicast_messages(
         } else {
             net_node.send_to(
                 format!("multicast message from {}", local_addr.0).as_bytes(),
-                "239.1.2.3:60003",
+                "udp://239.1.2.3:60003",
             );
         }
     }

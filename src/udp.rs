@@ -1,14 +1,16 @@
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
+use async_std::net::UdpSocket;
+use async_std::task;
 use bevy::prelude::*;
 use bytes::Bytes;
+use futures::future;
 use kanal::{AsyncReceiver, AsyncSender};
-use tokio::net::UdpSocket;
 
 use crate::{
     connections::NetworkPeer, error::NetworkError, network::NetworkRawPacket,
-    network_node::NetworkNode, shared::AsyncRuntime, shared::NetworkEvent,
+    network_node::NetworkNode, shared::NetworkEvent,
 };
 use crate::network::{ConnectTo, ListenTo};
 
@@ -29,9 +31,8 @@ pub struct UdpBroadcast;
 async fn recv_loop(
     socket: Arc<UdpSocket>,
     recv_tx: AsyncSender<NetworkRawPacket>,
-    event_tx: AsyncSender<NetworkEvent>,
     max_packet_size: usize,
-) {
+) -> Result<(), NetworkError> {
     let mut buf: Vec<u8> = vec![0; max_packet_size];
 
     loop {
@@ -53,12 +54,7 @@ async fn recv_loop(
             Err(ref e) if e.kind() == std::io::ErrorKind::ConnectionReset => {
                 // ignore for windows 10054 error
             }
-            Err(e) => {
-                event_tx
-                    .send(NetworkEvent::Error(NetworkError::Listen(e)))
-                    .await
-                    .expect("Error channel has closed.");
-            }
+            Err(e) => return Err(NetworkError::Listen(e)),
         }
     }
 }
@@ -66,28 +62,22 @@ async fn recv_loop(
 async fn send_loop(
     socket: Arc<UdpSocket>,
     message_receiver: AsyncReceiver<NetworkRawPacket>,
-    event_tx: AsyncSender<NetworkEvent>,
-) {
-    loop {
-        while let Ok(packet) = message_receiver.recv().await {
-            trace!(
-                "{} Sending {} bytes to {:?}",
-                socket.local_addr().unwrap(),
-                packet.bytes.len(),
-                packet.addr,
-            );
-            let arr: Vec<&str> = packet.addr.split("//").collect();
-            let s = arr[1].split('/').collect::<Vec<&str>>()[0];
-            let addr = s.to_socket_addrs().unwrap().next().unwrap();
+) -> Result<(), NetworkError> {
+    while let Ok(packet) = message_receiver.recv().await {
+        trace!(
+            "{} Sending {} bytes to {:?}",
+            socket.local_addr().unwrap(),
+            packet.bytes.len(),
+            packet.addr,
+        );
+        let arr: Vec<&str> = packet.addr.split("//").collect();
+        let s = arr[1].split('/').collect::<Vec<&str>>()[0];
+        let addr = s.to_socket_addrs().unwrap().next().unwrap();
 
-            if let Err(_e) = socket.send_to(packet.bytes.as_ref(), addr).await {
-                event_tx
-                    .send(NetworkEvent::Error(NetworkError::SendError))
-                    .await
-                    .expect("Error channel has closed.");
-            }
-        }
+        socket.send_to(packet.bytes.as_ref(), addr).await?;
     }
+
+    Ok(())
 }
 
 #[derive(Component, Clone)]
@@ -122,7 +112,6 @@ impl MulticastV6Setting {
 
 #[allow(clippy::type_complexity)]
 fn spawn_udp_socket(
-    rt: Res<AsyncRuntime>,
     mut commands: Commands,
     q_udp: Query<
         (
@@ -167,19 +156,35 @@ fn spawn_udp_socket(
         let event_tx = net_node.event_channel.sender.clone_async();
         let shutdown_rx = net_node.shutdown_channel.receiver.clone_async();
 
-        rt.spawn(async move {
-            listen(
-                listener_socket,
-                remote_addr,
-                has_broadcast,
-                opt_v4,
-                opt_v6,
-                recv_tx,
-                send_rx,
-                event_tx,
-                shutdown_rx,
-            )
-            .await
+        task::spawn(async move {
+            let tasks = vec![
+                task::spawn(listen(
+                    listener_socket,
+                    remote_addr,
+                    has_broadcast,
+                    opt_v4,
+                    opt_v6,
+                    recv_tx,
+                    send_rx,
+                    event_tx.clone(),
+                )),
+                task::spawn(async move {
+                    match shutdown_rx.recv().await {
+                        Ok(_) => Ok(()),
+                        Err(e) => Err(NetworkError::ReceiveError(e)),
+                    }
+                }),
+            ];
+
+            match future::try_join_all(tasks).await {
+                Ok(_) => {}
+                Err(err) => event_tx
+                    .send(NetworkEvent::Error(NetworkError::Connection(
+                        err.to_string(),
+                    )))
+                    .await
+                    .expect("event channel has closed"),
+            }
         });
 
         if remote_addr.is_some() {
@@ -201,8 +206,7 @@ async fn listen(
     recv_tx: AsyncSender<NetworkRawPacket>,
     send_rx: AsyncReceiver<NetworkRawPacket>,
     event_tx: AsyncSender<NetworkEvent>,
-    shutdown_rx: AsyncReceiver<()>,
-) -> Result<(), std::io::Error> {
+) -> Result<(), NetworkError> {
     let socket = Arc::new(UdpSocket::bind(listener_socket).await?);
 
     if has_broadcast {
@@ -225,40 +229,26 @@ async fn listen(
         );
         socket.join_multicast_v6(&multi_v6.multi_addr, multi_v6.interface)?;
     }
-    let shutdown_rx_clone = shutdown_rx.clone();
-    let server = async move {
-        info!(
-            "UDP listening on {} peer: {:?}",
-            socket.local_addr().unwrap(),
-            socket.peer_addr().ok()
-        );
 
-        let event_tx_clone = event_tx.clone();
+    info!(
+        "UDP listening on {} peer: {:?}",
+        socket.local_addr().unwrap(),
+        socket.peer_addr().ok()
+    );
 
-        tokio::select! {
-            // handle shutdown signal
-            _ = shutdown_rx_clone.recv() => {
+    let tasks = vec![
+        task::spawn(send_loop(socket.clone(), send_rx)),
+        task::spawn(recv_loop(socket, recv_tx, 65_507)),
+    ];
 
-            }
-            // process new connection
-            _ = send_loop(socket.clone(), send_rx, event_tx_clone) => {
-
-            }
-
-            _ = recv_loop(socket, recv_tx, event_tx, 65_507) => {
-
-            }
-        }
-
-        println!("over");
-
-        Ok::<(), NetworkError>(())
-    };
-
-    tokio::spawn(server);
-
-    if let Ok(()) = shutdown_rx.recv().await {
-        println!("Shutting down TCP server...");
+    match future::try_join_all(tasks).await {
+        Ok(_) => {}
+        Err(err) => event_tx
+            .send(NetworkEvent::Error(NetworkError::Connection(
+                err.to_string(),
+            )))
+            .await
+            .expect("event channel has closed"),
     }
 
     Ok(())

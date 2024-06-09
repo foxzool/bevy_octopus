@@ -30,6 +30,10 @@ pub enum NetworkError {
     DeserializeError(String),
     #[error("Failed to read/write file(s)")]
     IoError(#[from] io::Error),
+    #[error("Failed to receive from channelL: {0}")]
+    ReceiveError(#[from] kanal::ReceiveError),
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
     #[cfg(feature = "websocket")]
     #[error("Websocket Error {0}")]
     WebsocketError(#[from] async_tungstenite::tungstenite::Error),

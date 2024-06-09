@@ -1,5 +1,4 @@
 use std::fmt::Display;
-use std::net::ToSocketAddrs;
 
 use bevy::prelude::{Added, Component, Or, Query};
 use bytes::Bytes;
@@ -77,12 +76,11 @@ impl NetworkNode {
         }
     }
 
-    pub fn send_to(&self, bytes: &[u8], addr: impl ToSocketAddrs) {
-        let remote_addr = addr.to_socket_addrs().unwrap().next().unwrap();
+    pub fn send_to(&self, bytes: &[u8], addr: impl ToString) {
         self.send_message_channel
             .sender
             .try_send(NetworkRawPacket::new(
-                remote_addr,
+                addr,
                 Bytes::copy_from_slice(bytes),
             ))
             .expect("Message channel has closed.");
