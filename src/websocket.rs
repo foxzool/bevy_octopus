@@ -53,10 +53,7 @@ impl WebsocketNode {
     pub async fn listen(
         addr: SocketAddr,
         new_connection_tx: AsyncSender<(TcpStream, SocketAddr)>,
-        shutdown_rx: AsyncReceiver<()>,
     ) -> Result<(), NetworkError> {
-        let shutdown_rx_clone = shutdown_rx.clone();
-
         let server = async move {
             let listener = TcpListener::bind(addr).await?;
 
@@ -70,36 +67,11 @@ impl WebsocketNode {
                     .await
                     .unwrap();
             }
-            loop {
-                tokio::select! {
-                    // handle shutdown signal
-                    _ = shutdown_rx_clone.recv() => {
-                        break;
-                    }
-                    // process new connection
-                    result = listener.accept() => {
-                        match result {
-                            Ok((tcp_stream, peer_addr)) => {
-                                 tcp_stream.set_nodelay(true).expect("set_nodelay call failed");
-                                new_connection_tx.send((tcp_stream, peer_addr)).await.unwrap();
-
-                            }
-                            Err(e) => {
-                                eprintln!("Failed to accept client connection: {}", e);
-                            }
-                        }
-                    }
-                }
-            }
 
             Ok::<(), NetworkError>(())
         };
 
         async_std::task::spawn(server);
-
-        if let Ok(()) = shutdown_rx.recv().await {
-            println!("Shutting down TCP server...");
-        }
 
         Ok(())
     }
@@ -122,14 +94,24 @@ fn spawn_websocket_server(
         let tcp_node = WebsocketNode::new();
         let new_connection_tx = tcp_node.new_connection_channel.sender.clone_async();
         async_std::task::spawn(async move {
-            match WebsocketNode::listen(local_addr, new_connection_tx, shutdown_clone).await {
+            let tasks = vec![
+                async_std::task::spawn(WebsocketNode::listen(local_addr, new_connection_tx)),
+                async_std::task::spawn(async move {
+                    while shutdown_clone.recv().await.is_ok() {
+                        break;
+                    }
+                    Ok(())
+                }),
+            ];
+
+            match future::try_join_all(tasks).await {
                 Ok(_) => {}
-                Err(err) => {
-                    event_tx
-                        .send(NetworkEvent::Error(err))
-                        .await
-                        .expect("event channel has closed");
-                }
+                Err(err) => event_tx
+                    .send(NetworkEvent::Error(NetworkError::Connection(
+                        err.to_string(),
+                    )))
+                    .await
+                    .expect("event channel has closed"),
             }
         });
 
