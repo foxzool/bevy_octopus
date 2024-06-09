@@ -5,9 +5,9 @@ use std::ops::Deref;
 use bevy::{log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
+use bevy_octopus::{network::NetworkData, network_node::NetworkNode, shared::NetworkNodeEvent};
 use bevy_octopus::connections::NetworkPeer;
 use bevy_octopus::prelude::*;
-use bevy_octopus::{network::NetworkData, network_node::NetworkNode, shared::NetworkNodeEvent};
 
 /// shared app setup
 #[cfg(not(feature = "inspect"))]
@@ -35,13 +35,13 @@ pub fn shared_setup(app: &mut App) {
 }
 
 /// this channel is sending and receiving raw packet
-pub const RAW_CHANNEL: ChannelId = ChannelId(1);
+pub const RAW_CHANNEL: ChannelId = ChannelId("raw channel");
 
 /// this channel is sending and receiving json packet
-pub const JSON_CHANNEL: ChannelId = ChannelId(2);
+pub const JSON_CHANNEL: ChannelId = ChannelId("json channel");
 
 /// this channel is sending and receiving bincode packet
-pub const BINCODE_CHANNEL: ChannelId = ChannelId(3);
+pub const BINCODE_CHANNEL: ChannelId = ChannelId("bincode channel");
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerInformation {

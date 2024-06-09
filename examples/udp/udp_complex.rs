@@ -21,8 +21,8 @@ struct BroadcastMarker;
 #[derive(Component)]
 struct MulticastMarker;
 
-pub const BROADCAST_CHANNEL: ChannelId = ChannelId(4);
-pub const MULTICAST_CHANNEL: ChannelId = ChannelId(5);
+pub const BROADCAST_CHANNEL: ChannelId = ChannelId("broadcast channel");
+pub const MULTICAST_CHANNEL: ChannelId = ChannelId("multicast channel");
 
 fn main() {
     let mut app = App::new();

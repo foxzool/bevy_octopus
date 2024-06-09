@@ -6,7 +6,7 @@ use bevy::prelude::{Component, Reflect};
 /// Channel marker
 #[derive(Clone, PartialEq, Eq, Hash, Default, Component, Reflect, Copy, Debug)]
 #[reflect(Component)]
-pub struct ChannelId(pub u32);
+pub struct ChannelId(pub &'static str);
 
 impl Display for ChannelId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -14,14 +14,3 @@ impl Display for ChannelId {
     }
 }
 
-impl From<u32> for ChannelId {
-    fn from(id: u32) -> Self {
-        Self(id)
-    }
-}
-
-impl From<ChannelId> for u32 {
-    fn from(id: ChannelId) -> Self {
-        id.0
-    }
-}
