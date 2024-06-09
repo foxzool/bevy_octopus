@@ -157,9 +157,7 @@ fn spawn_websocket_client(
             match future::try_join_all(tasks).await {
                 Ok(_) => {}
                 Err(err) => event_tx
-                    .send(NetworkEvent::Error(NetworkError::Connection(
-                        err.to_string(),
-                    )))
+                    .send(NetworkEvent::Error(err))
                     .await
                     .expect("event channel has closed"),
             }

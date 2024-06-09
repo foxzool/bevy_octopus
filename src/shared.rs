@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use kanal::{unbounded, Receiver, Sender};
-use tokio::runtime::Runtime;
 
 use crate::error::NetworkError;
 use crate::network_node::NetworkNode;
@@ -24,12 +23,6 @@ impl<T> AsyncChannel<T> {
         Self { sender, receiver }
     }
 }
-
-#[derive(Resource, Deref, DerefMut)]
-pub struct AsyncRuntime(pub(crate) Runtime);
-
-#[derive(Resource, Deref, DerefMut)]
-pub struct RuntimeHandle(pub(crate) tokio::runtime::Handle);
 
 #[derive(Debug, Event)]
 pub struct NetworkNodeEvent {
