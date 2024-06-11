@@ -1,7 +1,10 @@
-use std::{fmt::Debug, ops::Deref};
-use std::net::{SocketAddr, ToSocketAddrs};
+use std::{
+    fmt::Debug,
+    net::{SocketAddr, ToSocketAddrs},
+    ops::Deref,
+};
 
-use bevy::prelude::{Component, Deref, Entity, Event};
+use bevy::prelude::{Component, Deref, Entity, Event, Reflect};
 use bytes::Bytes;
 use url::Url;
 

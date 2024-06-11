@@ -1,7 +1,9 @@
 use std::fmt::Display;
 
-use bevy::ecs::reflect::ReflectComponent;
-use bevy::prelude::{Component, Reflect};
+use bevy::{
+    ecs::reflect::ReflectComponent,
+    prelude::{Component, Reflect},
+};
 
 /// Channel marker
 #[derive(Clone, PartialEq, Eq, Hash, Default, Component, Reflect, Copy, Debug)]
@@ -13,4 +15,3 @@ impl Display for ChannelId {
         write!(f, "ChannelId({})", self.0)
     }
 }
-

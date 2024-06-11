@@ -1,15 +1,18 @@
-use bevy::app::{App, Last, Plugin, PostUpdate, PreUpdate};
-use bevy::prelude::{IntoSystemConfigs, IntoSystemSetConfigs};
+use bevy::{
+    app::{App, Last, Plugin, PostUpdate, PreUpdate},
+    prelude::{IntoSystemConfigs, IntoSystemSetConfigs},
+};
 
 use crate::{
-    channels::{ChannelId, ChannelPacket},
-    channels::systems::send_channel_message_system,
+    channels::{systems::send_channel_message_system, ChannelId, ChannelPacket},
+    network::{ConnectTo, ListenTo},
+    network_node::update_network_node,
     scheduler::NetworkSet,
     shared::NetworkNodeEvent,
-    tcp, udp,
+    tcp,
+    transformer::{TransformerForChannels, TransformerForMessages},
+    udp,
 };
-use crate::network_node::update_network_node;
-use crate::transformer::{TransformerForChannels, TransformerForMessages};
 
 pub struct OctopusPlugin;
 

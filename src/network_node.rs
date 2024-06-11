@@ -3,9 +3,11 @@ use std::fmt::Display;
 use bevy::prelude::{Added, Component, Or, Query};
 use bytes::Bytes;
 
-use crate::error::NetworkError;
-use crate::network::{ConnectTo, ListenTo, NetworkRawPacket};
-use crate::shared::{AsyncChannel, NetworkEvent};
+use crate::{
+    error::NetworkError,
+    network::{ConnectTo, ListenTo, NetworkRawPacket},
+    shared::{AsyncChannel, NetworkEvent},
+};
 
 #[derive(Component, Default)]
 pub struct NetworkNode {
@@ -79,10 +81,7 @@ impl NetworkNode {
     pub fn send_to(&self, bytes: &[u8], addr: impl ToString) {
         self.send_message_channel
             .sender
-            .try_send(NetworkRawPacket::new(
-                addr,
-                Bytes::copy_from_slice(bytes),
-            ))
+            .try_send(NetworkRawPacket::new(addr, Bytes::copy_from_slice(bytes)))
             .expect("Message channel has closed.");
     }
 

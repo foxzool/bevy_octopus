@@ -1,18 +1,21 @@
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
-use std::sync::Arc;
+use std::{
+    net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
+    sync::Arc,
+};
 
-use async_std::net::UdpSocket;
-use async_std::task;
+use async_std::{net::UdpSocket, task};
 use bevy::prelude::*;
 use bytes::Bytes;
 use futures::future;
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
-    connections::NetworkPeer, error::NetworkError, network::NetworkRawPacket,
-    network_node::NetworkNode, shared::NetworkEvent,
+    connections::NetworkPeer,
+    error::NetworkError,
+    network::{ConnectTo, ListenTo, NetworkRawPacket},
+    network_node::NetworkNode,
+    shared::NetworkEvent,
 };
-use crate::network::{ConnectTo, ListenTo};
 
 pub struct UdpPlugin;
 
@@ -128,7 +131,7 @@ fn spawn_udp_socket(
     for (entity, opt_listen_to, opt_connect_to, opt_broadcast, opt_v4, opt_v6) in q_udp.iter() {
         let mut local_addr = "0.0.0.0:0".parse::<SocketAddr>().unwrap();
         if let Some(listen_to) = opt_listen_to {
-            if listen_to.scheme == "udp" {
+            if listen_to.scheme() == "udp" {
                 local_addr = listen_to.local_addr();
             } else {
                 continue;
@@ -138,7 +141,7 @@ fn spawn_udp_socket(
         let mut remote_addr = None;
 
         if let Some(connect_to) = opt_connect_to {
-            if connect_to.scheme == "udp" {
+            if connect_to.scheme() == "udp" {
                 remote_addr = Some(connect_to.peer_addr())
             } else {
                 continue;

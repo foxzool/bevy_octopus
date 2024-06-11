@@ -1,22 +1,25 @@
-use async_std::net::{TcpListener, TcpStream};
-use async_std::task;
-use async_tungstenite::async_std::connect_async;
-use async_tungstenite::tungstenite::Message;
+use async_std::{
+    net::{TcpListener, TcpStream},
+    task,
+};
+use async_tungstenite::{async_std::connect_async, tungstenite::Message};
 use bevy::prelude::*;
 use bytes::Bytes;
-use futures::pin_mut;
-use futures::prelude::*;
+use futures::{pin_mut, prelude::*};
 use kanal::{AsyncReceiver, AsyncSender};
 
-use {async_tungstenite::accept_async, std::net::SocketAddr};
+use async_tungstenite::accept_async;
+use std::net::SocketAddr;
 
-use crate::channels::ChannelId;
-use crate::connections::NetworkPeer;
-use crate::error::NetworkError;
-use crate::network::{ConnectTo, NetworkRawPacket};
-use crate::network_node::NetworkNode;
-use crate::prelude::ListenTo;
-use crate::shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent};
+use crate::{
+    channels::ChannelId,
+    connections::NetworkPeer,
+    error::NetworkError,
+    network::{ConnectTo, NetworkRawPacket},
+    network_node::NetworkNode,
+    prelude::ListenTo,
+    shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent},
+};
 
 pub struct WebsocketPlugin;
 
@@ -82,7 +85,7 @@ fn spawn_websocket_server(
     q_ws_server: Query<(Entity, &ListenTo), (Added<ListenTo>, Without<NetworkNode>)>,
 ) {
     for (e, listen_to) in q_ws_server.iter() {
-        if !["ws", "wss"].contains(&listen_to.scheme.as_str()) {
+        if !["ws", "wss"].contains(&listen_to.scheme()) {
             continue;
         }
 
@@ -121,11 +124,11 @@ fn spawn_websocket_server(
 
 fn spawn_websocket_client(
     mut commands: Commands,
-    q_ws_client: Query<(Entity, &ConnectTo), (Added<ConnectTo>, Without<NetworkNode>)>,
+    q_ws_client: Query<(Entity, &ConnectTo, &ChannelId), (Added<ConnectTo>, Without<NetworkNode>)>,
     mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
-    for (e, connect_to) in q_ws_client.iter() {
-        if !["ws", "wss"].contains(&connect_to.scheme.as_str()) {
+    for (e, connect_to, channel_id) in q_ws_client.iter() {
+        if !["ws", "wss"].contains(&connect_to.scheme()) {
             continue;
         }
 
@@ -169,6 +172,7 @@ fn spawn_websocket_client(
 
         node_events.send(NetworkNodeEvent {
             node: e,
+            channel_id: *channel_id,
             event: NetworkEvent::Connected,
         });
     }
@@ -334,6 +338,7 @@ fn handle_endpoint(
 
             node_events.send(NetworkNodeEvent {
                 node: entity,
+                channel_id: *channel_id,
                 event: NetworkEvent::Connected,
             });
         }

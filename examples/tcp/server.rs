@@ -1,17 +1,15 @@
 use std::time::Duration;
 
-use bevy::prelude::*;
-use bevy::time::common_conditions::on_timer;
+use bevy::{prelude::*, time::common_conditions::on_timer};
 use bytes::Bytes;
 
 use bevy_octopus::{
-    network::NetworkRawPacket,
+    connections::NetworkPeer,
+    network::{ConnectTo, ListenTo, NetworkRawPacket},
     network_node::NetworkNode,
+    prelude::{ChannelId, ChannelPacket},
     transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };
-use bevy_octopus::connections::NetworkPeer;
-use bevy_octopus::network::{ConnectTo, ListenTo};
-use bevy_octopus::prelude::{ChannelId, ChannelPacket};
 
 use crate::common::*;
 

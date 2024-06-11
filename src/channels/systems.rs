@@ -1,9 +1,11 @@
 use bevy::ecs::prelude::*;
 
-use crate::channels::{ChannelId, ChannelPacket};
-use crate::connections::NetworkPeer;
-use crate::network::{ConnectTo, NetworkRawPacket};
-use crate::network_node::NetworkNode;
+use crate::{
+    channels::{ChannelId, ChannelPacket},
+    connections::NetworkPeer,
+    network::{ConnectTo, NetworkRawPacket},
+    network_node::NetworkNode,
+};
 
 pub(crate) fn send_channel_message_system(
     q_net: Query<(&ChannelId, &NetworkNode, &ConnectTo), With<NetworkPeer>>,

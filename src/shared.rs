@@ -1,8 +1,7 @@
 use bevy::prelude::*;
 use kanal::{unbounded, Receiver, Sender};
 
-use crate::error::NetworkError;
-use crate::network_node::NetworkNode;
+use crate::{error::NetworkError, network_node::NetworkNode, prelude::ChannelId};
 
 #[derive(Reflect)]
 pub struct AsyncChannel<T> {
@@ -27,6 +26,7 @@ impl<T> AsyncChannel<T> {
 #[derive(Debug, Event)]
 pub struct NetworkNodeEvent {
     pub node: Entity,
+    pub channel_id: ChannelId,
     pub event: NetworkEvent,
 }
 
@@ -42,10 +42,10 @@ pub enum NetworkEvent {
 /// send network node error channel to events
 pub(crate) fn network_node_event(
     mut commands: Commands,
-    mut q_net: Query<(Entity, &mut NetworkNode)>,
+    mut q_net: Query<(Entity, &ChannelId, &mut NetworkNode)>,
     mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
-    for (entity, net_node) in q_net.iter_mut() {
+    for (entity, channel_id, net_node) in q_net.iter_mut() {
         while let Ok(Some(event)) = net_node.event_channel.receiver.try_recv() {
             match event {
                 NetworkEvent::Listen => {}
@@ -57,6 +57,7 @@ pub(crate) fn network_node_event(
             }
             node_events.send(NetworkNodeEvent {
                 node: entity,
+                channel_id: *channel_id,
                 event,
             });
         }

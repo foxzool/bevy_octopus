@@ -1,20 +1,24 @@
 use std::net::SocketAddr;
 
-use async_std::io::WriteExt;
-use async_std::net::{TcpListener, TcpStream};
-use async_std::prelude::StreamExt;
-use async_std::task;
+use async_std::{
+    io::WriteExt,
+    net::{TcpListener, TcpStream},
+    prelude::StreamExt,
+    task,
+};
 use bevy::prelude::*;
 use bytes::Bytes;
-use futures::{AsyncReadExt, future};
+use futures::{future, AsyncReadExt};
 use kanal::{AsyncReceiver, AsyncSender};
 
-use crate::channels::ChannelId;
-use crate::connections::NetworkPeer;
-use crate::error::NetworkError;
-use crate::network::{ConnectTo, ListenTo, NetworkRawPacket};
-use crate::network_node::NetworkNode;
-use crate::shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent};
+use crate::{
+    channels::ChannelId,
+    connections::NetworkPeer,
+    error::NetworkError,
+    network::{ConnectTo, ListenTo, NetworkRawPacket},
+    network_node::NetworkNode,
+    shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent},
+};
 
 pub struct TcpPlugin;
 
@@ -135,7 +139,7 @@ fn spawn_tcp_server(
     q_tcp_server: Query<(Entity, &ListenTo), (Added<ListenTo>, Without<NetworkNode>)>,
 ) {
     for (e, listen_to) in q_tcp_server.iter() {
-        if !["tcp", "ssl"].contains(&listen_to.scheme.as_str()) {
+        if !["tcp", "ssl"].contains(&listen_to.scheme()) {
             continue;
         }
 
@@ -176,7 +180,7 @@ fn spawn_tcp_client(
     q_tcp_client: Query<(Entity, &ConnectTo), (Added<ConnectTo>, Without<NetworkNode>)>,
 ) {
     for (e, connect_to) in q_tcp_client.iter() {
-        if !["tcp", "ssl"].contains(&connect_to.scheme.as_str()) {
+        if !["tcp", "ssl"].contains(&connect_to.scheme()) {
             continue;
         }
 
@@ -245,6 +249,7 @@ fn handle_endpoint(
 
             node_events.send(NetworkNodeEvent {
                 node: entity,
+                channel_id: *channel_id,
                 event: NetworkEvent::Connected,
             });
         }

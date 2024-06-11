@@ -1,13 +1,8 @@
-use std::any::TypeId;
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::ops::Deref;
+use std::{any::TypeId, collections::HashMap, fmt::Debug, ops::Deref};
 
-use bevy::prelude::*;
-use bevy::reflect::GetTypeRegistration;
+use bevy::{prelude::*, reflect::GetTypeRegistration};
 use bytes::Bytes;
-use serde::{Deserialize, Serialize};
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[cfg(feature = "bincode")]
 pub use bincode::BincodeTransformer;
@@ -18,11 +13,10 @@ use crate::{
     channels::{ChannelId, ChannelMessage},
     connections::NetworkPeer,
     error::NetworkError,
-    network::{NetworkData, NetworkRawPacket},
+    network::{ConnectTo, NetworkData, NetworkRawPacket},
     network_node::NetworkNode,
     shared::{NetworkEvent, NetworkNodeEvent},
 };
-use crate::network::ConnectTo;
 
 #[cfg(feature = "bincode")]
 mod bincode;
@@ -197,6 +191,7 @@ fn decode_system<
 
         decode_packets::<M, T>(
             entity,
+            *channel_id,
             network_node,
             transformer.deref(),
             &mut data_events,
@@ -210,6 +205,7 @@ fn decode_packets<
     T: Transformer,
 >(
     entity: Entity,
+    channel_id: ChannelId,
     network_node: &NetworkNode,
     transformer: &T,
     data_events: &mut EventWriter<NetworkData<M>>,
@@ -245,6 +241,7 @@ fn decode_packets<
                 .map(Result::unwrap_err)
                 .map(|error| NetworkNodeEvent {
                     node: entity,
+                    channel_id,
                     event: NetworkEvent::Error(error),
                 })
                 .collect::<Vec<_>>(),

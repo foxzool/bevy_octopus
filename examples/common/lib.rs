@@ -5,9 +5,10 @@ use std::ops::Deref;
 use bevy::{log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use bevy_octopus::{network::NetworkData, network_node::NetworkNode, shared::NetworkNodeEvent};
-use bevy_octopus::connections::NetworkPeer;
-use bevy_octopus::prelude::*;
+use bevy_octopus::{
+    connections::NetworkPeer, network::NetworkData, network_node::NetworkNode, prelude::*,
+    shared::NetworkNodeEvent,
+};
 
 /// shared app setup
 #[cfg(not(feature = "inspect"))]

@@ -8,7 +8,6 @@ pub mod network;
 pub mod network_node;
 pub mod plugin;
 pub mod prelude;
-pub mod providers;
 pub mod scheduler;
 pub mod shared;
 pub mod transformer;

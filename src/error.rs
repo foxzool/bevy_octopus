@@ -6,7 +6,6 @@ pub enum NetworkError {
     /// A default networking error returned when no other more specific type can be determined
     #[error("Common Error: {0}")]
     CommonError(String),
-    //
     // /// Error occurred when accepting a new connection.
     // Accept(io::Error),
     //
@@ -15,7 +14,6 @@ pub enum NetworkError {
     //
     // /// Failed to send across channel because it was closed.
     // ChannelClosed(Entity),
-    //
     #[error("An error occurred while trying to listen: {0}")]
     Listen(io::Error),
     //

@@ -1,9 +1,7 @@
 [package]
 name = "bevy_octopus"
 version = "0.1.0"
-authors = [
-    "ZoOL <zhooul@gmail.com>"
-]
+authors = ["ZoOL <zhooul@gmail.com>"]
 edition = "2021"
 description = "ECS based networking library for Bevy"
 readme = "README.md"
@@ -33,7 +31,7 @@ kanal = "0.1.0-pre8"
 futures = "0.3.30"
 serde = { version = "1.0.198", features = ["derive"] }
 thiserror = { version = "1.0.59" }
-url = "0.5.10"
+url = "2.5.1"
 
 bincode = { version = "1.3.3", optional = true }
 serde_json = { version = "1.0.68", optional = true }
