@@ -4,7 +4,7 @@ use bevy::{
 };
 
 use crate::{
-    channels::{ChannelId, ChannelPacket, systems::send_channel_message_system},
+    channels::{systems::send_channel_message_system, ChannelId, ChannelPacket},
     network_node::update_network_node,
     scheduler::NetworkSet,
     shared::NetworkNodeEvent,
@@ -18,8 +18,7 @@ pub struct OctopusPlugin;
 impl Plugin for OctopusPlugin {
     fn build(&self, app: &mut App) {
         let app = register_reflect_types(app);
-        app
-            .init_resource::<TransformerForChannels>()
+        app.init_resource::<TransformerForChannels>()
             .init_resource::<TransformerForMessages>()
             .add_event::<NetworkNodeEvent>()
             .add_event::<ChannelPacket>()
@@ -48,7 +47,6 @@ impl Plugin for OctopusPlugin {
         app.add_plugins(crate::websocket::WebsocketPlugin);
     }
 }
-
 
 fn register_reflect_types(app: &mut App) -> &mut App {
     app.register_type::<ChannelId>()

@@ -63,8 +63,8 @@ impl Debug for NetworkRawPacket {
 pub struct ListenTo(pub Url);
 
 impl ListenTo {
-    pub fn new(input: &str) -> Self {
-        let url = Url::parse(input).expect("url format error");
+    pub fn new(url_str: &str) -> Self {
+        let url = Url::parse(url_str).expect("url format error");
         check_support_scheme(&url);
         Self(url)
     }
@@ -81,8 +81,8 @@ impl ListenTo {
 pub struct ConnectTo(pub Url);
 
 impl ConnectTo {
-    pub fn new(input: &str) -> Self {
-        let url = Url::parse(input).expect("url format error");
+    pub fn new(url_str: &str) -> Self {
+        let url = Url::parse(url_str).expect("url format error");
         check_support_scheme(&url);
         Self(url)
     }
@@ -115,25 +115,4 @@ fn check_support_scheme(url: &Url) {
         }
         _ => panic!("scheme {} not supported", url.scheme()),
     }
-}
-
-#[test]
-fn test_url() {
-    let str = "ws://127.0.0.1:44012/ws/";
-    let url = Url::parse(str).unwrap();
-    println!("{:#?}", url);
-    println!("{:?}", url.host());
-    println!("{:?}", url.port_or_default());
-    println!("{:?}", url.serialize_path());
-    println!("{:?}", url.serialize_host());
-    println!("{:?}", url.serialize_no_fragment());
-
-    let str = "tcp://127.0.0.1:44012";
-    let url = Url::parse(str).unwrap();
-    println!("{:#?}", url);
-    println!("{:?}", url.host());
-    println!("{:?}", url.port_or_default());
-    println!("{:?}", url.serialize_path());
-    println!("{:?}", url.serialize_host());
-    println!("{:?}", url.serialize_no_fragment());
 }
