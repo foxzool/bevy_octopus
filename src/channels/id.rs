@@ -12,6 +12,6 @@ pub struct ChannelId(pub &'static str);
 
 impl Display for ChannelId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ChannelId({})", self.0)
+        write!(f, "Channel({})", self.0)
     }
 }
