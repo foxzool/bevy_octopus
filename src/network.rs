@@ -4,7 +4,7 @@ use std::{
     ops::Deref,
 };
 
-use bevy::prelude::{Component, Deref, Entity, Event, Reflect};
+use bevy::prelude::{Component, Deref, Entity, Event};
 use bytes::Bytes;
 use url::Url;
 
@@ -65,7 +65,7 @@ pub struct ListenTo(pub Url);
 impl ListenTo {
     pub fn new(input: &str) -> Self {
         let url = Url::parse(input).expect("url format error");
-
+        check_support_scheme(&url);
         Self(url)
     }
 
@@ -83,7 +83,7 @@ pub struct ConnectTo(pub Url);
 impl ConnectTo {
     pub fn new(input: &str) -> Self {
         let url = Url::parse(input).expect("url format error");
-
+        check_support_scheme(&url);
         Self(url)
     }
 
@@ -92,6 +92,28 @@ impl ConnectTo {
         let arr: Vec<&str> = url_str.split("//").collect();
         let s = arr[1].split('/').collect::<Vec<&str>>()[0];
         s.to_socket_addrs().unwrap().next().unwrap()
+    }
+}
+
+/// check if the scheme is supported
+fn check_support_scheme(url: &Url) {
+    match url.scheme() {
+        "tcp" => {
+            if cfg!(not(feature = "tcp")) {
+                panic!("tcp feature not enabled");
+            }
+        }
+        "udp" => {
+            if cfg!(not(feature = "udp")) {
+                panic!("udp feature not enabled");
+            }
+        }
+        "ws" | "wss" => {
+            if cfg!(not(feature = "websocket")) {
+                panic!("websocket feature not enabled");
+            }
+        }
+        _ => panic!("scheme {} not supported", url.scheme()),
     }
 }
 
@@ -105,7 +127,6 @@ fn test_url() {
     println!("{:?}", url.serialize_path());
     println!("{:?}", url.serialize_host());
     println!("{:?}", url.serialize_no_fragment());
-    println!("{:?}", url.serialize());
 
     let str = "tcp://127.0.0.1:44012";
     let url = Url::parse(str).unwrap();
@@ -115,5 +136,4 @@ fn test_url() {
     println!("{:?}", url.serialize_path());
     println!("{:?}", url.serialize_host());
     println!("{:?}", url.serialize_no_fragment());
-    println!("{:?}", url.serialize());
 }
