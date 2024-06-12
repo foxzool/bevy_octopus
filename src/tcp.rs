@@ -8,7 +8,7 @@ use async_std::{
 };
 use bevy::prelude::*;
 use bytes::Bytes;
-use futures::{future, AsyncReadExt};
+use futures::{AsyncReadExt, future};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
@@ -248,7 +248,7 @@ fn handle_endpoint(
             commands.entity(entity).add_child(child_tcp_client);
 
             node_events.send(NetworkNodeEvent {
-                node: entity,
+                node: child_tcp_client,
                 channel_id: *channel_id,
                 event: NetworkEvent::Connected,
             });

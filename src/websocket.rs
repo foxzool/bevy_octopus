@@ -1,15 +1,15 @@
+use std::net::SocketAddr;
+
 use async_std::{
     net::{TcpListener, TcpStream},
     task,
 };
 use async_tungstenite::{async_std::connect_async, tungstenite::Message};
+use async_tungstenite::accept_async;
 use bevy::prelude::*;
 use bytes::Bytes;
 use futures::{pin_mut, prelude::*};
 use kanal::{AsyncReceiver, AsyncSender};
-
-use async_tungstenite::accept_async;
-use std::net::SocketAddr;
 
 use crate::{
     channels::ChannelId,
@@ -208,7 +208,7 @@ async fn handle_client_conn(
 
     let write_task = async move {
         while let Ok(data) = message_rx.recv().await {
-            // trace!("write {} bytes to {} ", data.bytes.len(), addr);
+            trace!("write {} bytes to {} ", data.bytes.len(), data.addr);
             let message = if let Some(text) = data.text {
                 Message::Text(text)
             } else {
@@ -337,7 +337,7 @@ fn handle_endpoint(
             commands.entity(entity).add_child(child_tcp_client);
 
             node_events.send(NetworkNodeEvent {
-                node: entity,
+                node: child_tcp_client,
                 channel_id: *channel_id,
                 event: NetworkEvent::Connected,
             });
