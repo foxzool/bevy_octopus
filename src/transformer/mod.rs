@@ -56,8 +56,8 @@ impl NetworkMessageTransformer for App {
             std::any::type_name::<M>(),
             channel_id
         );
-        if self.world.get_resource::<T>().is_none() {
-            self.world.init_resource::<T>();
+        if self.world().get_resource::<T>().is_none() {
+            self.world_mut().init_resource::<T>();
         }
 
         self.register_type::<T>();
@@ -65,7 +65,7 @@ impl NetworkMessageTransformer for App {
         let transform_type_id = TypeId::of::<T>();
         let message_type_id = TypeId::of::<M>();
 
-        let mut trans_for_channels = self.world.resource_mut::<TransformerForChannels>();
+        let mut trans_for_channels = self.world_mut().resource_mut::<TransformerForChannels>();
         match trans_for_channels.0.get_mut(&transform_type_id) {
             None => {
                 trans_for_channels.insert(transform_type_id, vec![channel_id]);
@@ -78,7 +78,7 @@ impl NetworkMessageTransformer for App {
             }
         }
 
-        let mut trans_for_messages = self.world.resource_mut::<TransformerForMessages>();
+        let mut trans_for_messages = self.world_mut().resource_mut::<TransformerForMessages>();
         match trans_for_messages.get_mut(&transform_type_id) {
             None => {
                 trans_for_messages

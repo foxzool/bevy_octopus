@@ -33,7 +33,7 @@ fn main() {
             (broadcast_message, send_channel_message, send_channel_packet)
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
-        .run()
+        .run();
 }
 
 fn setup_server(mut commands: Commands) {

@@ -4,8 +4,7 @@ use async_std::{
     net::{TcpListener, TcpStream},
     task,
 };
-use async_tungstenite::{async_std::connect_async, tungstenite::Message};
-use async_tungstenite::accept_async;
+use async_tungstenite::{accept_async, async_std::connect_async, tungstenite::Message};
 use bevy::prelude::*;
 use bytes::Bytes;
 use futures::{pin_mut, prelude::*};
@@ -20,6 +19,7 @@ use crate::{
     prelude::ListenTo,
     shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent},
 };
+use crate::transports::ServerNodeAddedFilter;
 
 pub struct WebsocketPlugin;
 
@@ -80,9 +80,11 @@ impl WebsocketNode {
     }
 }
 
+
+
 fn spawn_websocket_server(
     mut commands: Commands,
-    q_ws_server: Query<(Entity, &ListenTo), (Added<ListenTo>, Without<NetworkNode>)>,
+    q_ws_server: Query<(Entity, &ListenTo), ServerNodeAddedFilter>,
 ) {
     for (e, listen_to) in q_ws_server.iter() {
         if !["ws", "wss"].contains(&listen_to.scheme()) {
@@ -100,9 +102,7 @@ fn spawn_websocket_server(
             let tasks = vec![
                 async_std::task::spawn(WebsocketNode::listen(local_addr, new_connection_tx)),
                 async_std::task::spawn(async move {
-                    while shutdown_clone.recv().await.is_ok() {
-                        break;
-                    }
+                    let _ = shutdown_clone.recv().await;
                     Ok(())
                 }),
             ];
@@ -124,7 +124,7 @@ fn spawn_websocket_server(
 
 fn spawn_websocket_client(
     mut commands: Commands,
-    q_ws_client: Query<(Entity, &ConnectTo, &ChannelId), (Added<ConnectTo>, Without<NetworkNode>)>,
+    q_ws_client: Query<(Entity, &ConnectTo, &ChannelId), ServerNodeAddedFilter>,
     mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
     for (e, connect_to, channel_id) in q_ws_client.iter() {
@@ -151,9 +151,7 @@ fn spawn_websocket_client(
                     event_tx.clone(),
                 )),
                 task::spawn(async move {
-                    while shutdown_rx.recv().await.is_ok() {
-                        break;
-                    }
+                    let _ = shutdown_rx.recv().await;
                     Ok(())
                 }),
             ];
@@ -310,9 +308,7 @@ fn handle_endpoint(
                         event_tx,
                     )),
                     task::spawn(async move {
-                        while shutdown_rx.recv().await.is_ok() {
-                            break;
-                        }
+                        let _ = shutdown_rx.recv().await;
                     }),
                 ];
 

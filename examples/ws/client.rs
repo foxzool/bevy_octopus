@@ -33,7 +33,7 @@ fn main() {
             Update,
             (handle_raw_packet, handle_message_events, handle_node_events),
         )
-        .run()
+        .run();
 }
 
 fn setup_clients(mut commands: Commands) {

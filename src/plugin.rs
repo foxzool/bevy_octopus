@@ -4,13 +4,11 @@ use bevy::{
 };
 
 use crate::{
-    channels::{systems::send_channel_message_system, ChannelId, ChannelPacket},
+    channels::{ChannelId, ChannelPacket, systems::send_channel_message_system},
     network_node::update_network_node,
     scheduler::NetworkSet,
     shared::NetworkNodeEvent,
-    tcp,
     transformer::{TransformerForChannels, TransformerForMessages},
-    udp,
 };
 
 pub struct OctopusPlugin;
@@ -38,13 +36,13 @@ impl Plugin for OctopusPlugin {
             .add_systems(Last, update_network_node);
 
         #[cfg(feature = "udp")]
-        app.add_plugins(udp::UdpPlugin);
+        app.add_plugins(crate::transports::udp::UdpPlugin);
 
         #[cfg(feature = "tcp")]
-        app.add_plugins(tcp::TcpPlugin);
+        app.add_plugins(crate::transports::tcp::TcpPlugin);
 
         #[cfg(feature = "websocket")]
-        app.add_plugins(crate::websocket::WebsocketPlugin);
+        app.add_plugins(crate::transports::websocket::WebsocketPlugin);
     }
 }
 
