@@ -6,7 +6,7 @@ use bevy_octopus::{
     channels::ChannelId,
     network::{ConnectTo, ListenTo},
     network_node::NetworkNode,
-    udp::{MulticastV4Setting, UdpBroadcast},
+    transports::udp::{MulticastV4Setting, UdpBroadcast},
 };
 
 use crate::common::*;
