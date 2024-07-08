@@ -18,8 +18,8 @@ use crate::{
     network_node::NetworkNode,
     prelude::ListenTo,
     shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent},
+    transports::ServerNodeAddedFilter,
 };
-use crate::transports::ServerNodeAddedFilter;
 
 pub struct WebsocketPlugin;
 
@@ -79,8 +79,6 @@ impl WebsocketNode {
         Ok(())
     }
 }
-
-
 
 fn spawn_websocket_server(
     mut commands: Commands,

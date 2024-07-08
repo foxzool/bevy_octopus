@@ -1,206 +1,93 @@
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
 name: CI
 
+on:
+  push:
+    branches: [main,master]
+  pull_request:
+    branches: [main,master]
+
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
-  fmt:
-    name: Formatter check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: nightly
-          components: rustfmt
-      - run: cargo fmt --all -- --check
-
-  clippy:
-    name: Clippy check
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-14, windows-latest]
-        features: [
-          "",
-          "immutable_ctx",
-          "manage_clipboard",
-          "open_url",
-          "render",
-          "manage_clipboard,open_url,render",
-        ]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          components: clippy
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cache-${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: |
-            cache-${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
-            cache-${{ runner.os }}-cargo
-      - name: Install dependencies
-        if: runner.os == 'Linux'
-        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
-      - run: cargo clippy --no-default-features --all-targets --features=${{ matrix.features }} -- -D warnings
-
-  clippy_wasm32:
-    name: Clippy check (wasm32)
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        features:
-          [
-            "",
-            "immutable_ctx",
-            "manage_clipboard",
-            "open_url",
-            "render",
-            "manage_clipboard,open_url,render",
-          ]
-    env:
-      RUSTFLAGS: --cfg=web_sys_unstable_apis
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          components: clippy
-          targets: wasm32-unknown-unknown
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cache-wasm32-cargo-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: |
-            cache-wasm32-cargo-${{ hashFiles('**/Cargo.toml') }}
-            cache-wasm32-cargo
-      - run: cargo clippy --no-default-features --target=wasm32-unknown-unknown --all-targets --features=${{ matrix.features }} -- -D warnings
-
-  clippy_android:
-    name: Clippy check (android)
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        features:
-          [
-            "",
-            "immutable_ctx",
-            "manage_clipboard",
-            "open_url",
-            "render",
-            "manage_clipboard,open_url,render",
-          ]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          components: clippy
-          targets: aarch64-linux-android
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cache-android-cargo-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: |
-            cache-android-cargo-${{ hashFiles('**/Cargo.toml') }}
-            cache-android-cargo
-      - run: |
-          CC=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android34-clang \
-          AR=$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar \
-          cargo clippy --target=aarch64-linux-android --no-default-features --all-targets --features=${{ matrix.features }} -- -D warnings
-
-  clippy_ios:
-    name: Clippy check (ios)
-    runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        features:
-          [
-            "",
-            "immutable_ctx",
-            "manage_clipboard",
-            "open_url",
-            "render",
-            "manage_clipboard,open_url,render",
-          ]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          components: clippy
-          targets: aarch64-apple-ios
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cache-ios-cargo-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: |
-            cache-ios-cargo-${{ hashFiles('**/Cargo.toml') }}
-            cache-ios-cargo
-      - run: cargo clippy --target=aarch64-apple-ios --no-default-features --all-targets --features=${{ matrix.features }} -- -D warnings
-
-  doc:
-    name: Check documentation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cache-doc-cargo-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: |
-            cache-doc-cargo-${{ hashFiles('**/Cargo.toml') }}
-            cache-doc-cargo
-      - run: cargo doc --all --features "bevy/x11"
-        env:
-          RUSTDOCFLAGS: -D warnings
-
+  # Run cargo test
   test:
-    name: Run tests
+    name: Test Suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-      - uses: actions/cache@v3
+      - name: Checkout sources
+        uses: actions/checkout@v2
+      - name: Cache
+        uses: actions/cache@v2
         with:
           path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cache-test-cargo-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: |
-            cache-test-cargo-${{ hashFiles('**/Cargo.toml') }}
-            cache-test-cargo
-      - name: Install dependencies
-        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
-      - run: cargo test --all
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.toml') }}
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Install Dependencies
+        run: sudo apt-get update; sudo apt-get install pkg-config libx11-dev libasound2-dev libudev-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+
+  # Run cargo clippy -- -D warnings
+  clippy_check:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+      - name: Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.toml') }}
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: clippy
+          override: true
+      - name: Install Dependencies
+        run: sudo apt-get update; sudo apt-get install pkg-config libx11-dev libasound2-dev libudev-dev
+      - name: Run clippy
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: -- -D warnings
+
+  # Run cargo fmt --all -- --check
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: rustfmt
+          override: true
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
