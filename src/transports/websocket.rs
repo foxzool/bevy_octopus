@@ -107,12 +107,13 @@ fn spawn_websocket_server(
 
             match future::try_join_all(tasks).await {
                 Ok(_) => {}
-                Err(err) => event_tx
-                    .send(NetworkEvent::Error(NetworkError::Connection(
-                        err.to_string(),
-                    )))
-                    .await
-                    .expect("event channel has closed"),
+                Err(err) => {
+                    let _ = event_tx
+                        .send(NetworkEvent::Error(NetworkError::Connection(
+                            err.to_string(),
+                        )))
+                        .await;
+                }
             }
         });
 
@@ -155,10 +156,9 @@ fn spawn_websocket_client(
             ];
             match future::try_join_all(tasks).await {
                 Ok(_) => {}
-                Err(err) => event_tx
-                    .send(NetworkEvent::Error(err))
-                    .await
-                    .expect("event channel has closed"),
+                Err(err) => {
+                    let _ = event_tx.send(NetworkEvent::Error(err)).await;
+                }
             }
         });
 
@@ -213,10 +213,11 @@ async fn handle_client_conn(
 
             if let Err(e) = writer.send(message).await {
                 eprintln!("Failed to write data to  ws socket: {}", e);
-                event_tx
+
+                let _ = event_tx
                     .send(NetworkEvent::Error(NetworkError::SendError))
-                    .await
-                    .unwrap();
+                    .await;
+
                 break;
             }
         }
@@ -245,10 +246,9 @@ async fn server_handle_conn(
             match message {
                 Ok(message) => {
                     let data = message.into_data();
-                    recv_tx
+                    let _ = recv_tx
                         .send(NetworkRawPacket::new(addr.clone(), Bytes::from_iter(data)))
-                        .await
-                        .unwrap();
+                        .await;
                 }
                 Err(err) => {
                     error!("{} websocket error {:?}", addr, err);
@@ -266,10 +266,10 @@ async fn server_handle_conn(
             };
             if let Err(e) = writer.send(message).await {
                 eprintln!("Failed to write data to  ws socket: {}", e);
-                event_tx
+                let _ = event_tx
                     .send(NetworkEvent::Error(NetworkError::SendError))
-                    .await
-                    .unwrap();
+                    .await;
+
                 break;
             }
         }

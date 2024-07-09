@@ -48,10 +48,7 @@ async fn recv_loop(
                     len,
                     from_addr
                 );
-                recv_tx
-                    .send(NetworkRawPacket::new(from_addr, bytes))
-                    .await
-                    .expect("Message channel has closed.");
+                let _ = recv_tx.send(NetworkRawPacket::new(from_addr, bytes)).await;
             }
             #[cfg(target_os = "windows")]
             Err(ref e) if e.kind() == std::io::ErrorKind::ConnectionReset => {
@@ -181,10 +178,9 @@ fn spawn_udp_socket(
 
             match future::try_join_all(tasks).await {
                 Ok(_) => {}
-                Err(err) => event_tx
-                    .send(NetworkEvent::Error(err))
-                    .await
-                    .expect("event channel has closed"),
+                Err(err) => {
+                    let _ = event_tx.send(NetworkEvent::Error(err)).await;
+                }
             }
         });
 
@@ -244,10 +240,9 @@ async fn listen(
 
     match future::try_join_all(tasks).await {
         Ok(_) => {}
-        Err(err) => event_tx
-            .send(NetworkEvent::Error(err))
-            .await
-            .expect("event channel has closed"),
+        Err(err) => {
+            let _ = event_tx.send(NetworkEvent::Error(err)).await;
+        }
     }
 
     Ok(())

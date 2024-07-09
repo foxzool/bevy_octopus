@@ -39,17 +39,17 @@ impl NetworkNode {
         match self.connect_to.as_ref() {
             None => {
                 println!("send error");
-                self.event_channel
+                let _ = self
+                    .event_channel
                     .sender
-                    .try_send(NetworkEvent::Error(NetworkError::SendError))
-                    .expect("Error channel has closed");
+                    .try_send(NetworkEvent::Error(NetworkError::SendError));
             }
             Some(connect_to) => {
                 let addr = connect_to.to_string();
-                self.send_message_channel
+                let _ = self
+                    .send_message_channel
                     .sender
-                    .try_send(NetworkRawPacket::new(addr, Bytes::copy_from_slice(bytes)))
-                    .expect("Message channel has closed.");
+                    .try_send(NetworkRawPacket::new(addr, Bytes::copy_from_slice(bytes)));
             }
         }
     }
@@ -59,30 +59,27 @@ impl NetworkNode {
         match self.connect_to.as_ref() {
             None => {
                 println!("send error");
-                self.event_channel
+                let _ = self
+                    .event_channel
                     .sender
-                    .try_send(NetworkEvent::Error(NetworkError::SendError))
-                    .expect("Error channel has closed");
+                    .try_send(NetworkEvent::Error(NetworkError::SendError));
             }
             Some(connect_to) => {
                 let addr = connect_to.to_string();
-                self.send_message_channel
-                    .sender
-                    .try_send(NetworkRawPacket {
-                        addr,
-                        bytes: Bytes::new(),
-                        text: Some(text),
-                    })
-                    .expect("Message channel has closed.");
+                let _ = self.send_message_channel.sender.try_send(NetworkRawPacket {
+                    addr,
+                    bytes: Bytes::new(),
+                    text: Some(text),
+                });
             }
         }
     }
 
     pub fn send_to(&self, bytes: &[u8], addr: impl ToString) {
-        self.send_message_channel
+        let _ = self
+            .send_message_channel
             .sender
-            .try_send(NetworkRawPacket::new(addr, Bytes::copy_from_slice(bytes)))
-            .expect("Message channel has closed.");
+            .try_send(NetworkRawPacket::new(addr, Bytes::copy_from_slice(bytes)));
     }
 
     pub fn schema(&self) -> String {

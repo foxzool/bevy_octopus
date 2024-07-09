@@ -8,7 +8,7 @@ use async_std::{
 };
 use bevy::prelude::*;
 use bytes::Bytes;
-use futures::{future, AsyncReadExt};
+use futures::{AsyncReadExt, future};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
@@ -85,10 +85,7 @@ async fn handle_connection(
         loop {
             match reader.read(&mut buffer).await {
                 Ok(0) => {
-                    event_tx_clone
-                        .send(NetworkEvent::Disconnected)
-                        .await
-                        .expect("event channel has closed");
+                    let _ = event_tx_clone.send(NetworkEvent::Disconnected).await;
                     break;
                 }
                 Ok(n) => {
@@ -112,10 +109,9 @@ async fn handle_connection(
             // trace!("write {} bytes to {} ", data.bytes.len(), addr);
             if let Err(e) = writer.write_all(&data.bytes).await {
                 eprintln!("Failed to write data to socket: {}", e);
-                event_tx
+                let _ = event_tx
                     .send(NetworkEvent::Error(NetworkError::SendError))
-                    .await
-                    .unwrap();
+                    .await;
                 break;
             }
         }
@@ -163,10 +159,9 @@ fn spawn_tcp_server(
 
             match future::try_join_all(tasks).await {
                 Ok(_) => {}
-                Err(err) => event_tx
-                    .send(NetworkEvent::Error(err))
-                    .await
-                    .expect("event channel has closed"),
+                Err(err) => {
+                    let _ = event_tx.send(NetworkEvent::Error(err)).await;
+                }
             }
         });
 
@@ -200,12 +195,13 @@ fn spawn_tcp_client(
                         .expect("set_nodelay call failed");
                     handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
                 }
-                Err(err) => event_tx
-                    .send(NetworkEvent::Error(NetworkError::Connection(
-                        err.to_string(),
-                    )))
-                    .await
-                    .expect("event channel has closed"),
+                Err(err) => {
+                    let _ = event_tx
+                        .send(NetworkEvent::Error(NetworkError::Connection(
+                            err.to_string(),
+                        )))
+                        .await;
+                }
             }
         });
 

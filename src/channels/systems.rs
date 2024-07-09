@@ -16,7 +16,7 @@ pub(crate) fn send_channel_message_system(
             .par_iter()
             .for_each(|(channel_id, net_node, connect_to)| {
                 if channel_id == &channel_ev.channel_id {
-                    net_node
+                    let _ = net_node
                         .send_message_channel
                         .sender
                         .send(NetworkRawPacket {
@@ -24,8 +24,8 @@ pub(crate) fn send_channel_message_system(
                             addr: connect_to.to_string(),
                             #[cfg(feature = "websocket")]
                             text: channel_ev.text.clone(),
-                        })
-                        .expect("send message channel has closed");
+                        });
+
                 }
             });
     }

@@ -51,7 +51,7 @@ impl NetworkMessageTransformer for App {
         channel_id: ChannelId,
     ) -> &mut Self {
         debug!(
-            "Registering {} transformer for  {}  in {}",
+            "Registering {} transformer for {} in {}",
             T::NAME,
             std::any::type_name::<M>(),
             channel_id
@@ -78,18 +78,17 @@ impl NetworkMessageTransformer for App {
             }
         }
 
-        let mut trans_for_messages = self.world_mut().resource_mut::<TransformerForMessages>();
-        match trans_for_messages.get_mut(&transform_type_id) {
+        let mut msg_for_channels = self.world_mut().resource_mut::<MessageForChannels>();
+        match msg_for_channels.get_mut(&message_type_id) {
             None => {
-                trans_for_messages
-                    .0
-                    .insert(transform_type_id, vec![message_type_id]);
+                msg_for_channels.0.insert(message_type_id, vec![channel_id]);
                 self.add_systems(PreUpdate, decode_system::<M, T>);
                 self.add_systems(PostUpdate, encode_system::<M, T>);
+
             }
             Some(message_types) => {
-                if !message_types.contains(&message_type_id) {
-                    message_types.push(message_type_id);
+                if !message_types.contains(&channel_id) {
+                    message_types.push(channel_id);
                 }
             }
         }
@@ -108,15 +107,15 @@ pub(crate) type MessageTypeId = TypeId;
 pub(crate) struct TransformerForChannels(pub HashMap<TransformerTypeId, Vec<ChannelId>>);
 
 #[derive(Resource, Deref, DerefMut, Debug, Default)]
-pub(crate) struct TransformerForMessages(pub HashMap<TransformerTypeId, Vec<MessageTypeId>>);
+pub(crate) struct MessageForChannels(pub HashMap<MessageTypeId, Vec<ChannelId>>);
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct TransformerSenderMarker {
     pub channel_id: ChannelId,
     pub transformer_id: TypeId,
 }
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct TransformerRecvMarker {
     pub channel_id: ChannelId,
     pub transformer_id: TypeId,
@@ -150,22 +149,20 @@ fn encode_system<
                     std::any::type_name::<M>(),
                 );
                 match transformer.encode(&message.message) {
-                    Ok(bytes) => net_node
-                        .send_message_channel
-                        .sender
-                        .send(NetworkRawPacket::new(
-                            connect_to.to_string(),
-                            Bytes::from_iter(bytes),
-                        ))
-                        .expect("send channel has closed"),
-                    Err(e) => {
-                        net_node
-                            .event_channel
+                    Ok(bytes) => {
+                        let _ = net_node
+                            .send_message_channel
                             .sender
-                            .send(NetworkEvent::Error(NetworkError::SerializeError(
-                                e.to_string(),
-                            )))
-                            .expect("event channel has closed");
+                            .send(NetworkRawPacket::new(
+                                connect_to.to_string(),
+                                Bytes::from_iter(bytes),
+                            ));
+                    }
+
+                    Err(e) => {
+                        let _ = net_node.event_channel.sender.send(NetworkEvent::Error(
+                            NetworkError::SerializeError(e.to_string()),
+                        ));
                     }
                 }
             }
@@ -217,6 +214,13 @@ fn decode_packets<
     }
 
     if !packets.is_empty() {
+        println!(
+            "{} decode_system {:?} {:?} {:?} ",
+            entity,
+            channel_id,
+            std::any::type_name::<M>(),
+            TypeId::of::<T>()
+        );
         let (messages, errors): (Vec<_>, Vec<_>) = packets
             .into_iter()
             .map(|msg| transformer.decode::<M>(&msg))
@@ -257,19 +261,24 @@ fn spawn_marker<T: Transformer>(
     for (entity, channel_id, option_remote) in q_channel.iter() {
         if let Some(channels) = transformer_index.0.get(&TypeId::of::<T>()) {
             if channels.contains(channel_id) {
-                trace!(
-                    "{:?} Spawning marker for {} in {}",
-                    entity,
-                    T::NAME,
-                    channel_id
-                );
-
                 if option_remote.is_some() {
+                    trace!(
+                        "{:?} Spawning sender marker for {} in {}",
+                        entity,
+                        T::NAME,
+                        channel_id
+                    );
                     commands.entity(entity).insert(TransformerSenderMarker {
                         channel_id: *channel_id,
                         transformer_id: TypeId::of::<T>(),
                     });
                 } else {
+                    trace!(
+                        "{:?} Spawning recv   marker for {} in {}",
+                        entity,
+                        T::NAME,
+                        channel_id
+                    );
                     commands.entity(entity).insert(TransformerRecvMarker {
                         channel_id: *channel_id,
                         transformer_id: TypeId::of::<T>(),

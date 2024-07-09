@@ -61,14 +61,13 @@ fn broadcast_message(
 
             let (child_net_node, connect_to) = q_child.get(child).expect("Child node not found.");
 
-            child_net_node
+            let _ = child_net_node
                 .send_message_channel
                 .sender
                 .try_send(NetworkRawPacket::new(
                     connect_to.to_string(),
                     Bytes::from_static(message),
-                ))
-                .expect("Message channel has closed.");
+                ));
         }
     }
 }
