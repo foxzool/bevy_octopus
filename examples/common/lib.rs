@@ -112,8 +112,8 @@ pub fn send_bincode_message(q_nodes: Query<(&NetworkNode, &ChannelId), With<Netw
     }
 }
 
-pub fn send_channel_message(mut channel_messages: EventWriter<ChannelMessage<PlayerInformation>>) {
-    channel_messages.send(ChannelMessage {
+pub fn send_channel_message(mut channel_messages: EventWriter<ChannelSendMessage<PlayerInformation>>) {
+    channel_messages.send(ChannelSendMessage {
         channel_id: JSON_CHANNEL,
         message: PlayerInformation {
             health: 300,

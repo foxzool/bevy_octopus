@@ -20,14 +20,30 @@ impl ChannelPacket {
     }
 }
 
-#[derive(Event)]
-pub struct ChannelMessage<T> {
+#[derive(Event, Debug)]
+pub struct ChannelSendMessage<M> {
     pub channel_id: ChannelId,
-    pub message: T,
+    pub message: M,
 }
 
-impl<T> ChannelMessage<T> {
-    pub fn new(channel_id: ChannelId, message: T) -> Self {
+impl<M> ChannelSendMessage<M> {
+    pub fn new(channel_id: ChannelId, message: M) -> Self {
+        Self {
+            channel_id,
+            message,
+        }
+    }
+}
+
+
+#[derive(Event, Debug)]
+pub struct ChannelReceivedMessage<M> {
+    pub channel_id: ChannelId,
+    pub message: M,
+}
+
+impl<M> ChannelReceivedMessage<M> {
+    pub fn new(channel_id: ChannelId, message: M) -> Self {
         Self {
             channel_id,
             message,

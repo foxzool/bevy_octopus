@@ -1,4 +1,4 @@
-use std::{any::TypeId, collections::HashMap, fmt::Debug, marker::PhantomData, ops::Deref};
+use std::{any::TypeId, collections::HashMap, fmt::Debug, marker::PhantomData};
 
 use bevy::{prelude::*, reflect::GetTypeRegistration};
 use bytes::Bytes;
@@ -10,7 +10,7 @@ pub use bincode::BincodeTransformer;
 pub use serde_json::JsonTransformer;
 
 use crate::{
-    channels::{ChannelId, ChannelMessage},
+    channels::{ChannelId, ChannelReceivedMessage, ChannelSendMessage},
     connections::NetworkPeer,
     error::NetworkError,
     network::{ConnectTo, NetworkData, NetworkRawPacket},
@@ -105,7 +105,7 @@ impl NetworkMessageTransformer for App {
         }
 
         self.add_event::<NetworkData<M>>();
-        self.add_event::<ChannelMessage<M>>();
+        self.add_event::<ChannelReceivedMessage<M>>();
 
         self
     }
@@ -145,7 +145,7 @@ impl NetworkMessageTransformer for App {
         }
 
         self.add_event::<NetworkData<M>>();
-        self.add_event::<ChannelMessage<M>>();
+        self.add_event::<ChannelSendMessage<M>>();
 
         self
     }
@@ -211,18 +211,12 @@ impl<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transfo
     }
 }
 
-#[derive(Component, Debug)]
-pub struct TransformerRecvMarker {
-    pub channel_id: ChannelId,
-    pub transformer_id: TypeId,
-    // pub message_id: TypeId
-}
 
 fn encode_system<
     M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
     T: Transformer + bevy::prelude::Resource,
 >(
-    mut message_ev: EventReader<ChannelMessage<M>>,
+    mut message_ev: EventReader<ChannelSendMessage<M>>,
     transformer: Res<T>,
     query: Query<
         (&ChannelId, &NetworkNode, &ConnectTo),
@@ -231,6 +225,9 @@ fn encode_system<
 ) {
     for message in message_ev.read() {
         for (channel_id, net_node, connect_to) in query.iter() {
+            if channel_id != &message.channel_id {
+                continue;
+            }
             trace!(
                 "{} {} Encoding message for {}",
                 channel_id,
@@ -262,77 +259,49 @@ fn decode_system<
     M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
     T: Transformer + bevy::prelude::Resource,
 >(
-    mut data_events: EventWriter<NetworkData<M>>,
+    mut channel_message: EventWriter<ChannelReceivedMessage<M>>,
     mut node_events: EventWriter<NetworkNodeEvent>,
     transformer: Res<T>,
     query: Query<(Entity, &ChannelId, &NetworkNode), With<DecoderMarker<M, T>>>,
 ) {
     for (entity, channel_id, network_node) in query.iter() {
-        decode_packets::<M, T>(
-            entity,
-            *channel_id,
-            network_node,
-            transformer.deref(),
-            &mut data_events,
-            &mut node_events,
-        );
-    }
-}
+        let mut packets = vec![];
+        while let Ok(Some(packet)) = network_node.recv_message_channel.receiver.try_recv() {
+            packets.push(packet.bytes);
+        }
 
-fn decode_packets<
-    M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
-    T: Transformer,
->(
-    entity: Entity,
-    channel_id: ChannelId,
-    network_node: &NetworkNode,
-    transformer: &T,
-    data_events: &mut EventWriter<NetworkData<M>>,
-    node_events: &mut EventWriter<NetworkNodeEvent>,
-) {
-    let mut packets = vec![];
-    while let Ok(Some(packet)) = network_node.recv_message_channel.receiver.try_recv() {
-        packets.push(packet.bytes);
-    }
-
-    if !packets.is_empty() {
-        // println!(
-        //     "{} decode_system {:?} {:?} {:?} ",
-        //     entity,
-        //     channel_id,
-        //     std::any::type_name::<M>(),
-        //     TypeId::of::<T>()
-        // );
-        let (messages, errors): (Vec<_>, Vec<_>) = packets
-            .into_iter()
-            .map(|msg| transformer.decode::<M>(&msg))
-            .partition(Result::is_ok);
-        debug!(
-            "{} decoding {} {} packets error {} for {}",
-            channel_id,
-            T::NAME,
-            messages.len(),
-            errors.len(),
-            std::any::type_name::<M>(),
-        );
-        data_events.send_batch(
-            messages
+        if !packets.is_empty() {
+            let (messages, errors): (Vec<_>, Vec<_>) = packets
                 .into_iter()
-                .map(Result::unwrap)
-                .map(|m| NetworkData::new(entity, m))
-                .collect::<Vec<_>>(),
-        );
-        node_events.send_batch(
-            errors
-                .into_iter()
-                .map(Result::unwrap_err)
-                .map(|error| NetworkNodeEvent {
-                    node: entity,
-                    channel_id,
-                    event: NetworkEvent::Error(error),
-                })
-                .collect::<Vec<_>>(),
-        );
+                .map(|msg| transformer.decode::<M>(&msg))
+                .partition(Result::is_ok);
+            debug!(
+                "{} decoding {} {} packets error {} for {}",
+                channel_id,
+                T::NAME,
+                messages.len(),
+                errors.len(),
+                std::any::type_name::<M>(),
+            );
+            channel_message.send_batch(
+                messages
+                    .into_iter()
+                    .map(Result::unwrap)
+                    .map(|m| ChannelReceivedMessage::new(*channel_id, m))
+                    .collect::<Vec<_>>(),
+            );
+            node_events.send_batch(
+                errors
+                    .into_iter()
+                    .map(Result::unwrap_err)
+                    .map(|error| NetworkNodeEvent {
+                        node: entity,
+                        channel_id: *channel_id,
+                        event: NetworkEvent::Error(error),
+                    })
+                    .collect::<Vec<_>>(),
+            );
+        }
     }
 }
 
@@ -346,7 +315,6 @@ fn spawn_encoder_marker<
 ) {
     for (entity, channel_id) in q_channel.iter() {
         if let Some(channels) = mt_ids.0.get(&(TypeId::of::<M>(), TypeId::of::<T>())) {
-
             if channels.contains(channel_id) {
                 trace!(
                     "{:?} Spawning encoder marker for {} in {}",
