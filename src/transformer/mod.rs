@@ -1,4 +1,4 @@
-use std::{any::TypeId, collections::HashMap, fmt::Debug, ops::Deref};
+use std::{any::TypeId, collections::HashMap, fmt::Debug, marker::PhantomData, ops::Deref};
 
 use bevy::{prelude::*, reflect::GetTypeRegistration};
 use bytes::Bytes;
@@ -40,6 +40,22 @@ pub trait NetworkMessageTransformer {
         &mut self,
         channel_id: ChannelId,
     ) -> &mut Self;
+
+    fn add_encoder<
+        M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
+        T: Transformer,
+    >(
+        &mut self,
+        channel_id: ChannelId,
+    ) -> &mut Self;
+
+    fn add_decoder<
+        M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
+        T: Transformer,
+    >(
+        &mut self,
+        channel_id: ChannelId,
+    ) -> &mut Self;
 }
 
 impl NetworkMessageTransformer for App {
@@ -50,8 +66,19 @@ impl NetworkMessageTransformer for App {
         &mut self,
         channel_id: ChannelId,
     ) -> &mut Self {
+        self.add_encoder::<M, T>(channel_id)
+            .add_decoder::<M, T>(channel_id)
+    }
+
+    fn add_encoder<
+        M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
+        T: Transformer,
+    >(
+        &mut self,
+        channel_id: ChannelId,
+    ) -> &mut Self {
         debug!(
-            "Registering {} transformer for {} in {}",
+            "Registering {} encoder for {} {}",
             T::NAME,
             std::any::type_name::<M>(),
             channel_id
@@ -65,31 +92,55 @@ impl NetworkMessageTransformer for App {
         let transform_type_id = TypeId::of::<T>();
         let message_type_id = TypeId::of::<M>();
 
-        let mut trans_for_channels = self.world_mut().resource_mut::<TransformerForChannels>();
-        match trans_for_channels.0.get_mut(&transform_type_id) {
+        let mut encoder_channels = self.world_mut().resource_mut::<EncoderChannels>();
+        match encoder_channels.get_mut(&(message_type_id, transform_type_id)) {
             None => {
-                trans_for_channels.insert(transform_type_id, vec![channel_id]);
-                self.add_systems(PostUpdate, spawn_marker::<T>);
+                encoder_channels.insert((message_type_id, transform_type_id), vec![channel_id]);
+                self.add_systems(PostUpdate, spawn_encoder_marker::<M, T>);
+                self.add_systems(PostUpdate, encode_system::<M, T>);
             }
-            Some(channels) => {
-                if !channels.contains(&channel_id) {
-                    channels.push(channel_id);
-                }
+            Some(ids) => {
+                ids.push(channel_id);
             }
         }
 
-        let mut msg_for_channels = self.world_mut().resource_mut::<MessageForChannels>();
-        match msg_for_channels.get_mut(&message_type_id) {
-            None => {
-                msg_for_channels.0.insert(message_type_id, vec![channel_id]);
-                self.add_systems(PreUpdate, decode_system::<M, T>);
-                self.add_systems(PostUpdate, encode_system::<M, T>);
+        self.add_event::<NetworkData<M>>();
+        self.add_event::<ChannelMessage<M>>();
 
+        self
+    }
+
+    fn add_decoder<
+        M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
+        T: Transformer,
+    >(
+        &mut self,
+        channel_id: ChannelId,
+    ) -> &mut Self {
+        debug!(
+            "Registering {} decoder for {} {}",
+            T::NAME,
+            std::any::type_name::<M>(),
+            channel_id
+        );
+        if self.world().get_resource::<T>().is_none() {
+            self.world_mut().init_resource::<T>();
+        }
+
+        self.register_type::<T>();
+
+        let transform_type_id = TypeId::of::<T>();
+        let message_type_id = TypeId::of::<M>();
+
+        let mut decoder_channels = self.world_mut().resource_mut::<DecoderChannels>();
+        match decoder_channels.get_mut(&(message_type_id, transform_type_id)) {
+            None => {
+                decoder_channels.insert((message_type_id, transform_type_id), vec![channel_id]);
+                self.add_systems(PreUpdate, decode_system::<M, T>);
+                self.add_systems(PostUpdate, spawn_decoder_marker::<M, T>);
             }
-            Some(message_types) => {
-                if !message_types.contains(&channel_id) {
-                    message_types.push(channel_id);
-                }
+            Some(ids) => {
+                ids.push(channel_id);
             }
         }
 
@@ -104,21 +155,67 @@ pub(crate) type TransformerTypeId = TypeId;
 pub(crate) type MessageTypeId = TypeId;
 
 #[derive(Resource, Deref, DerefMut, Debug, Default)]
-pub(crate) struct TransformerForChannels(pub HashMap<TransformerTypeId, Vec<ChannelId>>);
+pub(crate) struct DecoderChannels(
+    pub(crate) HashMap<(MessageTypeId, TransformerTypeId), Vec<ChannelId>>,
+);
 
 #[derive(Resource, Deref, DerefMut, Debug, Default)]
-pub(crate) struct MessageForChannels(pub HashMap<MessageTypeId, Vec<ChannelId>>);
+pub(crate) struct EncoderChannels(
+    pub(crate) HashMap<(MessageTypeId, TransformerTypeId), Vec<ChannelId>>,
+);
 
 #[derive(Component, Debug)]
 pub struct TransformerSenderMarker {
     pub channel_id: ChannelId,
     pub transformer_id: TypeId,
+    // pub message_id: TypeId
+}
+
+#[derive(Component, Debug)]
+pub struct EncoderMarker<
+    M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
+    T: Transformer,
+> {
+    _message: PhantomData<M>,
+    _transformer: PhantomData<T>,
+}
+
+impl<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer>
+    EncoderMarker<M, T>
+{
+    pub fn new() -> Self {
+        Self {
+            _message: PhantomData,
+            _transformer: PhantomData,
+        }
+    }
+}
+
+#[derive(Component, Debug)]
+pub struct DecoderMarker<
+    M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
+    T: Transformer,
+> {
+    _message: PhantomData<M>,
+    _transformer: PhantomData<T>,
+}
+
+impl<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer>
+    DecoderMarker<M, T>
+{
+    pub fn new() -> Self {
+        Self {
+            _message: PhantomData,
+            _transformer: PhantomData,
+        }
+    }
 }
 
 #[derive(Component, Debug)]
 pub struct TransformerRecvMarker {
     pub channel_id: ChannelId,
     pub transformer_id: TypeId,
+    // pub message_id: TypeId
 }
 
 fn encode_system<
@@ -128,42 +225,33 @@ fn encode_system<
     mut message_ev: EventReader<ChannelMessage<M>>,
     transformer: Res<T>,
     query: Query<
-        (
-            &ChannelId,
-            &NetworkNode,
-            &ConnectTo,
-            &TransformerSenderMarker,
-        ),
-        With<NetworkPeer>,
+        (&ChannelId, &NetworkNode, &ConnectTo),
+        (With<NetworkPeer>, With<EncoderMarker<M, T>>),
     >,
 ) {
     for message in message_ev.read() {
-        for (channel_id, net_node, connect_to, channel_marker) in query.iter() {
-            if *channel_id == message.channel_id
-                && channel_marker.transformer_id == TypeId::of::<T>()
-            {
-                trace!(
-                    "{} {} Encoding message for {}",
-                    channel_id,
-                    T::NAME,
-                    std::any::type_name::<M>(),
-                );
-                match transformer.encode(&message.message) {
-                    Ok(bytes) => {
-                        let _ = net_node
-                            .send_message_channel
-                            .sender
-                            .send(NetworkRawPacket::new(
-                                connect_to.to_string(),
-                                Bytes::from_iter(bytes),
-                            ));
-                    }
-
-                    Err(e) => {
-                        let _ = net_node.event_channel.sender.send(NetworkEvent::Error(
-                            NetworkError::SerializeError(e.to_string()),
+        for (channel_id, net_node, connect_to) in query.iter() {
+            trace!(
+                "{} {} Encoding message for {}",
+                channel_id,
+                T::NAME,
+                std::any::type_name::<M>(),
+            );
+            match transformer.encode(&message.message) {
+                Ok(bytes) => {
+                    let _ = net_node
+                        .send_message_channel
+                        .sender
+                        .send(NetworkRawPacket::new(
+                            connect_to.to_string(),
+                            Bytes::from_iter(bytes),
                         ));
-                    }
+                }
+
+                Err(e) => {
+                    let _ = net_node.event_channel.sender.send(NetworkEvent::Error(
+                        NetworkError::SerializeError(e.to_string()),
+                    ));
                 }
             }
         }
@@ -177,15 +265,9 @@ fn decode_system<
     mut data_events: EventWriter<NetworkData<M>>,
     mut node_events: EventWriter<NetworkNodeEvent>,
     transformer: Res<T>,
-    query: Query<(Entity, &ChannelId, &NetworkNode, &TransformerRecvMarker)>,
+    query: Query<(Entity, &ChannelId, &NetworkNode), With<DecoderMarker<M, T>>>,
 ) {
-    for (entity, channel_id, network_node, channel_marker) in query.iter() {
-        if channel_marker.channel_id != *channel_id
-            || channel_marker.transformer_id != TypeId::of::<T>()
-        {
-            continue;
-        }
-
+    for (entity, channel_id, network_node) in query.iter() {
         decode_packets::<M, T>(
             entity,
             *channel_id,
@@ -214,19 +296,20 @@ fn decode_packets<
     }
 
     if !packets.is_empty() {
-        println!(
-            "{} decode_system {:?} {:?} {:?} ",
-            entity,
-            channel_id,
-            std::any::type_name::<M>(),
-            TypeId::of::<T>()
-        );
+        // println!(
+        //     "{} decode_system {:?} {:?} {:?} ",
+        //     entity,
+        //     channel_id,
+        //     std::any::type_name::<M>(),
+        //     TypeId::of::<T>()
+        // );
         let (messages, errors): (Vec<_>, Vec<_>) = packets
             .into_iter()
             .map(|msg| transformer.decode::<M>(&msg))
             .partition(Result::is_ok);
         debug!(
-            "{} decoding {} packets error {} for {}",
+            "{} decoding {} {} packets error {} for {}",
+            channel_id,
             T::NAME,
             messages.len(),
             errors.len(),
@@ -253,37 +336,48 @@ fn decode_packets<
     }
 }
 
-fn spawn_marker<T: Transformer>(
+fn spawn_encoder_marker<
+    M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
+    T: Transformer,
+>(
     mut commands: Commands,
-    transformer_index: Res<TransformerForChannels>,
-    q_channel: Query<(Entity, &ChannelId, Option<&ConnectTo>), Added<ChannelId>>,
+    mt_ids: Res<EncoderChannels>,
+    q_channel: Query<(Entity, &ChannelId), Added<ChannelId>>,
 ) {
-    for (entity, channel_id, option_remote) in q_channel.iter() {
-        if let Some(channels) = transformer_index.0.get(&TypeId::of::<T>()) {
+    for (entity, channel_id) in q_channel.iter() {
+        if let Some(channels) = mt_ids.0.get(&(TypeId::of::<M>(), TypeId::of::<T>())) {
+
             if channels.contains(channel_id) {
-                if option_remote.is_some() {
-                    trace!(
-                        "{:?} Spawning sender marker for {} in {}",
-                        entity,
-                        T::NAME,
-                        channel_id
-                    );
-                    commands.entity(entity).insert(TransformerSenderMarker {
-                        channel_id: *channel_id,
-                        transformer_id: TypeId::of::<T>(),
-                    });
-                } else {
-                    trace!(
-                        "{:?} Spawning recv   marker for {} in {}",
-                        entity,
-                        T::NAME,
-                        channel_id
-                    );
-                    commands.entity(entity).insert(TransformerRecvMarker {
-                        channel_id: *channel_id,
-                        transformer_id: TypeId::of::<T>(),
-                    });
-                }
+                trace!(
+                    "{:?} Spawning encoder marker for {} in {}",
+                    entity,
+                    T::NAME,
+                    channel_id
+                );
+                commands.entity(entity).insert(EncoderMarker::<M, T>::new());
+            }
+        }
+    }
+}
+
+fn spawn_decoder_marker<
+    M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
+    T: Transformer,
+>(
+    mut commands: Commands,
+    mt_ids: Res<DecoderChannels>,
+    q_channel: Query<(Entity, &ChannelId), Added<ChannelId>>,
+) {
+    for (entity, channel_id) in q_channel.iter() {
+        if let Some(channels) = mt_ids.0.get(&(TypeId::of::<M>(), TypeId::of::<T>())) {
+            if channels.contains(channel_id) {
+                trace!(
+                    "{:?} Spawning decoder marker for {} in {}",
+                    entity,
+                    T::NAME,
+                    channel_id
+                );
+                commands.entity(entity).insert(DecoderMarker::<M, T>::new());
             }
         }
     }

@@ -18,7 +18,7 @@ pub fn shared_setup(app: &mut App) {
             std::time::Duration::from_secs_f64(1.0 / 60.0),
         )),
         LogPlugin {
-            filter: "bevy_octopus=debug".to_string(),
+            filter: "bevy_octopus=trace".to_string(),
             ..default()
         },
     ))

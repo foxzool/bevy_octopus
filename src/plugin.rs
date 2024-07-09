@@ -8,16 +8,17 @@ use crate::{
     network_node::update_network_node,
     scheduler::NetworkSet,
     shared::NetworkNodeEvent,
-    transformer::{TransformerForChannels, MessageForChannels},
 };
+use crate::transformer::{DecoderChannels, EncoderChannels};
 
 pub struct OctopusPlugin;
 
 impl Plugin for OctopusPlugin {
     fn build(&self, app: &mut App) {
         let app = register_reflect_types(app);
-        app.init_resource::<TransformerForChannels>()
-            .init_resource::<MessageForChannels>()
+        app
+            .init_resource::<EncoderChannels>()
+            .init_resource::<DecoderChannels>()
             .add_event::<NetworkNodeEvent>()
             .add_event::<ChannelPacket>()
             .configure_sets(
