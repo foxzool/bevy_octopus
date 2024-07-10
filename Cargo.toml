@@ -1,6 +1,6 @@
 [package]
 name = "bevy_octopus"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["ZoOL <zhooul@gmail.com>"]
 edition = "2021"
 description = "ECS based networking library for Bevy"
