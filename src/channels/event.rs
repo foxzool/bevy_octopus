@@ -35,7 +35,6 @@ impl<M> ChannelSendMessage<M> {
     }
 }
 
-
 #[derive(Event, Debug)]
 pub struct ChannelReceivedMessage<M> {
     pub channel_id: ChannelId,

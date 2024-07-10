@@ -180,10 +180,10 @@ pub struct EncoderMarker<
     _transformer: PhantomData<T>,
 }
 
-impl<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer>
-    EncoderMarker<M, T>
+impl<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer> Default
+    for EncoderMarker<M, T>
 {
-    pub fn new() -> Self {
+    fn default() -> Self {
         Self {
             _message: PhantomData,
             _transformer: PhantomData,
@@ -200,10 +200,10 @@ pub struct DecoderMarker<
     _transformer: PhantomData<T>,
 }
 
-impl<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer>
-    DecoderMarker<M, T>
+impl<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transformer> Default
+    for DecoderMarker<M, T>
 {
-    pub fn new() -> Self {
+    fn default() -> Self {
         Self {
             _message: PhantomData,
             _transformer: PhantomData,
@@ -211,7 +211,8 @@ impl<M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static, T: Transfo
     }
 }
 
-
+/// encode system fro encoder marker
+#[allow(clippy::type_complexity)]
 fn encode_system<
     M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
     T: Transformer + bevy::prelude::Resource,
@@ -255,6 +256,8 @@ fn encode_system<
     }
 }
 
+/// decode system with decoder marker
+#[allow(clippy::type_complexity)]
 fn decode_system<
     M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
     T: Transformer + bevy::prelude::Resource,
@@ -322,7 +325,9 @@ fn spawn_encoder_marker<
                     T::NAME,
                     channel_id
                 );
-                commands.entity(entity).insert(EncoderMarker::<M, T>::new());
+                commands
+                    .entity(entity)
+                    .insert(EncoderMarker::<M, T>::default());
             }
         }
     }
@@ -345,7 +350,9 @@ fn spawn_decoder_marker<
                     T::NAME,
                     channel_id
                 );
-                commands.entity(entity).insert(DecoderMarker::<M, T>::new());
+                commands
+                    .entity(entity)
+                    .insert(DecoderMarker::<M, T>::default());
             }
         }
     }

@@ -8,7 +8,7 @@ use async_std::{
 };
 use bevy::prelude::*;
 use bytes::Bytes;
-use futures::{AsyncReadExt, future};
+use futures::{future, AsyncReadExt};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
