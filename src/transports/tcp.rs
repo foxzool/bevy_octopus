@@ -54,7 +54,7 @@ impl TcpNode {
     ) -> Result<(), NetworkError> {
         let listener = TcpListener::bind(addr).await?;
 
-        debug!("TCP Server listening on {}", addr);
+        info!("TCP Server listening on {}", addr);
         let mut incoming = listener.incoming();
 
         while let Some(stream) = incoming.next().await {

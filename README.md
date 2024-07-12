@@ -1,6 +1,6 @@
 # bevy_octopus
 
-The ECS driven network plugin for Bevy.
+A Low leveling ECS driven network plugin for Bevy.
 
 ## Features
 
@@ -31,6 +31,7 @@ multicast. [example](https://github.com/foxzool/bevy_octopus/blob/main/examples/
 
 | bevy | bevy_octopus |
 |------|--------------|
+| 0.14 | 0.2          |
 | 0.13 | 0.1          |
 
 # License
@@ -43,6 +44,7 @@ All code in this repository is dual-licensed under either:
 at your option. This means you can select the license you prefer.
 
 ## Your contributions
+
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the
 work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any
 additional terms or conditions.
