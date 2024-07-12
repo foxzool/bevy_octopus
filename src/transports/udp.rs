@@ -1,9 +1,7 @@
-use std::{
-    net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
-    sync::Arc,
-};
-
+use std::{io, net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs}, sync::Arc};
+use std::time::Duration;
 use async_std::{net::UdpSocket, task};
+use async_std::future::timeout;
 use bevy::prelude::*;
 use bytes::Bytes;
 use futures::future;
@@ -72,12 +70,48 @@ async fn send_loop(
         );
         let arr: Vec<&str> = packet.addr.split("//").collect();
         let s = arr[1].split('/').collect::<Vec<&str>>()[0];
-        let addr = s.to_socket_addrs().unwrap().next().unwrap();
 
-        socket.send_to(packet.bytes.as_ref(), addr).await?;
+        let max_retries = 5;
+        let timeout_duration = Duration::from_secs(1);
+        send_data(&socket, s, &packet.bytes, max_retries, timeout_duration).await?;
     }
 
     Ok(())
+}
+
+
+async fn send_data(socket: &UdpSocket, addr: &str, data: &[u8], max_retries: usize, timeout_duration: Duration) -> io::Result<()> {
+    let mut attempts = 0;
+
+    while attempts < max_retries {
+        match timeout(timeout_duration, socket.send_to(data, addr)).await {
+            Ok(Ok(_)) => {
+                // println!("Data sent successfully");
+                return Ok(());
+            }
+            Ok(Err(e)) if e.kind() == io::ErrorKind::WouldBlock => {
+                println!("Send buffer is full, waiting...");
+                task::yield_now().await;
+            }
+            Ok(Err(e)) if e.kind() == io::ErrorKind::ConnectionRefused => {
+                println!("Connection refused: {}", e);
+                // Optionally, wait a bit before retrying
+                task::sleep(Duration::from_secs(1)).await;
+            }
+            Ok(Err(e)) => {
+                println!("Failed to send data: {}", e);
+                return Err(e);
+            }
+            Err(_) => {
+                println!("Send attempt timed out");
+            }
+        }
+
+        attempts += 1;
+        println!("Retrying... attempt {}/{}", attempts, max_retries);
+    }
+
+    Err(io::Error::new(io::ErrorKind::TimedOut, "Failed to send data within retry limit"))
 }
 
 #[derive(Component, Clone)]
