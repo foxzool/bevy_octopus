@@ -2,10 +2,10 @@
 // #![warn(missing_docs)]
 
 pub mod channels;
-pub mod connections;
 pub mod error;
 pub mod network;
 pub mod network_node;
+pub mod peer;
 pub mod plugin;
 pub mod prelude;
 pub mod scheduler;

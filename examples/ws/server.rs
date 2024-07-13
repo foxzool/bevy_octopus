@@ -4,9 +4,9 @@ use bevy::{prelude::*, time::common_conditions::on_timer};
 use bytes::Bytes;
 
 use bevy_octopus::{
-    connections::NetworkPeer,
     network::NetworkRawPacket,
     network_node::NetworkNode,
+    peer::NetworkPeer,
     prelude::{ChannelId, ChannelPacket, ConnectTo, ListenTo},
     transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };

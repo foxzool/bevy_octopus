@@ -12,10 +12,10 @@ use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
     channels::ChannelId,
-    connections::NetworkPeer,
     error::NetworkError,
     network::{ConnectTo, NetworkRawPacket},
     network_node::NetworkNode,
+    peer::NetworkPeer,
     prelude::ListenTo,
     shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent},
     transports::ServerNodeAddedFilter,

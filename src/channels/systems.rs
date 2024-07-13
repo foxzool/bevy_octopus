@@ -2,9 +2,9 @@ use bevy::ecs::prelude::*;
 
 use crate::{
     channels::{ChannelId, ChannelPacket},
-    connections::NetworkPeer,
     network::{ConnectTo, NetworkRawPacket},
     network_node::NetworkNode,
+    peer::NetworkPeer,
 };
 
 pub(crate) fn send_channel_message_system(

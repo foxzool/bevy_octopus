@@ -11,10 +11,10 @@ pub use serde_json::JsonTransformer;
 
 use crate::{
     channels::{ChannelId, ChannelReceivedMessage, ChannelSendMessage},
-    connections::NetworkPeer,
     error::NetworkError,
     network::{ConnectTo, NetworkData, NetworkRawPacket},
     network_node::NetworkNode,
+    peer::NetworkPeer,
     shared::{NetworkEvent, NetworkNodeEvent},
 };
 

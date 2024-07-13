@@ -6,7 +6,7 @@ use bevy::{log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
 use bevy_octopus::{
-    connections::NetworkPeer, network::NetworkData, network_node::NetworkNode, prelude::*,
+    network::NetworkData, network_node::NetworkNode, peer::NetworkPeer, prelude::*,
     shared::NetworkNodeEvent,
 };
 
