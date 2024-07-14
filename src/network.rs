@@ -35,7 +35,6 @@ impl<T> NetworkData<T> {
 pub struct NetworkRawPacket {
     pub addr: String,
     pub bytes: Bytes,
-    #[cfg(feature = "websocket")]
     pub text: Option<String>,
 }
 
@@ -44,7 +43,6 @@ impl NetworkRawPacket {
         NetworkRawPacket {
             addr: addr.to_string(),
             bytes,
-            #[cfg(feature = "websocket")]
             text: None,
         }
     }
@@ -65,7 +63,6 @@ pub struct ListenTo(pub Url);
 impl ListenTo {
     pub fn new(url_str: &str) -> Self {
         let url = Url::parse(url_str).expect("url format error");
-        check_support_scheme(&url);
         Self(url)
     }
 
@@ -83,7 +80,6 @@ pub struct ConnectTo(pub Url);
 impl ConnectTo {
     pub fn new(url_str: &str) -> Self {
         let url = Url::parse(url_str).expect("url format error");
-        check_support_scheme(&url);
         Self(url)
     }
 
@@ -92,27 +88,5 @@ impl ConnectTo {
         let arr: Vec<&str> = url_str.split("//").collect();
         let s = arr[1].split('/').collect::<Vec<&str>>()[0];
         s.to_socket_addrs().unwrap().next().unwrap()
-    }
-}
-
-/// check if the scheme is supported
-fn check_support_scheme(url: &Url) {
-    match url.scheme() {
-        "tcp" => {
-            if cfg!(not(feature = "tcp")) {
-                panic!("tcp feature not enabled");
-            }
-        }
-        "udp" => {
-            if cfg!(not(feature = "udp")) {
-                panic!("udp feature not enabled");
-            }
-        }
-        "ws" | "wss" => {
-            if cfg!(not(feature = "websocket")) {
-                panic!("websocket feature not enabled");
-            }
-        }
-        _ => panic!("scheme {} not supported", url.scheme()),
     }
 }

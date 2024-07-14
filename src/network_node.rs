@@ -54,11 +54,10 @@ impl NetworkNode {
         }
     }
 
-    #[cfg(feature = "websocket")]
+    /// Send text message
     pub fn send_text(&self, text: String) {
         match self.connect_to.as_ref() {
             None => {
-                println!("send error");
                 let _ = self
                     .event_channel
                     .sender

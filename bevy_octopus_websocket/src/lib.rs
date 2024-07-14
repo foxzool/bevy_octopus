@@ -10,7 +10,7 @@ use bytes::Bytes;
 use futures::{pin_mut, prelude::*};
 use kanal::{AsyncReceiver, AsyncSender};
 
-use crate::{
+use bevy_octopus::{
     channels::ChannelId,
     error::NetworkError,
     network::{ConnectTo, NetworkRawPacket},
@@ -181,7 +181,9 @@ async fn handle_client_conn(
     message_rx: AsyncReceiver<NetworkRawPacket>,
     event_tx: AsyncSender<NetworkEvent>,
 ) -> Result<(), NetworkError> {
-    let ws_stream = connect_async(url.clone()).await?;
+    let ws_stream = connect_async(url.clone())
+        .await
+        .map_err(|e| NetworkError::Connection(e.to_string()))?;
 
     let (mut writer, read) = ws_stream.0.split();
 

@@ -4,8 +4,8 @@ use std::io;
 #[derive(thiserror::Error, Debug)]
 pub enum NetworkError {
     /// A default networking error returned when no other more specific type can be determined
-    #[error("Common Error: {0}")]
-    CommonError(String),
+    #[error(transparent)]
+    Common(#[from] anyhow::Error),
     // /// Error occurred when accepting a new connection.
     // Accept(io::Error),
     //
@@ -30,9 +30,5 @@ pub enum NetworkError {
     IoError(#[from] io::Error),
     #[error("Failed to receive from channelL: {0}")]
     ReceiveError(#[from] kanal::ReceiveError),
-    #[error(transparent)]
-    Other(#[from] anyhow::Error),
-    #[cfg(feature = "websocket")]
-    #[error("Websocket Error {0}")]
-    WebsocketError(#[from] async_tungstenite::tungstenite::Error),
+
 }

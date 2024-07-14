@@ -19,7 +19,6 @@ pub(crate) fn send_channel_message_system(
                     let _ = net_node.send_message_channel.sender.send(NetworkRawPacket {
                         bytes: channel_ev.bytes.clone(),
                         addr: connect_to.to_string(),
-                        #[cfg(feature = "websocket")]
                         text: channel_ev.text.clone(),
                     });
                 }

@@ -4,7 +4,7 @@ use bevy::{
 };
 
 use crate::{
-    channels::{systems::send_channel_message_system, ChannelId, ChannelPacket},
+    channels::{ChannelId, ChannelPacket, systems::send_channel_message_system},
     network_node::update_network_node,
     scheduler::NetworkSet,
     shared::NetworkNodeEvent,
@@ -40,9 +40,6 @@ impl Plugin for OctopusPlugin {
 
         #[cfg(feature = "tcp")]
         app.add_plugins(crate::transports::tcp::TcpPlugin);
-
-        #[cfg(feature = "websocket")]
-        app.add_plugins(crate::transports::websocket::WebsocketPlugin);
     }
 }
 

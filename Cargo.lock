@@ -885,7 +885,6 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-std",
- "async-tungstenite",
  "bevy",
  "bevy-inspector-egui",
  "bincode",
@@ -896,6 +895,23 @@ dependencies = [
  "serde_json",
  "thiserror",
  "url",
+]
+
+[[package]]
+name = "bevy_octopus_websocket"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "async-tungstenite",
+ "bevy",
+ "bevy_octopus",
+ "bincode",
+ "bytes",
+ "futures",
+ "kanal",
+ "serde",
+ "serde_json",
+ "tungstenite",
 ]
 
 [[package]]
