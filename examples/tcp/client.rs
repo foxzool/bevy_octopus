@@ -39,6 +39,6 @@ fn main() {
 fn setup_clients(mut commands: Commands) {
     commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:38551")));
     commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:5003")));
-    commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:5004")));
-    commands.spawn((RAW_CHANNEL, ConnectTo::new("tcp://127.0.0.1:5005")));
+    commands.spawn((JSON_CHANNEL, ConnectTo::new("tcp://127.0.0.1:5004")));
+    commands.spawn((BINCODE_CHANNEL, ConnectTo::new("tcp://127.0.0.1:5005")));
 }

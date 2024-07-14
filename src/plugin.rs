@@ -4,8 +4,8 @@ use bevy::{
 };
 
 use crate::{
-    channels::{ChannelId, ChannelPacket, systems::send_channel_message_system},
-    network_node::update_network_node,
+    channels::{systems::send_channel_message_system, ChannelId, ChannelPacket},
+    network_node::{handle_command_queue_tasks, update_network_node, CommandQueueTasks},
     scheduler::NetworkSet,
     shared::NetworkNodeEvent,
     transformer::{DecoderChannels, EncoderChannels},
@@ -18,6 +18,7 @@ impl Plugin for OctopusPlugin {
         let app = register_reflect_types(app);
         app.init_resource::<EncoderChannels>()
             .init_resource::<DecoderChannels>()
+            .init_resource::<CommandQueueTasks>()
             .add_event::<NetworkNodeEvent>()
             .add_event::<ChannelPacket>()
             .configure_sets(
@@ -33,7 +34,7 @@ impl Plugin for OctopusPlugin {
                 PostUpdate,
                 send_channel_message_system.in_set(NetworkSet::Send),
             )
-            .add_systems(Last, update_network_node);
+            .add_systems(Last, (update_network_node, handle_command_queue_tasks));
 
         #[cfg(feature = "udp")]
         app.add_plugins(crate::transports::udp::UdpPlugin);

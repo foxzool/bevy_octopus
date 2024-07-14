@@ -30,5 +30,4 @@ pub enum NetworkError {
     IoError(#[from] io::Error),
     #[error("Failed to receive from channelL: {0}")]
     ReceiveError(#[from] kanal::ReceiveError),
-
 }

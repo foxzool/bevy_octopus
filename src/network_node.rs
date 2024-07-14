@@ -1,6 +1,10 @@
 use std::fmt::Display;
 
-use bevy::prelude::{Added, Component, Or, Query};
+use bevy::{
+    ecs::world::CommandQueue,
+    prelude::{Added, Commands, Component, Or, Query, ResMut, Resource},
+    tasks::block_on,
+};
 use bytes::Bytes;
 
 use crate::{
@@ -116,5 +120,18 @@ pub(crate) fn update_network_node(
                 net_node.connect_to = Some(connect_to.clone());
             }
         }
+    }
+}
+
+#[derive(Resource, Default)]
+pub(crate) struct CommandQueueTasks {
+    pub tasks: AsyncChannel<CommandQueue>,
+}
+
+pub(crate) fn handle_command_queue_tasks(task: ResMut<CommandQueueTasks>, mut commands: Commands) {
+    while let Ok(Some(mut commands_queue)) = task.tasks.receiver.try_recv() {
+        block_on(async {
+            commands.append(&mut commands_queue);
+        });
     }
 }

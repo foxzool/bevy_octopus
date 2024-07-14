@@ -1,12 +1,13 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, time::Duration};
 
 use async_std::{
     io::WriteExt,
     net::{TcpListener, TcpStream},
     prelude::StreamExt,
     task,
+    task::sleep,
 };
-use bevy::prelude::*;
+use bevy::{ecs::world::CommandQueue, prelude::*};
 use bytes::Bytes;
 use futures::{future, AsyncReadExt};
 use kanal::{AsyncReceiver, AsyncSender};
@@ -15,7 +16,7 @@ use crate::{
     channels::ChannelId,
     error::NetworkError,
     network::{ConnectTo, ListenTo, NetworkRawPacket},
-    network_node::NetworkNode,
+    network_node::{CommandQueueTasks, NetworkNode},
     peer::NetworkPeer,
     shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent},
 };
@@ -172,6 +173,7 @@ fn spawn_tcp_server(
 #[allow(clippy::type_complexity)]
 fn spawn_tcp_client(
     mut commands: Commands,
+    tasks_res: ResMut<CommandQueueTasks>,
     q_tcp_client: Query<(Entity, &ConnectTo), (Added<ConnectTo>, Without<NetworkNode>)>,
 ) {
     for (e, connect_to) in q_tcp_client.iter() {
@@ -187,7 +189,13 @@ fn spawn_tcp_client(
         let event_tx = new_net_node.event_channel.sender.clone_async();
         let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
 
+        let queue_tx = tasks_res.tasks.sender.clone_async();
+
+        let entity = e;
+        let connect_to = connect_to.clone();
+
         task::spawn(async move {
+            let mut command_queue = CommandQueue::default();
             match TcpStream::connect(addr).await {
                 Ok(tcp_stream) => {
                     tcp_stream
@@ -196,12 +204,27 @@ fn spawn_tcp_client(
                     handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
                 }
                 Err(err) => {
+                    command_queue.push(move |world: &mut World| {
+                        world
+                            .entity_mut(entity)
+                            .remove::<ConnectTo>()
+                            .remove::<NetworkNode>()
+                            .insert(connect_to);
+                    });
+
                     let _ = event_tx
                         .send(NetworkEvent::Error(NetworkError::Connection(
                             err.to_string(),
                         )))
                         .await;
                 }
+            }
+
+            if !command_queue.is_empty() {
+                // reconnect after 1 second
+                sleep(Duration::from_secs_f32(1.0)).await;
+
+                let _ = queue_tx.send(command_queue).await;
             }
         });
 

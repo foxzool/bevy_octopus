@@ -51,6 +51,7 @@ bevy = { version = "0.14.0", default-features = false, features = [
     "bevy_ui",
     "bevy_text",
     "bevy_core_pipeline",
+    "multi_threaded",
     "x11"
 ] }
 
