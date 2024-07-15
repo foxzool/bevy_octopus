@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use bevy::{
     ecs::world::CommandQueue,
-    prelude::{Added, Commands, Component, Or, Query, ResMut, Resource},
+    prelude::{Added, Bundle, Commands, Component, Or, Query, ResMut, Resource},
     tasks::block_on,
 };
 use bytes::Bytes;
@@ -10,8 +10,24 @@ use bytes::Bytes;
 use crate::{
     error::NetworkError,
     network::{ConnectTo, ListenTo, NetworkRawPacket},
+    prelude::ChannelId,
     shared::{AsyncChannel, NetworkEvent},
 };
+
+#[derive(Bundle)]
+pub struct NetworkBundle {
+    pub channel_id: ChannelId,
+    pub network_node: NetworkNode,
+}
+
+impl NetworkBundle {
+    pub fn new(channel_id: ChannelId) -> Self {
+        Self {
+            channel_id,
+            network_node: NetworkNode::default(),
+        }
+    }
+}
 
 #[derive(Component, Default)]
 pub struct NetworkNode {
@@ -42,11 +58,12 @@ impl NetworkNode {
     pub fn send(&self, bytes: &[u8]) {
         match self.connect_to.as_ref() {
             None => {
-                println!("send error");
-                let _ = self
-                    .event_channel
-                    .sender
-                    .try_send(NetworkEvent::Error(NetworkError::SendError));
+                let _ =
+                    self.event_channel
+                        .sender
+                        .try_send(NetworkEvent::Error(NetworkError::Custom(
+                            "No connection".to_string(),
+                        )));
             }
             Some(connect_to) => {
                 let addr = connect_to.to_string();
@@ -62,10 +79,12 @@ impl NetworkNode {
     pub fn send_text(&self, text: String) {
         match self.connect_to.as_ref() {
             None => {
-                let _ = self
-                    .event_channel
-                    .sender
-                    .try_send(NetworkEvent::Error(NetworkError::SendError));
+                let _ =
+                    self.event_channel
+                        .sender
+                        .try_send(NetworkEvent::Error(NetworkError::Custom(
+                            "No connection".to_string(),
+                        )));
             }
             Some(connect_to) => {
                 let addr = connect_to.to_string();

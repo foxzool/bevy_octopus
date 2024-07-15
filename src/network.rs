@@ -32,6 +32,7 @@ impl<T> NetworkData<T> {
 }
 
 /// [`NetworkRawPacket`]s are raw packets that are sent over the network.
+#[derive(Clone)]
 pub struct NetworkRawPacket {
     pub addr: String,
     pub bytes: Bytes,

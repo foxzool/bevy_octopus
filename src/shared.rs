@@ -3,7 +3,7 @@ use kanal::{unbounded, Receiver, Sender};
 
 use crate::{error::NetworkError, network_node::NetworkNode, prelude::ChannelId};
 
-#[derive(Reflect)]
+#[derive(Reflect, Clone)]
 pub struct AsyncChannel<T> {
     pub sender: Sender<T>,
     pub receiver: Receiver<T>,
@@ -38,6 +38,7 @@ pub enum NetworkEvent {
     Disconnected,
     Error(NetworkError),
 }
+
 
 /// send network node error channel to events
 pub(crate) fn network_node_event(

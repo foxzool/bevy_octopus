@@ -214,10 +214,8 @@ async fn handle_client_conn(
             };
 
             if let Err(e) = writer.send(message).await {
-                eprintln!("Failed to write data to  ws socket: {}", e);
-
                 let _ = event_tx
-                    .send(NetworkEvent::Error(NetworkError::SendError))
+                    .send(NetworkEvent::Error(NetworkError::Custom(e.to_string())))
                     .await;
 
                 break;
@@ -267,9 +265,8 @@ async fn server_handle_conn(
                 Message::binary(data.bytes)
             };
             if let Err(e) = writer.send(message).await {
-                eprintln!("Failed to write data to  ws socket: {}", e);
                 let _ = event_tx
-                    .send(NetworkEvent::Error(NetworkError::SendError))
+                    .send(NetworkEvent::Error(e.into()))
                     .await;
 
                 break;

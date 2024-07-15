@@ -5,7 +5,7 @@ use bytes::Bytes;
 
 use bevy_octopus::{
     network::{ConnectTo, ListenTo, NetworkRawPacket},
-    network_node::NetworkNode,
+    network_node::{NetworkBundle, NetworkNode},
     peer::NetworkPeer,
     prelude::{ChannelId, ChannelPacket},
     transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
@@ -37,9 +37,18 @@ fn main() {
 }
 
 fn setup_server(mut commands: Commands) {
-    commands.spawn((RAW_CHANNEL, ListenTo::new("tcp://0.0.0.0:5003")));
-    commands.spawn((JSON_CHANNEL, ListenTo::new("tcp://0.0.0.0:5004")));
-    commands.spawn((BINCODE_CHANNEL, ListenTo::new("tcp://0.0.0.0:5005")));
+    commands.spawn((
+        NetworkBundle::new(RAW_CHANNEL),
+        ListenTo::new("tcp://0.0.0.0:5003"),
+    ));
+    commands.spawn((
+        NetworkBundle::new(JSON_CHANNEL),
+        ListenTo::new("tcp://0.0.0.0:5004"),
+    ));
+    commands.spawn((
+        NetworkBundle::new(BINCODE_CHANNEL),
+        ListenTo::new("tcp://0.0.0.0:5005"),
+    ));
 }
 
 /// broadcast message to all connected clients in channel

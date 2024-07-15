@@ -278,7 +278,7 @@ fn decode_system<
                 .into_iter()
                 .map(|msg| transformer.decode::<M>(&msg))
                 .partition(Result::is_ok);
-            debug!(
+            trace!(
                 "{} decoding {} {} packets error {} for {}",
                 channel_id,
                 T::NAME,

@@ -9,7 +9,7 @@ use async_std::{
 };
 use bevy::{ecs::world::CommandQueue, prelude::*};
 use bytes::Bytes;
-use futures::{future, AsyncReadExt};
+use futures::{AsyncReadExt, future};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
@@ -51,11 +51,12 @@ impl TcpNode {
     }
     pub async fn listen(
         addr: SocketAddr,
+        event_tx: AsyncSender<NetworkEvent>,
         new_connection_tx: AsyncSender<TcpStream>,
     ) -> Result<(), NetworkError> {
         let listener = TcpListener::bind(addr).await?;
-
-        info!("TCP Server listening on {}", addr);
+        debug!("TCP Server listening on {}", addr);
+        event_tx.send(NetworkEvent::Listen).await?;
         let mut incoming = listener.incoming();
 
         while let Some(stream) = incoming.next().await {
@@ -77,6 +78,8 @@ async fn handle_connection(
 ) {
     let local_addr = stream.local_addr().unwrap();
     let addr = stream.peer_addr().unwrap();
+    debug!("TCP local {} connected to remote {}", local_addr, addr);
+
     let (mut reader, mut writer) = stream.split();
 
     let event_tx_clone = event_tx.clone();
@@ -98,7 +101,8 @@ async fn handle_connection(
                         .unwrap();
                 }
                 Err(e) => {
-                    eprintln!("Failed to read data from socket: {}", e);
+                    trace!("Failed to read data from socket: {}", e);
+                    let _ = event_tx_clone.send(NetworkEvent::Disconnected).await;
                     break;
                 }
             }
@@ -109,10 +113,8 @@ async fn handle_connection(
         while let Ok(data) = message_rx.recv().await {
             // trace!("write {} bytes to {} ", data.bytes.len(), addr);
             if let Err(e) = writer.write_all(&data.bytes).await {
-                eprintln!("Failed to write data to socket: {}", e);
-                let _ = event_tx
-                    .send(NetworkEvent::Error(NetworkError::SendError))
-                    .await;
+                trace!("Failed to write data to socket: {}", e);
+                let _ = event_tx.send(NetworkEvent::Disconnected).await;
                 break;
             }
         }
@@ -133,23 +135,22 @@ async fn handle_connection(
 #[allow(clippy::type_complexity)]
 fn spawn_tcp_server(
     mut commands: Commands,
-    q_tcp_server: Query<(Entity, &ListenTo), (Added<ListenTo>, Without<NetworkNode>)>,
+    q_tcp_server: Query<(Entity, &NetworkNode, &ListenTo), Added<ListenTo>>,
 ) {
-    for (e, listen_to) in q_tcp_server.iter() {
+    for (e, net_node, listen_to) in q_tcp_server.iter() {
         if !["tcp", "ssl"].contains(&listen_to.scheme()) {
             continue;
         }
 
-        let net_node = NetworkNode::default();
-
         let local_addr = listen_to.local_addr();
         let event_tx = net_node.event_channel.sender.clone_async();
+        let event_tx_clone = net_node.event_channel.sender.clone_async();
         let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
         let tcp_node = TcpNode::new();
         let new_connection_tx = tcp_node.new_connection_channel.sender.clone_async();
         task::spawn(async move {
             let tasks = vec![
-                task::spawn(TcpNode::listen(local_addr, new_connection_tx)),
+                task::spawn(TcpNode::listen(local_addr, event_tx_clone, new_connection_tx)),
                 task::spawn(async move {
                     match shutdown_clone.recv().await {
                         Ok(_) => Ok(()),
@@ -166,7 +167,7 @@ fn spawn_tcp_server(
             }
         });
 
-        commands.entity(e).insert((net_node, tcp_node));
+        commands.entity(e).insert(tcp_node);
     }
 }
 
@@ -174,20 +175,18 @@ fn spawn_tcp_server(
 fn spawn_tcp_client(
     mut commands: Commands,
     tasks_res: ResMut<CommandQueueTasks>,
-    q_tcp_client: Query<(Entity, &ConnectTo), (Added<ConnectTo>, Without<NetworkNode>)>,
+    q_tcp_client: Query<(Entity, &NetworkNode, &ConnectTo), Added<ConnectTo>>,
 ) {
-    for (e, connect_to) in q_tcp_client.iter() {
+    for (e, net_node, connect_to) in q_tcp_client.iter() {
         if !["tcp", "ssl"].contains(&connect_to.scheme()) {
             continue;
         }
 
-        let new_net_node = NetworkNode::default();
-
         let addr = connect_to.peer_addr();
-        let recv_tx = new_net_node.recv_message_channel.sender.clone_async();
-        let message_rx = new_net_node.send_message_channel.receiver.clone_async();
-        let event_tx = new_net_node.event_channel.sender.clone_async();
-        let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
+        let recv_tx = net_node.recv_message_channel.sender.clone_async();
+        let message_rx = net_node.send_message_channel.receiver.clone_async();
+        let event_tx = net_node.event_channel.sender.clone_async();
+        let shutdown_rx = net_node.shutdown_channel.receiver.clone_async();
 
         let queue_tx = tasks_res.tasks.sender.clone_async();
 
@@ -201,6 +200,7 @@ fn spawn_tcp_client(
                     tcp_stream
                         .set_nodelay(true)
                         .expect("set_nodelay call failed");
+                    debug!("tcp client connected to {}", addr);
                     handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
                 }
                 Err(err) => {
@@ -208,7 +208,6 @@ fn spawn_tcp_client(
                         world
                             .entity_mut(entity)
                             .remove::<ConnectTo>()
-                            .remove::<NetworkNode>()
                             .insert(connect_to);
                     });
 
@@ -230,7 +229,7 @@ fn spawn_tcp_client(
 
         let peer = NetworkPeer {};
 
-        commands.entity(e).insert((new_net_node, peer));
+        commands.entity(e).insert(peer);
     }
 }
 
