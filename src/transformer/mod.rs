@@ -14,7 +14,6 @@ use crate::{
     error::NetworkError,
     network::{ConnectTo, NetworkData, NetworkRawPacket},
     network_node::NetworkNode,
-    peer::NetworkPeer,
     shared::{NetworkEvent, NetworkNodeEvent},
 };
 
@@ -219,10 +218,7 @@ fn encode_system<
 >(
     mut message_ev: EventReader<ChannelSendMessage<M>>,
     transformer: Res<T>,
-    query: Query<
-        (&ChannelId, &NetworkNode, &ConnectTo),
-        (With<NetworkPeer>, With<EncoderMarker<M, T>>),
-    >,
+    query: Query<(&ChannelId, &NetworkNode, &ConnectTo), With<EncoderMarker<M, T>>>,
 ) {
     for message in message_ev.read() {
         for (channel_id, net_node, connect_to) in query.iter() {

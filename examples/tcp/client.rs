@@ -24,9 +24,10 @@ fn main() {
         .add_systems(
             Update,
             (
-                send_raw_message_to_channel,
-                // send_json_message,
-                // send_bincode_message,
+                client_send_raw_message_to_channel,
+                send_json_message,
+                send_bincode_message,
+                send_channel_message,
             )
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
@@ -38,10 +39,6 @@ fn main() {
 }
 
 fn setup_clients(mut commands: Commands) {
-    commands.spawn((
-        NetworkBundle::new(RAW_CHANNEL),
-        ConnectTo::new("tcp://127.0.0.1:38551"),
-    ));
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
         ConnectTo::new("tcp://127.0.0.1:5003"),

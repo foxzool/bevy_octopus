@@ -3,13 +3,12 @@
 use std::ops::Deref;
 
 use bevy::{log::LogPlugin, prelude::*};
+use serde::{Deserialize, Serialize};
 
 use bevy_octopus::{
-    network::NetworkData, network_node::NetworkNode, peer::NetworkPeer, prelude::*,
-    shared::NetworkNodeEvent,
+    network::NetworkData, network_node::NetworkNode, prelude::*, shared::NetworkNodeEvent,
 };
 use bevy_octopus_websocket::WebsocketPlugin;
-use serde::{Deserialize, Serialize};
 
 /// shared app setup
 pub fn shared_setup(app: &mut App) {
@@ -46,11 +45,8 @@ pub fn handle_node_events(
     q_net_node: Query<(&ChannelId, &NetworkNode)>,
 ) {
     for event in new_network_events.read() {
-        if let Ok((channel_id, net)) = q_net_node.get(event.node) {
-            info!(
-                "{} {:?} {} got event: {:?}",
-                channel_id, event.node, net, event.event
-            );
+        if let Ok((channel_id, _net)) = q_net_node.get(event.node) {
+            info!("{} got event: {:?} ", channel_id, event.event);
         } else {
             info!("{:?} got event: {:?}", event.node, event.event);
         }
@@ -76,7 +72,7 @@ pub fn handle_raw_packet(q_server: Query<(&ChannelId, &NetworkNode)>) {
     }
 }
 
-pub fn send_json_message(q_nodes: Query<(&NetworkNode, &ChannelId), With<NetworkPeer>>) {
+pub fn send_json_message(q_nodes: Query<(&NetworkNode, &ChannelId)>) {
     for (node, channel_id) in q_nodes.iter() {
         if channel_id == &JSON_CHANNEL {
             let player_info = PlayerInformation {
@@ -89,7 +85,7 @@ pub fn send_json_message(q_nodes: Query<(&NetworkNode, &ChannelId), With<Network
 }
 
 /// send bincode message
-pub fn send_bincode_message(q_nodes: Query<(&NetworkNode, &ChannelId), With<NetworkPeer>>) {
+pub fn send_bincode_message(q_nodes: Query<(&NetworkNode, &ChannelId)>) {
     for (node, channel_id) in q_nodes.iter() {
         if channel_id == &BINCODE_CHANNEL {
             let player_info = PlayerInformation {
@@ -114,7 +110,7 @@ pub fn send_channel_message(
 }
 
 /// send raw message to server
-pub fn send_raw_message_to_channel(q_client: Query<(&NetworkNode, &ChannelId), With<NetworkPeer>>) {
+pub fn send_raw_message_to_channel(q_client: Query<(&NetworkNode, &ChannelId)>) {
     for (node, channel_id) in q_client.iter() {
         if channel_id == &RAW_CHANNEL {
             node.send(format!("raw packet from {} to {}", node, channel_id).as_bytes());

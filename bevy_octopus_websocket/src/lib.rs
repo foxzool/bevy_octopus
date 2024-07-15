@@ -18,7 +18,6 @@ use bevy_octopus::{
     peer::NetworkPeer,
     prelude::ListenTo,
     shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent},
-    transports::ServerNodeAddedFilter,
 };
 
 pub struct WebsocketPlugin;
@@ -82,20 +81,18 @@ impl WebsocketNode {
 
 fn spawn_websocket_server(
     mut commands: Commands,
-    q_ws_server: Query<(Entity, &ListenTo), ServerNodeAddedFilter>,
+    q_ws_server: Query<(Entity, &NetworkNode, &ListenTo), Added<ListenTo>>,
 ) {
-    for (e, listen_to) in q_ws_server.iter() {
+    for (e, net_node, listen_to) in q_ws_server.iter() {
         if !["ws", "wss"].contains(&listen_to.scheme()) {
             continue;
         }
 
-        let net_node = NetworkNode::default();
-
         let local_addr = listen_to.local_addr();
         let event_tx = net_node.event_channel.sender.clone_async();
         let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
-        let tcp_node = WebsocketNode::new();
-        let new_connection_tx = tcp_node.new_connection_channel.sender.clone_async();
+        let ws_node = WebsocketNode::new();
+        let new_connection_tx = ws_node.new_connection_channel.sender.clone_async();
         async_std::task::spawn(async move {
             let tasks = vec![
                 async_std::task::spawn(WebsocketNode::listen(local_addr, new_connection_tx)),
@@ -117,27 +114,25 @@ fn spawn_websocket_server(
             }
         });
 
-        commands.entity(e).insert((net_node, tcp_node));
+        commands.entity(e).insert(ws_node);
     }
 }
 
 fn spawn_websocket_client(
-    mut commands: Commands,
-    q_ws_client: Query<(Entity, &ConnectTo, &ChannelId), ServerNodeAddedFilter>,
+    q_ws_client: Query<(Entity, &NetworkNode, &ConnectTo, &ChannelId), Added<ConnectTo>>,
     mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
-    for (e, connect_to, channel_id) in q_ws_client.iter() {
+    for (e, net_node, connect_to, channel_id) in q_ws_client.iter() {
         if !["ws", "wss"].contains(&connect_to.scheme()) {
             continue;
         }
 
-        let new_net_node = NetworkNode::default();
         let remote_addr = connect_to.to_string();
 
-        let recv_tx = new_net_node.recv_message_channel.sender.clone_async();
-        let message_rx = new_net_node.send_message_channel.receiver.clone_async();
-        let event_tx = new_net_node.event_channel.sender.clone_async();
-        let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
+        let recv_tx = net_node.recv_message_channel.sender.clone_async();
+        let message_rx = net_node.send_message_channel.receiver.clone_async();
+        let event_tx = net_node.event_channel.sender.clone_async();
+        let shutdown_rx = net_node.shutdown_channel.receiver.clone_async();
 
         let url_str = connect_to.0.to_string();
         async_std::task::spawn(async move {
@@ -161,10 +156,6 @@ fn spawn_websocket_client(
                 }
             }
         });
-
-        let peer = NetworkPeer {};
-
-        commands.entity(e).insert((new_net_node, peer));
 
         node_events.send(NetworkNodeEvent {
             node: e,
@@ -266,7 +257,7 @@ async fn server_handle_conn(
             };
             if let Err(e) = writer.send(message).await {
                 let _ = event_tx
-                    .send(NetworkEvent::Error(e.into()))
+                    .send(NetworkEvent::Error(NetworkError::Custom(e.to_string())))
                     .await;
 
                 break;
@@ -318,7 +309,7 @@ fn handle_endpoint(
                 "new TCP client {:?} connected {:?}",
                 socket, child_tcp_client
             );
-            let url_str = format!("tcp://{}", socket);
+            let url_str = format!("ws://{}", socket);
             commands.entity(child_tcp_client).insert((
                 ConnectTo::new(&url_str),
                 new_net_node,

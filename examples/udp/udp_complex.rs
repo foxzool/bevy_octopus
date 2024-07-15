@@ -2,14 +2,13 @@ use std::{net::Ipv4Addr, time::Duration};
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
+use crate::common::*;
 use bevy_octopus::{
     channels::ChannelId,
     network::{ConnectTo, ListenTo},
-    network_node::NetworkNode,
+    network_node::{NetworkBundle, NetworkNode},
     transports::udp::{MulticastV4Setting, UdpBroadcast},
 };
-
-use crate::common::*;
 
 #[path = "../common/lib.rs"]
 mod common;
@@ -57,14 +56,14 @@ fn setup_server(mut commands: Commands) {
 
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
-        BROADCAST_CHANNEL,
+        NetworkBundle::new(BROADCAST_CHANNEL),
         UdpBroadcast,
         ConnectTo::new("udp://255.255.255.255:60002"),
         BroadcastMarker,
     ));
 
     commands.spawn((
-        BROADCAST_CHANNEL,
+        NetworkBundle::new(BROADCAST_CHANNEL),
         UdpBroadcast,
         ListenTo::new("udp://0.0.0.0:0"),
         // example marker for query filter
@@ -72,7 +71,7 @@ fn setup_clients(mut commands: Commands) {
     ));
 
     commands.spawn((
-        MULTICAST_CHANNEL,
+        NetworkBundle::new(MULTICAST_CHANNEL),
         ListenTo::new("udp://0.0.0.0:0"),
         MulticastV4Setting::new(Ipv4Addr::new(239, 1, 2, 3), Ipv4Addr::UNSPECIFIED),
         // example marker foClientMarker,

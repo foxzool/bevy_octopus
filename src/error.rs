@@ -14,9 +14,9 @@ pub enum NetworkError {
     #[error("An error occurred when trying to connect.")]
     Connection(String),
     #[error("Failed to send to channel: {0}")]
-    SendError(#[from] kanal::SendError),
+    TxSendError(#[from] kanal::SendError),
     #[error("Failed to receive from channel: {0}")]
-    ReceiveError(#[from] kanal::ReceiveError),
+    RxReceiveError(#[from] kanal::ReceiveError),
     #[error("Failed to serialize data: {0}")]
     SerializeError(String),
     #[error("Failed to deserialize data: {0}")]

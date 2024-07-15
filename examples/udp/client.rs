@@ -1,8 +1,7 @@
 use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
-
-use bevy_octopus::prelude::*;
+use bevy_octopus::{network_node::NetworkBundle, prelude::*};
 
 use crate::common::*;
 
@@ -33,6 +32,12 @@ fn main() {
 }
 
 fn setup_clients(mut commands: Commands) {
-    commands.spawn((JSON_CHANNEL, ConnectTo::new("udp://127.0.0.1:6002")));
-    commands.spawn((BINCODE_CHANNEL, ConnectTo::new("udp://127.0.0.1:6003")));
+    commands.spawn((
+        NetworkBundle::new(JSON_CHANNEL),
+        ConnectTo::new("udp://127.0.0.1:6002"),
+    ));
+    commands.spawn((
+        NetworkBundle::new(BINCODE_CHANNEL),
+        ConnectTo::new("udp://127.0.0.1:6003"),
+    ));
 }

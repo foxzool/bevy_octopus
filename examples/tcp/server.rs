@@ -3,15 +3,14 @@ use std::time::Duration;
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use bytes::Bytes;
 
+use crate::common::*;
 use bevy_octopus::{
-    network::{ConnectTo, ListenTo, NetworkRawPacket},
+    network::{ListenTo, NetworkRawPacket},
     network_node::{NetworkBundle, NetworkNode},
     peer::NetworkPeer,
-    prelude::{ChannelId, ChannelPacket},
+    prelude::{ChannelId, ChannelPacket, ConnectTo},
     transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };
-
-use crate::common::*;
 
 #[path = "../common/lib.rs"]
 mod common;

@@ -1,22 +1,21 @@
-use std::{net::SocketAddr, time::Duration};
+use std::net::SocketAddr;
 
 use async_std::{
     io::WriteExt,
     net::{TcpListener, TcpStream},
     prelude::StreamExt,
     task,
-    task::sleep,
 };
-use bevy::{ecs::world::CommandQueue, prelude::*};
+use bevy::prelude::*;
 use bytes::Bytes;
-use futures::{AsyncReadExt, future};
+use futures::{future, AsyncReadExt};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
     channels::ChannelId,
     error::NetworkError,
     network::{ConnectTo, ListenTo, NetworkRawPacket},
-    network_node::{CommandQueueTasks, NetworkNode},
+    network_node::NetworkNode,
     peer::NetworkPeer,
     shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent},
 };
@@ -150,11 +149,15 @@ fn spawn_tcp_server(
         let new_connection_tx = tcp_node.new_connection_channel.sender.clone_async();
         task::spawn(async move {
             let tasks = vec![
-                task::spawn(TcpNode::listen(local_addr, event_tx_clone, new_connection_tx)),
+                task::spawn(TcpNode::listen(
+                    local_addr,
+                    event_tx_clone,
+                    new_connection_tx,
+                )),
                 task::spawn(async move {
                     match shutdown_clone.recv().await {
                         Ok(_) => Ok(()),
-                        Err(e) => Err(NetworkError::ReceiveError(e)),
+                        Err(e) => Err(NetworkError::RxReceiveError(e)),
                     }
                 }),
             ];
@@ -173,11 +176,12 @@ fn spawn_tcp_server(
 
 #[allow(clippy::type_complexity)]
 fn spawn_tcp_client(
-    mut commands: Commands,
-    tasks_res: ResMut<CommandQueueTasks>,
-    q_tcp_client: Query<(Entity, &NetworkNode, &ConnectTo), Added<ConnectTo>>,
+    q_tcp_client: Query<
+        (Entity, &NetworkNode, &ConnectTo),
+        (Added<ConnectTo>, Without<NetworkPeer>),
+    >,
 ) {
-    for (e, net_node, connect_to) in q_tcp_client.iter() {
+    for (_e, net_node, connect_to) in q_tcp_client.iter() {
         if !["tcp", "ssl"].contains(&connect_to.scheme()) {
             continue;
         }
@@ -188,13 +192,7 @@ fn spawn_tcp_client(
         let event_tx = net_node.event_channel.sender.clone_async();
         let shutdown_rx = net_node.shutdown_channel.receiver.clone_async();
 
-        let queue_tx = tasks_res.tasks.sender.clone_async();
-
-        let entity = e;
-        let connect_to = connect_to.clone();
-
         task::spawn(async move {
-            let mut command_queue = CommandQueue::default();
             match TcpStream::connect(addr).await {
                 Ok(tcp_stream) => {
                     tcp_stream
@@ -204,13 +202,6 @@ fn spawn_tcp_client(
                     handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
                 }
                 Err(err) => {
-                    command_queue.push(move |world: &mut World| {
-                        world
-                            .entity_mut(entity)
-                            .remove::<ConnectTo>()
-                            .insert(connect_to);
-                    });
-
                     let _ = event_tx
                         .send(NetworkEvent::Error(NetworkError::Connection(
                             err.to_string(),
@@ -218,18 +209,7 @@ fn spawn_tcp_client(
                         .await;
                 }
             }
-
-            if !command_queue.is_empty() {
-                // reconnect after 1 second
-                sleep(Duration::from_secs_f32(1.0)).await;
-
-                let _ = queue_tx.send(command_queue).await;
-            }
         });
-
-        let peer = NetworkPeer {};
-
-        commands.entity(e).insert(peer);
     }
 }
 
@@ -240,7 +220,7 @@ fn handle_endpoint(
 ) {
     for (entity, tcp_node, net_node, channel_id) in q_tcp_server.iter() {
         while let Ok(Some(tcp_stream)) = tcp_node.new_connection_channel.receiver.try_recv() {
-            let new_net_node = NetworkNode::default();
+            let mut new_net_node = NetworkNode::default();
             // Create a new entity for the client
             let child_tcp_client = commands.spawn_empty().id();
             let recv_tx = net_node.recv_message_channel.sender.clone_async();
@@ -248,6 +228,7 @@ fn handle_endpoint(
             let event_tx = new_net_node.event_channel.sender.clone_async();
             let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
             let peer_str = format!("tcp://{}", tcp_stream.peer_addr().unwrap());
+            new_net_node.connect_to = Some(ConnectTo::new(&peer_str));
             task::spawn(async move {
                 handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
             });

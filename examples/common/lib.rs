@@ -1,14 +1,9 @@
 #![allow(dead_code)]
 
-use std::ops::Deref;
-
 use bevy::{log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use bevy_octopus::{
-    network::NetworkData, network_node::NetworkNode, peer::NetworkPeer, prelude::*,
-    shared::NetworkNodeEvent,
-};
+use bevy_octopus::{network_node::NetworkNode, prelude::*, shared::NetworkNodeEvent};
 
 /// shared app setup
 #[cfg(not(feature = "inspect"))]
@@ -18,7 +13,7 @@ pub fn shared_setup(app: &mut App) {
             std::time::Duration::from_secs_f64(1.0 / 60.0),
         )),
         LogPlugin {
-            filter: "bevy_octopus=trace".to_string(),
+            filter: "bevy_octopus=debug".to_string(),
             ..default()
         },
     ))
@@ -36,13 +31,13 @@ pub fn shared_setup(app: &mut App) {
 }
 
 /// this channel is sending and receiving raw packet
-pub const RAW_CHANNEL: ChannelId = ChannelId("raw channel");
+pub const RAW_CHANNEL: ChannelId = ChannelId("raw");
 
 /// this channel is sending and receiving json packet
-pub const JSON_CHANNEL: ChannelId = ChannelId("json channel");
+pub const JSON_CHANNEL: ChannelId = ChannelId("json");
 
 /// this channel is sending and receiving bincode packet
-pub const BINCODE_CHANNEL: ChannelId = ChannelId("bincode channel");
+pub const BINCODE_CHANNEL: ChannelId = ChannelId("bincode");
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlayerInformation {
@@ -55,11 +50,8 @@ pub fn handle_node_events(
     q_net_node: Query<(&ChannelId, &NetworkNode)>,
 ) {
     for event in new_network_events.read() {
-        if let Ok((channel_id, net)) = q_net_node.get(event.node) {
-            info!(
-                "{} {:?} {} got event: {:?}",
-                channel_id, event.node, net, event.event
-            );
+        if let Ok((channel_id, _net)) = q_net_node.get(event.node) {
+            info!("{} got event: {:?} ", channel_id, event.event);
         } else {
             info!("{:?} got event: {:?}", event.node, event.event);
         }
@@ -67,26 +59,23 @@ pub fn handle_node_events(
 }
 
 pub fn handle_message_events(
-    mut new_network_events: EventReader<NetworkData<PlayerInformation>>,
-    q_net_node: Query<(&ChannelId, &NetworkNode)>,
+    mut ev_channels: EventReader<ChannelReceivedMessage<PlayerInformation>>,
 ) {
-    for event in new_network_events.read() {
-        let (channel_id, net) = q_net_node.get(event.source).unwrap();
-        let player_info = event.deref();
-        info!("{} {} Received: {:?}", channel_id, net, &player_info);
+    for event in ev_channels.read() {
+        info!("{} Received: {:?}", event.channel_id, &event.message);
     }
 }
 
 pub fn handle_raw_packet(q_server: Query<(&ChannelId, &NetworkNode)>) {
     for (channel_id, net_node) in q_server.iter() {
         while let Ok(Some(packet)) = net_node.recv_message_channel.receiver.try_recv() {
-            info!("{} {} Received: {:?}", channel_id, net_node, packet.bytes);
+            info!("{}  Received bytes: {:?}", channel_id, packet.bytes);
         }
     }
 }
 
 #[cfg(feature = "serde_json")]
-pub fn send_json_message(q_nodes: Query<(&NetworkNode, &ChannelId), With<NetworkPeer>>) {
+pub fn send_json_message(q_nodes: Query<(&NetworkNode, &ChannelId), With<ConnectTo>>) {
     for (node, channel_id) in q_nodes.iter() {
         if channel_id == &JSON_CHANNEL {
             let player_info = PlayerInformation {
@@ -100,7 +89,7 @@ pub fn send_json_message(q_nodes: Query<(&NetworkNode, &ChannelId), With<Network
 
 #[cfg(feature = "bincode")]
 /// send bincode message
-pub fn send_bincode_message(q_nodes: Query<(&NetworkNode, &ChannelId), With<NetworkPeer>>) {
+pub fn send_bincode_message(q_nodes: Query<(&NetworkNode, &ChannelId), With<ConnectTo>>) {
     for (node, channel_id) in q_nodes.iter() {
         if channel_id == &BINCODE_CHANNEL {
             let player_info = PlayerInformation {
@@ -124,8 +113,10 @@ pub fn send_channel_message(
     });
 }
 
-/// send raw message to server
-pub fn send_raw_message_to_channel(q_client: Query<(&NetworkNode, &ChannelId), With<NetworkPeer>>) {
+/// client send raw message to server
+pub fn client_send_raw_message_to_channel(
+    q_client: Query<(&NetworkNode, &ChannelId), With<ConnectTo>>,
+) {
     for (node, channel_id) in q_client.iter() {
         if channel_id == &RAW_CHANNEL {
             node.send(format!("raw packet from {} to {}", node, channel_id).as_bytes());

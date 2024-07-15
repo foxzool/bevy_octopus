@@ -1,7 +1,11 @@
 use bevy::prelude::*;
 use kanal::{unbounded, Receiver, Sender};
 
-use crate::{error::NetworkError, network_node::NetworkNode, prelude::ChannelId};
+use crate::{
+    error::NetworkError,
+    network_node::NetworkNode,
+    prelude::{ChannelId, ConnectTo},
+};
 
 #[derive(Reflect, Clone)]
 pub struct AsyncChannel<T> {
@@ -39,22 +43,39 @@ pub enum NetworkEvent {
     Error(NetworkError),
 }
 
-
 /// send network node error channel to events
 pub(crate) fn network_node_event(
     mut commands: Commands,
-    mut q_net: Query<(Entity, &ChannelId, &mut NetworkNode)>,
+    mut q_net: Query<(Entity, &ChannelId, &mut NetworkNode, Option<&ConnectTo>)>,
     mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
-    for (entity, channel_id, net_node) in q_net.iter_mut() {
+    for (entity, channel_id, net_node, opt_connect_to) in q_net.iter_mut() {
         while let Ok(Some(event)) = net_node.event_channel.receiver.try_recv() {
             match event {
                 NetworkEvent::Listen => {}
                 NetworkEvent::Connected => {}
                 NetworkEvent::Disconnected => {
-                    commands.entity(entity).despawn_recursive();
+                    if let Some(connect_to) = opt_connect_to {
+                        commands
+                            .entity(entity)
+                            .remove::<ConnectTo>()
+                            .insert(connect_to.clone());
+                    } else {
+                        commands.entity(entity).despawn_recursive();
+                    }
                 }
-                NetworkEvent::Error(_) => {}
+                NetworkEvent::Error(ref network_error) => {
+                    if let NetworkError::Connection(_) = network_error {
+                        if let Some(connect_to) = opt_connect_to {
+                            commands
+                                .entity(entity)
+                                .remove::<ConnectTo>()
+                                .insert(connect_to.clone());
+                        } else {
+                            commands.entity(entity).despawn_recursive();
+                        }
+                    }
+                }
             }
             node_events.send(NetworkNodeEvent {
                 node: entity,

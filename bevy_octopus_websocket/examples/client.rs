@@ -4,6 +4,7 @@ use bevy::{prelude::*, time::common_conditions::on_timer};
 
 use bevy_octopus::{
     network::ConnectTo,
+    network_node::NetworkBundle,
     transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };
 
@@ -25,7 +26,7 @@ fn main() {
             (
                 send_raw_message_to_channel,
                 send_json_message,
-                // send_bincode_message,
+                send_bincode_message,
             )
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
@@ -37,8 +38,20 @@ fn main() {
 }
 
 fn setup_clients(mut commands: Commands) {
-    commands.spawn((RAW_CHANNEL, ConnectTo::new("wss://echo.websocket.org")));
-    commands.spawn((RAW_CHANNEL, ConnectTo::new("ws://127.0.0.1:7003")));
-    commands.spawn((JSON_CHANNEL, ConnectTo::new("ws://127.0.0.1:7004")));
-    commands.spawn((BINCODE_CHANNEL, ConnectTo::new("ws://127.0.0.1:7005")));
+    commands.spawn((
+        NetworkBundle::new(RAW_CHANNEL),
+        ConnectTo::new("wss://echo.websocket.org"),
+    ));
+    commands.spawn((
+        NetworkBundle::new(RAW_CHANNEL),
+        ConnectTo::new("ws://127.0.0.1:7003"),
+    ));
+    commands.spawn((
+        NetworkBundle::new(JSON_CHANNEL),
+        ConnectTo::new("ws://127.0.0.1:7004"),
+    ));
+    commands.spawn((
+        NetworkBundle::new(BINCODE_CHANNEL),
+        ConnectTo::new("ws://127.0.0.1:7005"),
+    ));
 }

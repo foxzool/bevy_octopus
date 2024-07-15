@@ -158,6 +158,7 @@ fn spawn_udp_socket(
     q_udp: Query<
         (
             Entity,
+            &NetworkNode,
             Option<&ListenTo>,
             Option<&ConnectTo>,
             Option<&UdpBroadcast>,
@@ -167,7 +168,9 @@ fn spawn_udp_socket(
         Or<(Added<ListenTo>, Added<ConnectTo>)>,
     >,
 ) {
-    for (entity, opt_listen_to, opt_connect_to, opt_broadcast, opt_v4, opt_v6) in q_udp.iter() {
+    for (entity, net_node, opt_listen_to, opt_connect_to, opt_broadcast, opt_v4, opt_v6) in
+        q_udp.iter()
+    {
         let mut local_addr = "0.0.0.0:0".parse::<SocketAddr>().unwrap();
         if let Some(listen_to) = opt_listen_to {
             if listen_to.scheme() == "udp" {
@@ -186,8 +189,6 @@ fn spawn_udp_socket(
                 continue;
             }
         };
-
-        let net_node = NetworkNode::default();
 
         let has_broadcast = opt_broadcast.is_some();
         let opt_v4 = opt_v4.cloned();
@@ -213,7 +214,7 @@ fn spawn_udp_socket(
                 task::spawn(async move {
                     match shutdown_rx.recv().await {
                         Ok(_) => Ok(()),
-                        Err(e) => Err(NetworkError::ReceiveError(e)),
+                        Err(e) => Err(NetworkError::RxReceiveError(e)),
                     }
                 }),
             ];
@@ -228,9 +229,7 @@ fn spawn_udp_socket(
 
         if remote_addr.is_some() {
             let peer = NetworkPeer {};
-            commands.entity(entity).insert((net_node, peer));
-        } else {
-            commands.entity(entity).insert((net_node,));
+            commands.entity(entity).insert(peer);
         }
     }
 }

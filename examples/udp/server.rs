@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use bevy_octopus::prelude::*;
+use bevy_octopus::{network_node::NetworkBundle, prelude::*};
 
 use crate::common::*;
 
@@ -22,7 +22,16 @@ fn main() {
 }
 
 fn setup_server(mut commands: Commands) {
-    commands.spawn((RAW_CHANNEL, ListenTo::new("udp://127.0.0.1:6001")));
-    commands.spawn((JSON_CHANNEL, ListenTo::new("udp://127.0.0.1:6002")));
-    commands.spawn((BINCODE_CHANNEL, ListenTo::new("udp://127.0.0.1:6003")));
+    commands.spawn((
+        NetworkBundle::new(RAW_CHANNEL),
+        ListenTo::new("udp://127.0.0.1:6001"),
+    ));
+    commands.spawn((
+        NetworkBundle::new(JSON_CHANNEL),
+        ListenTo::new("udp://127.0.0.1:6002"),
+    ));
+    commands.spawn((
+        NetworkBundle::new(BINCODE_CHANNEL),
+        ListenTo::new("udp://127.0.0.1:6003"),
+    ));
 }
