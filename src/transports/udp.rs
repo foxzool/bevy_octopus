@@ -1,3 +1,4 @@
+use crate::network_node::NetworkPeer;
 use std::{
     io,
     net::{Ipv4Addr, Ipv6Addr, SocketAddr},
@@ -15,7 +16,6 @@ use crate::{
     error::NetworkError,
     network::{ConnectTo, ListenTo, NetworkRawPacket},
     network_node::NetworkNode,
-    peer::NetworkPeer,
     shared::NetworkEvent,
 };
 

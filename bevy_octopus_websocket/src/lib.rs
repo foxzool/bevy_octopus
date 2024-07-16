@@ -10,15 +10,7 @@ use bytes::Bytes;
 use futures::{pin_mut, prelude::*};
 use kanal::{AsyncReceiver, AsyncSender};
 
-use bevy_octopus::{
-    channels::ChannelId,
-    error::NetworkError,
-    network::{ConnectTo, NetworkRawPacket},
-    network_node::NetworkNode,
-    peer::NetworkPeer,
-    prelude::ListenTo,
-    shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent},
-};
+use bevy_octopus::prelude::*;
 
 pub struct WebsocketPlugin;
 

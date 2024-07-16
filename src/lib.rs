@@ -5,7 +5,6 @@ pub mod channels;
 pub mod error;
 pub mod network;
 pub mod network_node;
-pub mod peer;
 pub mod plugin;
 pub mod prelude;
 pub mod scheduler;

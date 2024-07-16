@@ -1,3 +1,4 @@
+use crate::network_node::NetworkPeer;
 use std::net::SocketAddr;
 
 use async_std::{
@@ -16,7 +17,6 @@ use crate::{
     error::NetworkError,
     network::{ConnectTo, ListenTo, NetworkRawPacket},
     network_node::NetworkNode,
-    peer::NetworkPeer,
     shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent},
 };
 
@@ -110,7 +110,7 @@ async fn handle_connection(
 
     let write_task = async move {
         while let Ok(data) = message_rx.recv().await {
-            // trace!("write {} bytes to {} ", data.bytes.len(), addr);
+            trace!("write {} bytes to {} ", data.bytes.len(), addr);
             if let Err(e) = writer.write_all(&data.bytes).await {
                 trace!("Failed to write data to socket: {}", e);
                 let _ = event_tx.send(NetworkEvent::Disconnected).await;
@@ -198,7 +198,6 @@ fn spawn_tcp_client(
                     tcp_stream
                         .set_nodelay(true)
                         .expect("set_nodelay call failed");
-                    debug!("tcp client connected to {}", addr);
                     handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
                 }
                 Err(err) => {

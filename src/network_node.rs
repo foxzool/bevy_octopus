@@ -142,6 +142,10 @@ pub(crate) fn update_network_node(
     }
 }
 
+/// A network peer on server
+#[derive(Component)]
+pub struct NetworkPeer;
+
 #[derive(Resource, Default)]
 pub(crate) struct CommandQueueTasks {
     pub tasks: AsyncChannel<CommandQueue>,

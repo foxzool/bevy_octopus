@@ -4,7 +4,7 @@ use bevy::{
 };
 
 use crate::{
-    channels::{systems::send_channel_message_system, ChannelId, ChannelPacket},
+    channels::{send_channel_message_system, ChannelId, ChannelPacket},
     network_node::{handle_command_queue_tasks, update_network_node, CommandQueueTasks},
     scheduler::NetworkSet,
     shared::NetworkNodeEvent,

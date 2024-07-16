@@ -6,8 +6,7 @@ use bytes::Bytes;
 use crate::common::*;
 use bevy_octopus::{
     network::{ListenTo, NetworkRawPacket},
-    network_node::{NetworkBundle, NetworkNode},
-    peer::NetworkPeer,
+    network_node::{NetworkBundle, NetworkNode, NetworkPeer},
     prelude::{ChannelId, ChannelPacket, ConnectTo},
     transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
 };

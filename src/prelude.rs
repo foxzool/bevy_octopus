@@ -6,6 +6,6 @@ pub use crate::transformer::BincodeTransformer;
 #[cfg(feature = "serde_json")]
 pub use crate::transformer::JsonTransformer;
 pub use crate::{
-    channels::*, network::*, network_node::NetworkNode, plugin::OctopusPlugin, shared::*,
-    transformer::*,
+    channels::*, error::NetworkError, network::*, network_node::*, plugin::OctopusPlugin,
+    shared::*, transformer::*,
 };
