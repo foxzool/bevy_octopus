@@ -3,7 +3,7 @@
 use bevy::{log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use bevy_octopus::{network_node::NetworkNode, prelude::*, shared::NetworkNodeEvent};
+use bevy_octopus::prelude::*;
 use bevy_octopus_websocket::WebsocketPlugin;
 
 /// shared app setup

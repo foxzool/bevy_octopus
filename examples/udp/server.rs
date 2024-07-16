@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use bevy_octopus::{network_node::NetworkBundle, prelude::*};
+use bevy_octopus::prelude::*;
 
 use crate::common::*;
 

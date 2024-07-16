@@ -6,7 +6,7 @@ use bevy::{
 };
 use bytes::Bytes;
 
-use crate::{network::NetworkRawPacket, network_node::NetworkNode};
+use crate::network_node::{NetworkNode, NetworkRawPacket};
 
 /// Channel marker
 #[derive(Clone, PartialEq, Eq, Hash, Default, Component, Reflect, Copy, Debug)]

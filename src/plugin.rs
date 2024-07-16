@@ -4,10 +4,12 @@ use bevy::{
 };
 
 use crate::{
-    channels::{send_channel_message_system, ChannelId, ChannelPacket},
-    network_node::{handle_command_queue_tasks, update_network_node, CommandQueueTasks},
+    channels::{ChannelId, ChannelPacket, send_channel_message_system},
+    network_node::{
+        CommandQueueTasks, handle_command_queue_tasks, network_node_event, NetworkNodeEvent,
+        update_network_node,
+    },
     scheduler::NetworkSet,
-    shared::NetworkNodeEvent,
     transformer::{DecoderChannels, EncoderChannels},
 };
 
@@ -26,10 +28,7 @@ impl Plugin for OctopusPlugin {
                 (NetworkSet::Receive, NetworkSet::Decoding).chain(),
             )
             .configure_sets(PostUpdate, (NetworkSet::Encoding, NetworkSet::Send).chain())
-            .add_systems(
-                PreUpdate,
-                crate::shared::network_node_event.in_set(NetworkSet::Decoding),
-            )
+            .add_systems(PreUpdate, network_node_event.in_set(NetworkSet::Decoding))
             .add_systems(
                 PostUpdate,
                 send_channel_message_system.in_set(NetworkSet::Send),

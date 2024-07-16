@@ -1,3 +1,7 @@
+use std::{
+    fmt::Debug,
+    net::{SocketAddr, ToSocketAddrs},
+};
 use std::fmt::Display;
 
 use bevy::{
@@ -5,14 +9,76 @@ use bevy::{
     prelude::{Added, Bundle, Commands, Component, Or, Query, ResMut, Resource},
     tasks::block_on,
 };
-use bytes::Bytes;
-
-use crate::{
-    error::NetworkError,
-    network::{ConnectTo, ListenTo, NetworkRawPacket},
-    prelude::ChannelId,
-    shared::{AsyncChannel, NetworkEvent},
+use bevy::{
+    hierarchy::DespawnRecursiveExt,
+    prelude::{Deref, Entity, Event, EventWriter, Reflect},
 };
+use bytes::Bytes;
+use kanal::{Receiver, Sender, unbounded};
+use url::Url;
+
+use crate::{error::NetworkError, prelude::ChannelId};
+
+/// [`NetworkRawPacket`]s are raw packets that are sent over the network.
+#[derive(Clone)]
+pub struct NetworkRawPacket {
+    pub addr: String,
+    pub bytes: Bytes,
+    pub text: Option<String>,
+}
+
+impl NetworkRawPacket {
+    pub fn new(addr: impl ToString, bytes: Bytes) -> NetworkRawPacket {
+        NetworkRawPacket {
+            addr: addr.to_string(),
+            bytes,
+            text: None,
+        }
+    }
+}
+
+impl Debug for NetworkRawPacket {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NetworkRawPacket")
+            .field("addr", &self.addr)
+            .field("len", &self.bytes.len())
+            .finish()
+    }
+}
+
+#[derive(Component, Deref, Clone, Debug)]
+pub struct ListenTo(pub Url);
+
+impl ListenTo {
+    pub fn new(url_str: &str) -> Self {
+        let url = Url::parse(url_str).expect("url format error");
+        Self(url)
+    }
+
+    pub fn local_addr(&self) -> SocketAddr {
+        let url_str = self.0.to_string();
+        let arr: Vec<&str> = url_str.split("//").collect();
+        let s = arr[1].split('/').collect::<Vec<&str>>()[0];
+        s.to_socket_addrs().unwrap().next().unwrap()
+    }
+}
+
+#[derive(Component, Deref, Clone, Debug)]
+pub struct ConnectTo(pub Url);
+
+impl ConnectTo {
+    pub fn new(url_str: &str) -> Self {
+        let url = Url::parse(url_str).expect("url format error");
+        Self(url)
+    }
+
+    pub fn peer_addr(&self) -> SocketAddr {
+        let url_str = self.0.to_string();
+        let arr: Vec<&str> = url_str.split("//").collect();
+        let s = arr[1].split('/').collect::<Vec<&str>>()[0];
+        s.to_socket_addrs().unwrap().next().unwrap()
+    }
+}
 
 #[derive(Bundle)]
 pub struct NetworkBundle {
@@ -156,5 +222,84 @@ pub(crate) fn handle_command_queue_tasks(task: ResMut<CommandQueueTasks>, mut co
         block_on(async {
             commands.append(&mut commands_queue);
         });
+    }
+}
+
+#[derive(Reflect, Clone)]
+pub struct AsyncChannel<T> {
+    pub sender: Sender<T>,
+    pub receiver: Receiver<T>,
+}
+
+impl<T> Default for AsyncChannel<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> AsyncChannel<T> {
+    pub fn new() -> Self {
+        let (sender, receiver) = unbounded();
+
+        Self { sender, receiver }
+    }
+}
+
+#[derive(Debug, Event)]
+pub struct NetworkNodeEvent {
+    pub node: Entity,
+    pub channel_id: ChannelId,
+    pub event: NetworkEvent,
+}
+
+#[derive(Debug, Event)]
+/// A network event originating from a network node
+pub enum NetworkEvent {
+    Listen,
+    Connected,
+    Disconnected,
+    Error(NetworkError),
+}
+
+/// send network node error channel to events
+pub(crate) fn network_node_event(
+    mut commands: Commands,
+    mut q_net: Query<(Entity, &ChannelId, &mut NetworkNode, Option<&ConnectTo>)>,
+    mut node_events: EventWriter<NetworkNodeEvent>,
+) {
+    for (entity, channel_id, net_node, opt_connect_to) in q_net.iter_mut() {
+        while let Ok(Some(event)) = net_node.event_channel.receiver.try_recv() {
+            match event {
+                NetworkEvent::Listen => {}
+                NetworkEvent::Connected => {}
+                NetworkEvent::Disconnected => {
+                    if let Some(connect_to) = opt_connect_to {
+                        commands
+                            .entity(entity)
+                            .remove::<ConnectTo>()
+                            .insert(connect_to.clone());
+                    } else {
+                        commands.entity(entity).despawn_recursive();
+                    }
+                }
+                NetworkEvent::Error(ref network_error) => {
+                    if let NetworkError::Connection(_) = network_error {
+                        if let Some(connect_to) = opt_connect_to {
+                            commands
+                                .entity(entity)
+                                .remove::<ConnectTo>()
+                                .insert(connect_to.clone());
+                        } else {
+                            commands.entity(entity).despawn_recursive();
+                        }
+                    }
+                }
+            }
+            node_events.send(NetworkNodeEvent {
+                node: entity,
+                channel_id: *channel_id,
+                event,
+            });
+        }
     }
 }

@@ -3,7 +3,7 @@
 use bevy::{log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use bevy_octopus::{network_node::NetworkNode, prelude::*, shared::NetworkNodeEvent};
+use bevy_octopus::{network_node::NetworkNode, prelude::*};
 
 /// shared app setup
 #[cfg(not(feature = "inspect"))]

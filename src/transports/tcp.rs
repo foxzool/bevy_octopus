@@ -1,4 +1,3 @@
-use crate::network_node::NetworkPeer;
 use std::net::SocketAddr;
 
 use async_std::{
@@ -9,15 +8,16 @@ use async_std::{
 };
 use bevy::prelude::*;
 use bytes::Bytes;
-use futures::{future, AsyncReadExt};
+use futures::{AsyncReadExt, future};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
     channels::ChannelId,
     error::NetworkError,
-    network::{ConnectTo, ListenTo, NetworkRawPacket},
-    network_node::NetworkNode,
-    shared::{AsyncChannel, NetworkEvent, NetworkNodeEvent},
+    network_node::{
+        AsyncChannel, ConnectTo, ListenTo, NetworkEvent, NetworkNode, NetworkNodeEvent,
+        NetworkPeer, NetworkRawPacket,
+    },
 };
 
 pub struct TcpPlugin;

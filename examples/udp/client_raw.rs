@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
-use bevy_octopus::{network_node::NetworkBundle, prelude::*};
+use bevy_octopus::prelude::*;
 
 use crate::common::*;
 

@@ -12,11 +12,9 @@ pub use serde_json::JsonTransformer;
 use crate::{
     channels::{ChannelId, ChannelReceivedMessage, ChannelSendMessage},
     error::NetworkError,
-    network::{ConnectTo, NetworkData, NetworkRawPacket},
-    network_node::NetworkNode,
-    shared::{NetworkEvent, NetworkNodeEvent},
+    network_node::{ConnectTo, NetworkNode, NetworkRawPacket},
 };
-
+use crate::network_node::{NetworkEvent, NetworkNodeEvent};
 #[cfg(feature = "bincode")]
 mod bincode;
 
@@ -103,7 +101,6 @@ impl NetworkMessageTransformer for App {
             }
         }
 
-        self.add_event::<NetworkData<M>>();
         self.add_event::<ChannelReceivedMessage<M>>();
 
         self
@@ -143,7 +140,6 @@ impl NetworkMessageTransformer for App {
             }
         }
 
-        self.add_event::<NetworkData<M>>();
         self.add_event::<ChannelSendMessage<M>>();
 
         self

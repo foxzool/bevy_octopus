@@ -2,11 +2,7 @@ use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
-use bevy_octopus::{
-    network::ConnectTo,
-    network_node::NetworkBundle,
-    transformer::{BincodeTransformer, JsonTransformer, NetworkMessageTransformer},
-};
+use bevy_octopus::prelude::*;
 
 use crate::common::*;
 
