@@ -13,9 +13,8 @@ use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
     error::NetworkError,
-    network_node::{ConnectTo, ListenTo, NetworkNode, NetworkPeer, NetworkRawPacket},
+    network_node::{ConnectTo, ListenTo, NetworkEvent, NetworkNode, NetworkPeer, NetworkRawPacket},
 };
-use crate::network_node::NetworkEvent;
 pub struct UdpPlugin;
 
 impl Plugin for UdpPlugin {

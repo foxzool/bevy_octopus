@@ -19,13 +19,22 @@ You can define your own network protocol decoder.
 Support UDP [unicast](https://github.com/foxzool/bevy_octopus/blob/main/examples/udp_send_and_recv.rs), broadcast,
 multicast. [example](https://github.com/foxzool/bevy_octopus/blob/main/examples/udp_complex.rs)
 
+### No tokio runtime
+
 ## Supported Network Protocol
 
 - [x] UDP
 - [x] TCP
 - [x] WebSocket
-- [ ] SSL
 - [x] WebSocket SSL
+
+## Network Components
+
+|                | ListenTo | ConnectTo | NetworkPeer |
+|----------------|----------|-----------|-------------|
+| server         | ✓        |           |             |
+| client         |          | ✓         |             |
+| client session |          |           | ✓           |
 
 ## Supported Versions
 

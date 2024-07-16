@@ -1,20 +1,19 @@
 use std::{
-    fmt::Debug,
+    fmt::{Debug, Display},
     net::{SocketAddr, ToSocketAddrs},
 };
-use std::fmt::Display;
 
 use bevy::{
     ecs::world::CommandQueue,
-    prelude::{Added, Bundle, Commands, Component, Or, Query, ResMut, Resource},
+    hierarchy::DespawnRecursiveExt,
+    prelude::{
+        Added, Bundle, Commands, Component, Deref, Entity, Event, EventWriter, Or, Query, Reflect,
+        ResMut, Resource,
+    },
     tasks::block_on,
 };
-use bevy::{
-    hierarchy::DespawnRecursiveExt,
-    prelude::{Deref, Entity, Event, EventWriter, Reflect},
-};
 use bytes::Bytes;
-use kanal::{Receiver, Sender, unbounded};
+use kanal::{unbounded, Receiver, Sender};
 use url::Url;
 
 use crate::{error::NetworkError, prelude::ChannelId};

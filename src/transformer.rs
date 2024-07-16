@@ -12,9 +12,8 @@ pub use serde_json::JsonTransformer;
 use crate::{
     channels::{ChannelId, ChannelReceivedMessage, ChannelSendMessage},
     error::NetworkError,
-    network_node::{ConnectTo, NetworkNode, NetworkRawPacket},
+    network_node::{ConnectTo, NetworkEvent, NetworkNode, NetworkNodeEvent, NetworkRawPacket},
 };
-use crate::network_node::{NetworkEvent, NetworkNodeEvent};
 #[cfg(feature = "bincode")]
 mod bincode;
 
