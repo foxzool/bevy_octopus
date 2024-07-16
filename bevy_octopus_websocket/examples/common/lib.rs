@@ -1,13 +1,9 @@
 #![allow(dead_code)]
 
-use std::ops::Deref;
-
 use bevy::{log::LogPlugin, prelude::*};
 use serde::{Deserialize, Serialize};
 
-use bevy_octopus::{
-    network::NetworkData, network_node::NetworkNode, prelude::*, shared::NetworkNodeEvent,
-};
+use bevy_octopus::{network_node::NetworkNode, prelude::*, shared::NetworkNodeEvent};
 use bevy_octopus_websocket::WebsocketPlugin;
 
 /// shared app setup
@@ -54,13 +50,10 @@ pub fn handle_node_events(
 }
 
 pub fn handle_message_events(
-    mut new_network_events: EventReader<NetworkData<PlayerInformation>>,
-    q_net_node: Query<(&ChannelId, &NetworkNode)>,
+    mut ev_channels: EventReader<ChannelReceivedMessage<PlayerInformation>>,
 ) {
-    for event in new_network_events.read() {
-        let (channel_id, net) = q_net_node.get(event.source).unwrap();
-        let player_info = event.deref();
-        info!("{} {} Received: {:?}", channel_id, net, &player_info);
+    for event in ev_channels.read() {
+        info!("{} Received: {:?}", event.channel_id, &event.message);
     }
 }
 

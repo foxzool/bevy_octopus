@@ -110,11 +110,11 @@ fn spawn_websocket_server(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn spawn_websocket_client(
-    q_ws_client: Query<(Entity, &NetworkNode, &ConnectTo, &ChannelId), Added<ConnectTo>>,
-    mut node_events: EventWriter<NetworkNodeEvent>,
+    q_ws_client: Query<(&NetworkNode, &ConnectTo), (Added<ConnectTo>, Without<NetworkPeer>)>,
 ) {
-    for (e, net_node, connect_to, channel_id) in q_ws_client.iter() {
+    for (net_node, connect_to) in q_ws_client.iter() {
         if !["ws", "wss"].contains(&connect_to.scheme()) {
             continue;
         }
@@ -148,12 +148,6 @@ fn spawn_websocket_client(
                 }
             }
         });
-
-        node_events.send(NetworkNodeEvent {
-            node: e,
-            channel_id: *channel_id,
-            event: NetworkEvent::Connected,
-        });
     }
 }
 
@@ -167,6 +161,8 @@ async fn handle_client_conn(
     let ws_stream = connect_async(url.clone())
         .await
         .map_err(|e| NetworkError::Connection(e.to_string()))?;
+
+    let _ = event_tx.send(NetworkEvent::Connected).await;
 
     let (mut writer, read) = ws_stream.0.split();
 
@@ -272,7 +268,7 @@ fn handle_endpoint(
         {
             let new_net_node = NetworkNode::default();
             // Create a new entity for the client
-            let child_tcp_client = commands.spawn_empty().id();
+            let child_ws_client = commands.spawn_empty().id();
             let recv_tx = net_node.recv_message_channel.sender.clone_async();
             let message_rx = new_net_node.send_message_channel.receiver.clone_async();
             let event_tx = new_net_node.event_channel.sender.clone_async();
@@ -298,11 +294,11 @@ fn handle_endpoint(
             let peer = NetworkPeer {};
 
             debug!(
-                "new TCP client {:?} connected {:?}",
-                socket, child_tcp_client
+                "new websocket client {:?} connected {:?}",
+                socket, child_ws_client
             );
             let url_str = format!("ws://{}", socket);
-            commands.entity(child_tcp_client).insert((
+            commands.entity(child_ws_client).insert((
                 ConnectTo::new(&url_str),
                 new_net_node,
                 *channel_id,
@@ -310,10 +306,10 @@ fn handle_endpoint(
             ));
 
             // Add the client to the server's children
-            commands.entity(entity).add_child(child_tcp_client);
+            commands.entity(entity).add_child(child_ws_client);
 
             node_events.send(NetworkNodeEvent {
-                node: child_tcp_client,
+                node: child_ws_client,
                 channel_id: *channel_id,
                 event: NetworkEvent::Connected,
             });
