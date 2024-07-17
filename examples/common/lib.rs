@@ -103,8 +103,8 @@ pub fn client_send_raw_message_to_channel(
 ) {
     for (node, channel_id, remote_addr) in q_client.iter() {
         if channel_id == &RAW_CHANNEL {
-            node.send_to(
-                format!("raw packet from {} to {}", node, channel_id).as_bytes(),
+            node.send_bytes_to(
+                format!("raw packet from {} to {}",  channel_id, remote_addr.to_string()).as_bytes(),
                 remote_addr.to_string(),
             );
         }

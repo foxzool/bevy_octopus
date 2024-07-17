@@ -163,11 +163,8 @@ fn on_listen_to(
                 }),
             ];
 
-            match future::try_join_all(tasks).await {
-                Ok(_) => {}
-                Err(err) => {
-                    let _ = event_tx.send(NetworkEvent::Error(err)).await;
-                }
+            if let Err(err) = future::try_join_all(tasks).await {
+                let _ = event_tx.send(NetworkEvent::Error(err)).await;
             }
         });
 
@@ -219,7 +216,7 @@ fn handle_endpoint(
 ) {
     for (entity, tcp_node, net_node, channel_id) in q_tcp_server.iter() {
         while let Ok(Some(tcp_stream)) = tcp_node.new_connection_channel.receiver.try_recv() {
-            let mut new_net_node = NetworkNode::default();
+            let new_net_node = NetworkNode::default();
             // Create a new entity for the client
             let child_tcp_client = commands.spawn_empty().id();
             let recv_tx = net_node.recv_message_channel.sender.clone_async();
@@ -227,7 +224,6 @@ fn handle_endpoint(
             let event_tx = new_net_node.event_channel.sender.clone_async();
             let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
             let peer_str = format!("tcp://{}", tcp_stream.peer_addr().unwrap());
-            new_net_node.connect_to = Some(ConnectTo::new(&peer_str));
             task::spawn(async move {
                 handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
             });

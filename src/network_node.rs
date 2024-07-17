@@ -1,5 +1,5 @@
 use std::{
-    fmt::{Debug, Display},
+    fmt::Debug,
     net::{SocketAddr, ToSocketAddrs},
 };
 
@@ -16,7 +16,7 @@ use bevy::{
     tasks::block_on,
 };
 use bytes::Bytes;
-use kanal::{unbounded, Receiver, Sender};
+use kanal::{Receiver, Sender, unbounded};
 use url::Url;
 
 use crate::{error::NetworkError, prelude::ChannelId};
@@ -95,20 +95,6 @@ impl NetworkBundle {
             network_node: NetworkNode::default(),
         }
     }
-
-    pub fn new_server(channel_id: ChannelId, server: impl ToString) -> Self {
-        Self {
-            channel_id,
-            network_node: NetworkNode::new_server(server),
-        }
-    }
-
-    pub fn new_client(channel_id: ChannelId, client: impl ToString) -> Self {
-        Self {
-            channel_id,
-            network_node: NetworkNode::new_client(client),
-        }
-    }
 }
 
 #[derive(Component, Default)]
@@ -123,51 +109,10 @@ pub struct NetworkNode {
     pub shutdown_channel: AsyncChannel<()>,
     /// Whether the node is running or not
     pub running: bool,
-    pub server_addr: Option<String>,
-    pub remote_addr: Option<String>,
     pub max_packet_size: usize,
-    pub listen_to: Option<ListenTo>,
-    pub connect_to: Option<ConnectTo>,
 }
 
-// impl Component for NetworkNode {
-//     const STORAGE_TYPE: StorageType = StorageType::Table;
-//
-//     fn register_component_hooks(hooks: &mut ComponentHooks) {
-//         hooks.on_add(|mut world, targeted_entity, _component_id| {
-//             let net_node = world.get::<NetworkNode>(targeted_entity).unwrap();
-//             if let Some(server_addr) = &net_node.server_addr {
-//                 world.trigger_targets(ListenTo::new(server_addr), targeted_entity);
-//             }
-//             if let Some(remote_addr) = &net_node.remote_addr {
-//                 world.trigger_targets(ConnectTo::new(remote_addr), targeted_entity);
-//             }
-//         });
-//     }
-// }
-
 impl NetworkNode {
-    pub fn new_server(server: impl ToString) -> Self {
-        Self {
-            server_addr: Some(server.to_string()),
-            ..Default::default()
-        }
-    }
-
-    pub fn new_client(client: impl ToString) -> Self {
-        Self {
-            remote_addr: Some(client.to_string()),
-            ..Default::default()
-        }
-    }
-
-    pub fn new_server_and_client(server: impl ToString, client: impl ToString) -> Self {
-        Self {
-            server_addr: Some(server.to_string()),
-            remote_addr: Some(client.to_string()),
-            ..Default::default()
-        }
-    }
     pub fn start(&mut self) {
         self.running = true;
     }
@@ -176,69 +121,21 @@ impl NetworkNode {
         self.running = false;
     }
 
-    // pub fn send(&self, bytes: &[u8]) {
-    //     match self.connect_to.as_ref() {
-    //         None => {
-    //             let _ =
-    //                 self.event_channel
-    //                     .sender
-    //                     .try_send(NetworkEvent::Error(NetworkError::Custom(
-    //                         "No connection".to_string(),
-    //                     )));
-    //         }
-    //         Some(connect_to) => {
-    //             let addr = connect_to.to_string();
-    //             let _ = self
-    //                 .send_message_channel
-    //                 .sender
-    //                 .try_send(NetworkRawPacket::new(addr, Bytes::copy_from_slice(bytes)));
-    //         }
-    //     }
-    // }
-
     /// Send text message
-    pub fn send_text(&self, text: String) {
-        match self.connect_to.as_ref() {
-            None => {
-                let _ =
-                    self.event_channel
-                        .sender
-                        .try_send(NetworkEvent::Error(NetworkError::Custom(
-                            "No connection".to_string(),
-                        )));
-            }
-            Some(connect_to) => {
-                let addr = connect_to.to_string();
-                let _ = self.send_message_channel.sender.try_send(NetworkRawPacket {
-                    addr,
-                    bytes: Bytes::new(),
-                    text: Some(text),
-                });
-            }
-        }
+    pub fn send_text_to(&self, text: String, remote_addr: impl ToString) {
+        let addr = remote_addr.to_string();
+        let _ = self.send_message_channel.sender.try_send(NetworkRawPacket {
+            addr,
+            bytes: Bytes::new(),
+            text: Some(text),
+        });
     }
 
-    pub fn send_to(&self, bytes: &[u8], addr: impl ToString) {
+    pub fn send_bytes_to(&self, bytes: &[u8], addr: impl ToString) {
         let _ = self
             .send_message_channel
             .sender
             .try_send(NetworkRawPacket::new(addr, Bytes::copy_from_slice(bytes)));
-    }
-
-    pub fn schema(&self) -> String {
-        if let Some(local_addr) = self.listen_to.as_ref() {
-            local_addr.to_string()
-        } else if let Some(connect_to) = self.connect_to.as_ref() {
-            connect_to.to_string()
-        } else {
-            "".to_string()
-        }
-    }
-}
-
-impl Display for NetworkNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.schema())
     }
 }
 
@@ -294,21 +191,6 @@ impl RemoteAddr {
         let s = arr[1].split('/').collect::<Vec<&str>>()[0];
         s.to_socket_addrs().unwrap().next().unwrap()
     }
-}
-
-pub(crate) fn update_network_node(// mut ev_listen: EventWriter<ListenTo>,
-    // mut ev_connect: EventWriter<ConnectTo>,
-    // q_net: Query<&NetworkNode, Added<NetworkNode>>,
-) {
-    // for net_node in q_net.iter() {
-    //     if let Some(server_addr) = &net_node.server_addr {
-    //         ev_listen.send(ListenTo::new(server_addr));
-    //     }
-    //
-    //     if let Some(remote_addr) = &net_node.remote_addr {
-    //         ev_connect.send(ConnectTo::new(remote_addr));
-    //     }
-    // }
 }
 
 /// A network peer on server

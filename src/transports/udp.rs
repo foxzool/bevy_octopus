@@ -53,7 +53,7 @@ async fn recv_loop(
                 let _ = recv_tx.send(NetworkRawPacket::new(from_addr, bytes)).await;
             }
             #[cfg(target_os = "windows")]
-            Err(ref e) if e.kind() == std::io::ErrorKind::ConnectionReset => {
+            Err(ref e) if e.kind() == io::ErrorKind::ConnectionReset => {
                 // ignore for windows 10054 error
             }
             Err(e) => return Err(NetworkError::Listen(e)),
@@ -186,22 +186,21 @@ async fn listen(
         socket.join_multicast_v6(&multi_v6.multi_addr, multi_v6.interface)?;
     }
 
-    info!(
+    debug!(
         "UDP listening on {} peer: {:?}",
         socket.local_addr().unwrap(),
         socket.peer_addr().ok()
     );
+
+    event_tx.send(NetworkEvent::Listen).await?;
 
     let tasks = vec![
         task::spawn(send_loop(socket.clone(), send_rx)),
         task::spawn(recv_loop(socket, recv_tx, 65_507)),
     ];
 
-    match future::try_join_all(tasks).await {
-        Ok(_) => {}
-        Err(err) => {
-            let _ = event_tx.send(NetworkEvent::Error(err)).await;
-        }
+    if let Err(err) = future::try_join_all(tasks).await {
+        let _ = event_tx.send(NetworkEvent::Error(err)).await;
     }
 
     Ok(())
@@ -262,11 +261,8 @@ fn on_listen_to(
                 }),
             ];
 
-            match future::try_join_all(tasks).await {
-                Ok(_) => {}
-                Err(err) => {
-                    let _ = event_tx.send(NetworkEvent::Error(err)).await;
-                }
+            if let Err(err) = future::try_join_all(tasks).await {
+                let _ = event_tx.send(NetworkEvent::Error(err)).await;
             }
         });
     }

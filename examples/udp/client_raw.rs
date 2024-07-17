@@ -42,7 +42,7 @@ fn setup_clients(mut commands: Commands) {
 
 fn send_socket_packet(q_node: Query<&NetworkNode, With<ServerAddr>>) {
     for node in q_node.iter() {
-        node.send_to(
+        node.send_bytes_to(
             "I can send message to specify socket".as_bytes(),
             "udp://127.0.0.1:6002",
         );

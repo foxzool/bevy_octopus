@@ -90,15 +90,12 @@ impl NetworkMessageTransformer for App {
         let message_type_id = TypeId::of::<M>();
 
         let mut encoder_channels = self.world_mut().resource_mut::<EncoderChannels>();
-        match encoder_channels.get_mut(&(message_type_id, transform_type_id)) {
-            None => {
-                encoder_channels.insert((message_type_id, transform_type_id), vec![channel_id]);
-                self.add_systems(PostUpdate, spawn_encoder_marker::<M, T>);
-                self.add_systems(PostUpdate, encode_system::<M, T>);
-            }
-            Some(ids) => {
-                ids.push(channel_id);
-            }
+        if let Some(ids) = encoder_channels.get_mut(&(message_type_id, transform_type_id)) {
+            ids.push(channel_id);
+        } else {
+            encoder_channels.insert((message_type_id, transform_type_id), vec![channel_id]);
+            self.add_systems(PostUpdate, spawn_encoder_marker::<M, T>);
+            self.add_systems(PostUpdate, encode_system::<M, T>);
         }
 
         self.add_event::<ChannelReceivedMessage<M>>();
@@ -129,15 +126,12 @@ impl NetworkMessageTransformer for App {
         let message_type_id = TypeId::of::<M>();
 
         let mut decoder_channels = self.world_mut().resource_mut::<DecoderChannels>();
-        match decoder_channels.get_mut(&(message_type_id, transform_type_id)) {
-            None => {
-                decoder_channels.insert((message_type_id, transform_type_id), vec![channel_id]);
-                self.add_systems(PreUpdate, decode_system::<M, T>);
-                self.add_systems(PostUpdate, spawn_decoder_marker::<M, T>);
-            }
-            Some(ids) => {
-                ids.push(channel_id);
-            }
+        if let Some(ids) = decoder_channels.get_mut(&(message_type_id, transform_type_id)) {
+            ids.push(channel_id);
+        } else {
+            decoder_channels.insert((message_type_id, transform_type_id), vec![channel_id]);
+            self.add_systems(PreUpdate, decode_system::<M, T>);
+            self.add_systems(PostUpdate, spawn_decoder_marker::<M, T>);
         }
 
         self.add_event::<ChannelSendMessage<M>>();

@@ -94,15 +94,8 @@ fn spawn_websocket_server(
                 }),
             ];
 
-            match future::try_join_all(tasks).await {
-                Ok(_) => {}
-                Err(err) => {
-                    let _ = event_tx
-                        .send(NetworkEvent::Error(NetworkError::Connection(
-                            err.to_string(),
-                        )))
-                        .await;
-                }
+            if let Err(err) = future::try_join_all(tasks).await {
+                let _ = event_tx.send(NetworkEvent::Error(err)).await;
             }
         });
 
@@ -141,11 +134,8 @@ fn spawn_websocket_client(
                     Ok(())
                 }),
             ];
-            match future::try_join_all(tasks).await {
-                Ok(_) => {}
-                Err(err) => {
-                    let _ = event_tx.send(NetworkEvent::Error(err)).await;
-                }
+            if let Err(err) = future::try_join_all(tasks).await {
+                let _ = event_tx.send(NetworkEvent::Error(err)).await;
             }
         });
     }

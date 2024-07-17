@@ -82,7 +82,7 @@ fn send_broadcast_messages(
 ) {
     for (net_node, local_addr, opt_remote_addr) in q_client.iter() {
         if let Some(remote_addr) = opt_remote_addr {
-            net_node.send_to(
+            net_node.send_bytes_to(
                 format!(
                     "broadcast message from {} with send_to {}",
                     local_addr.0,
@@ -92,7 +92,7 @@ fn send_broadcast_messages(
                 remote_addr.to_string(),
             );
         } else {
-            net_node.send_to(
+            net_node.send_bytes_to(
                 format!("broadcast message from {} with send_to", local_addr.0).as_bytes(),
                 "udp://255.255.255.255:60002",
             );
@@ -105,12 +105,12 @@ fn send_multicast_messages(
 ) {
     for (net_node, local_addr, opt_remote_addr) in q_client.iter() {
         if let Some(remote_addr) = opt_remote_addr {
-            net_node.send_to(
+            net_node.send_bytes_to(
                 format!("multicast message from {}", local_addr.0).as_bytes(),
                 remote_addr.to_string(),
             );
         } else {
-            net_node.send_to(
+            net_node.send_bytes_to(
                 format!("multicast message from {}", local_addr.0).as_bytes(),
                 "udp://239.1.2.3:60003",
             );
