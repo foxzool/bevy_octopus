@@ -26,10 +26,7 @@ fn main() {
             )
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
-        .add_systems(
-            Update,
-            (handle_raw_packet, handle_message_events, handle_node_events),
-        )
+        .add_systems(Update, (handle_raw_packet, handle_message_events))
         .run();
 }
 

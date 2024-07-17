@@ -12,7 +12,7 @@ pub use serde_json::JsonTransformer;
 use crate::{
     channels::{ChannelId, ChannelReceivedMessage, ChannelSendMessage},
     error::NetworkError,
-    network_node::{NetworkEvent, NetworkNode, NetworkNodeEvent, NetworkRawPacket, RemoteAddr},
+    network_node::{NetworkEvent, NetworkNode, NetworkRawPacket, RemoteAddr},
 };
 
 #[cfg(feature = "bincode")]
@@ -212,9 +212,10 @@ fn encode_system<
 ) {
     for message in message_ev.read() {
         for (channel_id, net_node, remote_addr) in query.iter() {
-            if channel_id != &message.channel_id {
+            if channel_id != &message.channel_id || !net_node.running {
                 continue;
             }
+
             trace!(
                 "{} {} Encoding message for {}",
                 channel_id,
@@ -249,7 +250,7 @@ fn decode_system<
     T: Transformer + bevy::prelude::Resource,
 >(
     mut channel_message: EventWriter<ChannelReceivedMessage<M>>,
-    mut node_events: EventWriter<NetworkNodeEvent>,
+    mut commands: Commands,
     transformer: Res<T>,
     query: Query<(Entity, &ChannelId, &NetworkNode), With<DecoderMarker<M, T>>>,
 ) {
@@ -279,17 +280,9 @@ fn decode_system<
                     .map(|m| ChannelReceivedMessage::new(*channel_id, m))
                     .collect::<Vec<_>>(),
             );
-            node_events.send_batch(
-                errors
-                    .into_iter()
-                    .map(Result::unwrap_err)
-                    .map(|error| NetworkNodeEvent {
-                        node: entity,
-                        channel_id: *channel_id,
-                        event: NetworkEvent::Error(error),
-                    })
-                    .collect::<Vec<_>>(),
-            );
+            for error in errors.into_iter().map(Result::unwrap_err) {
+                commands.trigger_targets(NetworkEvent::Error(error), entity);
+            }
         }
     }
 }

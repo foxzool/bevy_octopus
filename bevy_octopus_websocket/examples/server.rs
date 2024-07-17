@@ -18,10 +18,7 @@ fn main() {
     app.add_transformer::<PlayerInformation, JsonTransformer>(JSON_CHANNEL)
         .add_transformer::<PlayerInformation, BincodeTransformer>(BINCODE_CHANNEL)
         .add_systems(Startup, setup_server)
-        .add_systems(
-            Update,
-            (handle_raw_packet, handle_message_events, handle_node_events),
-        )
+        .add_systems(Update, (handle_raw_packet, handle_message_events))
         .add_systems(
             Update,
             (broadcast_message, send_channel_packet).run_if(on_timer(Duration::from_secs_f64(1.0))),

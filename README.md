@@ -30,11 +30,11 @@ multicast. [example](https://github.com/foxzool/bevy_octopus/blob/main/examples/
 
 ## Network Components
 
-|                | ListenTo | ConnectTo | NetworkPeer |
-|----------------|----------|-----------|-------------|
-| server         | ✓        |           |             |
-| client         |          | ✓         |             |
-| client session |          |           | ✓           |
+|                | ServerAddr | RemoteAddr | NetworkPeer |
+|----------------|------------|------------|-------------|
+| server         | ✓          |            |             |
+| client         |            | ✓          |             |
+| client session |            | ✓          | ✓           |
 
 ## Supported Versions
 

@@ -16,7 +16,7 @@ pub struct WebsocketPlugin;
 
 impl Plugin for WebsocketPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, (handle_endpoint,))
+        app.add_systems(PostUpdate, handle_endpoint)
             .observe(on_connect_to)
             .observe(on_listen_to);
     }
@@ -248,7 +248,6 @@ async fn server_handle_conn(
 fn handle_endpoint(
     mut commands: Commands,
     q_ws_server: Query<(Entity, &WebsocketNode, &NetworkNode, &ChannelId)>,
-    mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
     for (entity, ws_node, net_node, channel_id) in q_ws_server.iter() {
         while let Ok(Some((tcp_stream, socket))) =
@@ -295,12 +294,7 @@ fn handle_endpoint(
 
             // Add the client to the server's children
             commands.entity(entity).add_child(child_ws_client);
-
-            node_events.send(NetworkNodeEvent {
-                node: child_ws_client,
-                channel_id: *channel_id,
-                event: NetworkEvent::Connected,
-            });
+            commands.trigger_targets(NetworkEvent::Connected, vec![child_ws_client]);
         }
     }
 }

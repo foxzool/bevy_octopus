@@ -15,8 +15,8 @@ use crate::{
     channels::ChannelId,
     error::NetworkError,
     network_node::{
-        AsyncChannel, ConnectTo, ListenTo, NetworkEvent, NetworkNode, NetworkNodeEvent,
-        NetworkPeer, NetworkRawPacket, RemoteAddr,
+        AsyncChannel, ConnectTo, ListenTo, NetworkEvent, NetworkNode, NetworkPeer,
+        NetworkRawPacket, RemoteAddr,
     },
 };
 
@@ -212,13 +212,12 @@ fn on_connect_to(
 fn handle_endpoint(
     mut commands: Commands,
     q_tcp_server: Query<(Entity, &TcpNode, &NetworkNode, &ChannelId)>,
-    mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
     for (entity, tcp_node, net_node, channel_id) in q_tcp_server.iter() {
         while let Ok(Some(tcp_stream)) = tcp_node.new_connection_channel.receiver.try_recv() {
             let new_net_node = NetworkNode::default();
             // Create a new entity for the client
-            let child_tcp_client = commands.spawn_empty().id();
+            let peer_entity = commands.spawn_empty().id();
             let recv_tx = net_node.recv_message_channel.sender.clone_async();
             let message_rx = new_net_node.send_message_channel.receiver.clone_async();
             let event_tx = new_net_node.event_channel.sender.clone_async();
@@ -229,21 +228,18 @@ fn handle_endpoint(
             });
             let peer = NetworkPeer;
 
-            let peer_entity = commands
-                .entity(child_tcp_client)
-                .insert((new_net_node, *channel_id, RemoteAddr::new(&peer_str), peer))
-                .id();
+            commands.entity(peer_entity).insert((
+                new_net_node,
+                *channel_id,
+                RemoteAddr::new(&peer_str),
+                peer,
+            ));
 
             debug!("new client connected {:?}", peer_entity);
 
             // Add the client to the server's children
-            commands.entity(entity).add_child(child_tcp_client);
-
-            node_events.send(NetworkNodeEvent {
-                node: child_tcp_client,
-                channel_id: *channel_id,
-                event: NetworkEvent::Connected,
-            });
+            commands.entity(entity).add_child(peer_entity);
+            commands.trigger_targets(NetworkEvent::Connected, vec![peer_entity]);
         }
     }
 }

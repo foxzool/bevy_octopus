@@ -10,8 +10,7 @@ use bevy::{
     },
     hierarchy::DespawnRecursiveExt,
     prelude::{
-        Bundle, Commands, Component, Deref, Entity, Event, EventWriter, Query, Reflect, ResMut,
-        Resource,
+        Bundle, Commands, Component, Deref, Entity, Event, Query, Reflect, ResMut, Resource,
     },
     tasks::block_on,
 };
@@ -231,13 +230,6 @@ impl<T> AsyncChannel<T> {
 }
 
 #[derive(Debug, Event)]
-pub struct NetworkNodeEvent {
-    pub node: Entity,
-    pub channel_id: ChannelId,
-    pub event: NetworkEvent,
-}
-
-#[derive(Debug, Event)]
 /// A network event originating from a network node
 pub enum NetworkEvent {
     Listen,
@@ -270,19 +262,20 @@ pub(crate) fn network_node_event(
     mut commands: Commands,
     mut q_net: Query<(
         Entity,
-        &ChannelId,
         &mut NetworkNode,
         Option<&RemoteAddr>,
         Option<&NetworkPeer>,
     )>,
-    mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
-    for (entity, channel_id, net_node, opt_remote_addr, opt_network_peer) in q_net.iter_mut() {
+    for (entity, mut net_node, opt_remote_addr, opt_network_peer) in q_net.iter_mut() {
         while let Ok(Some(event)) = net_node.event_channel.receiver.try_recv() {
             match event {
-                NetworkEvent::Listen => {}
+                NetworkEvent::Listen => {
+                    net_node.start();
+                }
                 NetworkEvent::Connected => {}
                 NetworkEvent::Disconnected => {
+                    net_node.stop();
                     if opt_network_peer.is_some() {
                         commands.entity(entity).despawn_recursive();
                     } else if let Some(remote_addr) = opt_remote_addr {
@@ -292,6 +285,7 @@ pub(crate) fn network_node_event(
                     }
                 }
                 NetworkEvent::Error(ref network_error) => {
+                    net_node.stop();
                     if let NetworkError::Connection(_) = network_error {
                         if opt_network_peer.is_some() {
                             commands.entity(entity).despawn_recursive();
@@ -303,11 +297,7 @@ pub(crate) fn network_node_event(
                     }
                 }
             }
-            node_events.send(NetworkNodeEvent {
-                node: entity,
-                channel_id: *channel_id,
-                event,
-            });
+            commands.trigger_targets(event, vec![entity]);
         }
     }
 }

@@ -30,10 +30,7 @@ fn main() {
             (send_broadcast_messages, send_multicast_messages)
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
-        .add_systems(
-            Update,
-            (handle_raw_packet, handle_raw_packet, handle_node_events),
-        )
+        .add_systems(Update, (handle_raw_packet, handle_raw_packet))
         .run();
 }
 

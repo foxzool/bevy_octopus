@@ -7,7 +7,6 @@ use crate::{
     channels::{send_channel_message_system, ChannelId, ChannelPacket},
     network_node::{
         handle_command_queue_tasks, network_node_event, CommandQueueTasks, ConnectTo, ListenTo,
-        NetworkNodeEvent,
     },
     scheduler::NetworkSet,
     transformer::{DecoderChannels, EncoderChannels},
@@ -21,7 +20,6 @@ impl Plugin for OctopusPlugin {
         app.init_resource::<EncoderChannels>()
             .init_resource::<DecoderChannels>()
             .init_resource::<CommandQueueTasks>()
-            .add_event::<NetworkNodeEvent>()
             .add_event::<ChannelPacket>()
             .add_event::<ConnectTo>()
             .add_event::<ListenTo>()

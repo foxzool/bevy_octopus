@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 
-use bevy::{log::LogPlugin, prelude::*};
+use bevy::{
+    log::{Level, LogPlugin},
+    prelude::*,
+};
 use serde::{Deserialize, Serialize};
 
 use bevy_octopus::prelude::*;
@@ -13,12 +16,14 @@ pub fn shared_setup(app: &mut App) {
             std::time::Duration::from_secs_f64(1.0 / 60.0),
         )),
         LogPlugin {
+            level: Level::INFO,
             filter: "bevy_octopus=debug".to_string(),
             ..default()
         },
     ))
     .add_plugins(OctopusPlugin)
-    .add_plugins(WebsocketPlugin);
+    .add_plugins(WebsocketPlugin)
+    .observe(on_node_event);
 }
 
 /// this channel is sending and receiving raw packet
@@ -36,17 +41,8 @@ pub struct PlayerInformation {
     pub position: (u32, u32, u32),
 }
 
-pub fn handle_node_events(
-    mut new_network_events: EventReader<NetworkNodeEvent>,
-    q_net_node: Query<(&ChannelId, &NetworkNode)>,
-) {
-    for event in new_network_events.read() {
-        if let Ok((channel_id, _net)) = q_net_node.get(event.node) {
-            info!("{} got event: {:?} ", channel_id, event.event);
-        } else {
-            info!("{:?} got event: {:?}", event.node, event.event);
-        }
-    }
+pub fn on_node_event(trigger: Trigger<NetworkEvent>) {
+    info!("{:?} trigger {:?}", trigger.entity(), trigger.event());
 }
 
 pub fn handle_message_events(
