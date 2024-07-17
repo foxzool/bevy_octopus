@@ -16,7 +16,7 @@ use bevy::{
     tasks::block_on,
 };
 use bytes::Bytes;
-use kanal::{Receiver, Sender, unbounded};
+use kanal::{unbounded, Receiver, Sender};
 use url::Url;
 
 use crate::{error::NetworkError, prelude::ChannelId};
@@ -124,7 +124,7 @@ pub struct NetworkNode {
     /// Whether the node is running or not
     pub running: bool,
     pub server_addr: Option<String>,
-    pub client_addr: Option<String>,
+    pub remote_addr: Option<String>,
     pub max_packet_size: usize,
     pub listen_to: Option<ListenTo>,
     pub connect_to: Option<ConnectTo>,
@@ -139,8 +139,8 @@ pub struct NetworkNode {
 //             if let Some(server_addr) = &net_node.server_addr {
 //                 world.trigger_targets(ListenTo::new(server_addr), targeted_entity);
 //             }
-//             if let Some(client_addr) = &net_node.client_addr {
-//                 world.trigger_targets(ConnectTo::new(client_addr), targeted_entity);
+//             if let Some(remote_addr) = &net_node.remote_addr {
+//                 world.trigger_targets(ConnectTo::new(remote_addr), targeted_entity);
 //             }
 //         });
 //     }
@@ -156,7 +156,7 @@ impl NetworkNode {
 
     pub fn new_client(client: impl ToString) -> Self {
         Self {
-            client_addr: Some(client.to_string()),
+            remote_addr: Some(client.to_string()),
             ..Default::default()
         }
     }
@@ -164,7 +164,7 @@ impl NetworkNode {
     pub fn new_server_and_client(server: impl ToString, client: impl ToString) -> Self {
         Self {
             server_addr: Some(server.to_string()),
-            client_addr: Some(client.to_string()),
+            remote_addr: Some(client.to_string()),
             ..Default::default()
         }
     }
@@ -260,23 +260,30 @@ impl ServerAddr {
     pub fn new(addr: impl ToString) -> Self {
         Self(addr.to_string().parse().unwrap())
     }
+
+    pub fn local_addr(&self) -> SocketAddr {
+        let url_str = self.0.to_string();
+        let arr: Vec<&str> = url_str.split("//").collect();
+        let s = arr[1].split('/').collect::<Vec<&str>>()[0];
+        s.to_socket_addrs().unwrap().next().unwrap()
+    }
 }
 
 #[derive(Debug, Deref)]
-pub struct ClientAddr(pub Url);
+pub struct RemoteAddr(pub Url);
 
-impl Component for ClientAddr {
+impl Component for RemoteAddr {
     const STORAGE_TYPE: StorageType = StorageType::Table;
 
     fn register_component_hooks(hooks: &mut ComponentHooks) {
         hooks.on_insert(|mut world, targeted_entity, _component_id| {
-            let client_addr = world.get::<ClientAddr>(targeted_entity).unwrap();
-            world.trigger_targets(ConnectTo(client_addr.0.clone()), targeted_entity);
+            let remote_addr = world.get::<RemoteAddr>(targeted_entity).unwrap();
+            world.trigger_targets(ConnectTo(remote_addr.0.clone()), targeted_entity);
         });
     }
 }
 
-impl ClientAddr {
+impl RemoteAddr {
     pub fn new(addr: impl ToString) -> Self {
         Self(addr.to_string().parse().unwrap())
     }
@@ -298,8 +305,8 @@ pub(crate) fn update_network_node(// mut ev_listen: EventWriter<ListenTo>,
     //         ev_listen.send(ListenTo::new(server_addr));
     //     }
     //
-    //     if let Some(client_addr) = &net_node.client_addr {
-    //         ev_connect.send(ConnectTo::new(client_addr));
+    //     if let Some(remote_addr) = &net_node.remote_addr {
+    //         ev_connect.send(ConnectTo::new(remote_addr));
     //     }
     // }
 }
@@ -382,12 +389,12 @@ pub(crate) fn network_node_event(
         Entity,
         &ChannelId,
         &mut NetworkNode,
-        Option<&ClientAddr>,
+        Option<&RemoteAddr>,
         Option<&NetworkPeer>,
     )>,
     mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
-    for (entity, channel_id, net_node, opt_client_addr, opt_network_peer) in q_net.iter_mut() {
+    for (entity, channel_id, net_node, opt_remote_addr, opt_network_peer) in q_net.iter_mut() {
         while let Ok(Some(event)) = net_node.event_channel.receiver.try_recv() {
             match event {
                 NetworkEvent::Listen => {}
@@ -395,8 +402,8 @@ pub(crate) fn network_node_event(
                 NetworkEvent::Disconnected => {
                     if opt_network_peer.is_some() {
                         commands.entity(entity).despawn_recursive();
-                    } else if let Some(client_addr) = opt_client_addr {
-                        commands.trigger_targets(ConnectTo(client_addr.0.clone()), entity);
+                    } else if let Some(remote_addr) = opt_remote_addr {
+                        commands.trigger_targets(ConnectTo(remote_addr.0.clone()), entity);
                     } else {
                         commands.entity(entity).despawn_recursive();
                     }
@@ -405,8 +412,8 @@ pub(crate) fn network_node_event(
                     if let NetworkError::Connection(_) = network_error {
                         if opt_network_peer.is_some() {
                             commands.entity(entity).despawn_recursive();
-                        } else if let Some(client_addr) = opt_client_addr {
-                            commands.trigger_targets(ConnectTo(client_addr.0.clone()), entity);
+                        } else if let Some(remote_addr) = opt_remote_addr {
+                            commands.trigger_targets(ConnectTo(remote_addr.0.clone()), entity);
                         } else {
                             commands.entity(entity).despawn_recursive();
                         }

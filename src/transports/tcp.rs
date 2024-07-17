@@ -8,15 +8,15 @@ use async_std::{
 };
 use bevy::prelude::*;
 use bytes::Bytes;
-use futures::{AsyncReadExt, future};
+use futures::{future, AsyncReadExt};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
     channels::ChannelId,
     error::NetworkError,
     network_node::{
-        AsyncChannel, ClientAddr, ConnectTo, ListenTo, NetworkEvent, NetworkNode, NetworkNodeEvent,
-        NetworkPeer, NetworkRawPacket,
+        AsyncChannel, ConnectTo, ListenTo, NetworkEvent, NetworkNode, NetworkNodeEvent,
+        NetworkPeer, NetworkRawPacket, RemoteAddr,
     },
 };
 
@@ -135,57 +135,58 @@ fn on_listen_to(
     mut commands: Commands,
     q_tcp_server: Query<(Entity, &NetworkNode)>,
 ) {
-    let (e, net_node) = q_tcp_server.get(trigger.entity()).unwrap();
-    let listen_to = trigger.event();
+    if let Ok((e, net_node)) = q_tcp_server.get(trigger.entity()) {
+        let listen_to = trigger.event();
 
-    if !["tcp", "ssl"].contains(&listen_to.scheme()) {
-        return;
-    }
-
-    let local_addr = listen_to.local_addr();
-    let event_tx = net_node.event_channel.sender.clone_async();
-    let event_tx_clone = net_node.event_channel.sender.clone_async();
-    let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
-    let tcp_node = TcpNode::new();
-    let new_connection_tx = tcp_node.new_connection_channel.sender.clone_async();
-    task::spawn(async move {
-        let tasks = vec![
-            task::spawn(TcpNode::listen(
-                local_addr,
-                event_tx_clone,
-                new_connection_tx,
-            )),
-            task::spawn(async move {
-                match shutdown_clone.recv().await {
-                    Ok(_) => Ok(()),
-                    Err(e) => Err(NetworkError::RxReceiveError(e)),
-                }
-            }),
-        ];
-
-        match future::try_join_all(tasks).await {
-            Ok(_) => {}
-            Err(err) => {
-                let _ = event_tx.send(NetworkEvent::Error(err)).await;
-            }
+        if !["tcp", "ssl"].contains(&listen_to.scheme()) {
+            return;
         }
-    });
 
-    commands.entity(e).insert(tcp_node);
+        let local_addr = listen_to.local_addr();
+        let event_tx = net_node.event_channel.sender.clone_async();
+        let event_tx_clone = net_node.event_channel.sender.clone_async();
+        let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
+        let tcp_node = TcpNode::new();
+        let new_connection_tx = tcp_node.new_connection_channel.sender.clone_async();
+        task::spawn(async move {
+            let tasks = vec![
+                task::spawn(TcpNode::listen(
+                    local_addr,
+                    event_tx_clone,
+                    new_connection_tx,
+                )),
+                task::spawn(async move {
+                    match shutdown_clone.recv().await {
+                        Ok(_) => Ok(()),
+                        Err(e) => Err(NetworkError::RxReceiveError(e)),
+                    }
+                }),
+            ];
+
+            match future::try_join_all(tasks).await {
+                Ok(_) => {}
+                Err(err) => {
+                    let _ = event_tx.send(NetworkEvent::Error(err)).await;
+                }
+            }
+        });
+
+        commands.entity(e).insert(tcp_node);
+    }
 }
 
 fn on_connect_to(
     trigger: Trigger<ConnectTo>,
-    q_tcp_client: Query<(&NetworkNode, &ClientAddr), Without<NetworkPeer>>,
+    q_tcp_client: Query<(&NetworkNode, &RemoteAddr), Without<NetworkPeer>>,
 ) {
-    if let Ok((net_node, client_addr)) = q_tcp_client.get(trigger.entity()) {
-        if !["tcp", "ssl"].contains(&client_addr.scheme()) {
+    if let Ok((net_node, remote_addr)) = q_tcp_client.get(trigger.entity()) {
+        if !["tcp", "ssl"].contains(&remote_addr.scheme()) {
             return;
         }
 
-        debug!("try connect to {}", client_addr.to_string());
+        debug!("try connect to {}", remote_addr.to_string());
 
-        let addr = client_addr.peer_addr();
+        let addr = remote_addr.peer_addr();
         let recv_tx = net_node.recv_message_channel.sender.clone_async();
         let message_rx = net_node.send_message_channel.receiver.clone_async();
         let event_tx = net_node.event_channel.sender.clone_async();
@@ -209,8 +210,6 @@ fn on_connect_to(
             }
         });
     }
-
-
 }
 
 fn handle_endpoint(
@@ -236,7 +235,7 @@ fn handle_endpoint(
 
             let peer_entity = commands
                 .entity(child_tcp_client)
-                .insert((new_net_node, *channel_id, ClientAddr::new(&peer_str), peer))
+                .insert((new_net_node, *channel_id, RemoteAddr::new(&peer_str), peer))
                 .id();
 
             debug!("new client connected {:?}", peer_entity);

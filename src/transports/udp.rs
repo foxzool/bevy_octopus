@@ -13,14 +13,17 @@ use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
     error::NetworkError,
-    network_node::{ConnectTo, ListenTo, NetworkEvent, NetworkNode, NetworkPeer, NetworkRawPacket},
+    network_node::{
+        ListenTo, NetworkEvent, NetworkNode, NetworkPeer, NetworkRawPacket, RemoteAddr,
+        ServerAddr,
+    },
 };
 
 pub struct UdpPlugin;
 
 impl Plugin for UdpPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, (spawn_udp_socket,));
+        app.observe(on_listen_to);
     }
 }
 
@@ -92,7 +95,7 @@ async fn send_data(
     while attempts < max_retries {
         match timeout(timeout_duration, socket.send_to(data, addr)).await {
             Ok(Ok(_)) => {
-                trace!("Data sent to {} successfully", addr);
+                // trace!("Data sent to {} successfully", addr);
                 return Ok(());
             }
             Ok(Err(e)) if e.kind() == io::ErrorKind::ConnectionRefused => {
@@ -145,88 +148,6 @@ impl MulticastV6Setting {
         Self {
             multi_addr,
             interface,
-        }
-    }
-}
-
-#[allow(clippy::type_complexity)]
-fn spawn_udp_socket(
-    mut commands: Commands,
-    q_udp: Query<
-        (
-            Entity,
-            &NetworkNode,
-            Option<&ListenTo>,
-            Option<&ConnectTo>,
-            Option<&UdpBroadcast>,
-            Option<&MulticastV4Setting>,
-            Option<&MulticastV6Setting>,
-        ),
-        Or<(Added<ListenTo>, Added<ConnectTo>)>,
-    >,
-) {
-    for (entity, net_node, opt_listen_to, opt_connect_to, opt_broadcast, opt_v4, opt_v6) in
-        q_udp.iter()
-    {
-        let mut local_addr = "0.0.0.0:0".parse::<SocketAddr>().unwrap();
-        if let Some(listen_to) = opt_listen_to {
-            if listen_to.scheme() == "udp" {
-                local_addr = listen_to.local_addr();
-            } else {
-                continue;
-            }
-        };
-
-        let mut remote_addr = None;
-
-        if let Some(connect_to) = opt_connect_to {
-            if connect_to.scheme() == "udp" {
-                remote_addr = Some(connect_to.peer_addr())
-            } else {
-                continue;
-            }
-        };
-
-        let has_broadcast = opt_broadcast.is_some();
-        let opt_v4 = opt_v4.cloned();
-        let opt_v6 = opt_v6.cloned();
-        let listener_socket = local_addr;
-        let recv_tx = net_node.recv_message_channel.sender.clone_async();
-        let send_rx = net_node.send_message_channel.receiver.clone_async();
-        let event_tx = net_node.event_channel.sender.clone_async();
-        let shutdown_rx = net_node.shutdown_channel.receiver.clone_async();
-
-        task::spawn(async move {
-            let tasks = vec![
-                task::spawn(listen(
-                    listener_socket,
-                    remote_addr,
-                    has_broadcast,
-                    opt_v4,
-                    opt_v6,
-                    recv_tx,
-                    send_rx,
-                    event_tx.clone(),
-                )),
-                task::spawn(async move {
-                    match shutdown_rx.recv().await {
-                        Ok(_) => Ok(()),
-                        Err(e) => Err(NetworkError::RxReceiveError(e)),
-                    }
-                }),
-            ];
-
-            match future::try_join_all(tasks).await {
-                Ok(_) => {}
-                Err(err) => {
-                    let _ = event_tx.send(NetworkEvent::Error(err)).await;
-                }
-            }
-        });
-
-        if remote_addr.is_some() {
-            let peer = NetworkPeer;
-            commands.entity(entity).insert(peer);
         }
     }
 }
@@ -284,4 +205,69 @@ async fn listen(
     }
 
     Ok(())
+}
+
+#[allow(clippy::type_complexity)]
+fn on_listen_to(
+    trigger: Trigger<ListenTo>,
+    q_udp: Query<
+        (
+            &NetworkNode,
+            &ServerAddr,
+            Option<&RemoteAddr>,
+            Option<&UdpBroadcast>,
+            Option<&MulticastV4Setting>,
+            Option<&MulticastV6Setting>,
+        ),
+        Without<NetworkPeer>,
+    >,
+) {
+    if let Ok((net_node, server_addr, opt_remote_addr, opt_broadcast, opt_v4, opt_v6)) =
+        q_udp.get(trigger.entity())
+    {
+        if "udp" != server_addr.scheme() {
+            return;
+        }
+
+        let local_addr = server_addr.local_addr();
+
+        let remote_addr = opt_remote_addr.map(|remote_addr| remote_addr.peer_addr());
+
+        let has_broadcast = opt_broadcast.is_some();
+        let opt_v4 = opt_v4.cloned();
+        let opt_v6 = opt_v6.cloned();
+        let listener_socket = local_addr;
+        let recv_tx = net_node.recv_message_channel.sender.clone_async();
+        let send_rx = net_node.send_message_channel.receiver.clone_async();
+        let event_tx = net_node.event_channel.sender.clone_async();
+        let shutdown_rx = net_node.shutdown_channel.receiver.clone_async();
+
+        task::spawn(async move {
+            let tasks = vec![
+                task::spawn(listen(
+                    listener_socket,
+                    remote_addr,
+                    has_broadcast,
+                    opt_v4,
+                    opt_v6,
+                    recv_tx,
+                    send_rx,
+                    event_tx.clone(),
+                )),
+                task::spawn(async move {
+                    match shutdown_rx.recv().await {
+                        Ok(_) => Ok(()),
+                        Err(e) => Err(NetworkError::RxReceiveError(e)),
+                    }
+                }),
+            ];
+
+            match future::try_join_all(tasks).await {
+                Ok(_) => {}
+                Err(err) => {
+                    let _ = event_tx.send(NetworkEvent::Error(err)).await;
+                }
+            }
+        });
+    }
 }

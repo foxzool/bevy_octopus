@@ -97,27 +97,15 @@ pub fn send_bincode_message(
     });
 }
 
-pub fn send_channel_message(
-    mut channel_messages: EventWriter<ChannelSendMessage<PlayerInformation>>,
-) {
-    channel_messages.send(ChannelSendMessage {
-        channel_id: JSON_CHANNEL,
-        message: PlayerInformation {
-            health: 300,
-            position: (4, 5, 6),
-        },
-    });
-}
-
 /// client send raw message to server
 pub fn client_send_raw_message_to_channel(
-    q_client: Query<(&NetworkNode, &ChannelId, &ClientAddr)>,
+    q_client: Query<(&NetworkNode, &ChannelId, &RemoteAddr)>,
 ) {
-    for (node, channel_id, client_addr) in q_client.iter() {
+    for (node, channel_id, remote_addr) in q_client.iter() {
         if channel_id == &RAW_CHANNEL {
             node.send_to(
                 format!("raw packet from {} to {}", node, channel_id).as_bytes(),
-                client_addr.to_string(),
+                remote_addr.to_string(),
             );
         }
     }

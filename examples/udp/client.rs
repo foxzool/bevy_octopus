@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
+
 use bevy_octopus::prelude::*;
 
 use crate::common::*;
@@ -17,11 +18,7 @@ fn main() {
         .add_systems(Startup, setup_clients)
         .add_systems(
             Update,
-            (
-                send_json_message,
-                send_bincode_message,
-                send_channel_message,
-            )
+            (send_json_message, send_bincode_message)
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
         .add_systems(
@@ -34,10 +31,12 @@ fn main() {
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        ConnectTo::new("udp://127.0.0.1:6002"),
+        ServerAddr::new("udp://0.0.0.0:0"),
+        RemoteAddr::new("udp://127.0.0.1:6002"),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        ConnectTo::new("udp://127.0.0.1:6003"),
+        ServerAddr::new("udp://0.0.0.0:0"),
+        RemoteAddr::new("udp://127.0.0.1:6003"),
     ));
 }
