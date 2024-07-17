@@ -3,8 +3,9 @@ use std::time::Duration;
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use bytes::Bytes;
 
-use crate::common::*;
 use bevy_octopus::prelude::*;
+
+use crate::common::*;
 
 #[path = "../common/lib.rs"]
 mod common;
@@ -23,7 +24,11 @@ fn main() {
         )
         .add_systems(
             Update,
-            (broadcast_message, send_channel_message, send_channel_packet)
+            (
+                broadcast_message,
+                send_channel_message,
+                send_channel_packet
+            )
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
         .run();
@@ -32,15 +37,15 @@ fn main() {
 fn setup_server(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        ListenTo::new("tcp://0.0.0.0:5003"),
+        ServerAddr::new("tcp://0.0.0.0:5003"),
     ));
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        ListenTo::new("tcp://0.0.0.0:5004"),
+        ServerAddr::new("tcp://0.0.0.0:5004"),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        ListenTo::new("tcp://0.0.0.0:5005"),
+        ServerAddr::new("tcp://0.0.0.0:5005"),
     ));
 }
 
@@ -51,8 +56,8 @@ fn send_channel_packet(mut channel_events: EventWriter<ChannelPacket>) {
 
 /// handle send message to connected clients
 fn broadcast_message(
-    q_net_node: Query<(&ChannelId, &NetworkNode, &Children), Without<NetworkPeer>>,
-    q_child: Query<(&NetworkNode, &ConnectTo)>,
+    q_net_node: Query<(&ChannelId, &NetworkNode, &Children), With<ServerAddr>>,
+    q_child: Query<(&NetworkNode, &ClientAddr)>,
 ) {
     for (channel_id, _net, children) in q_net_node.iter() {
         if channel_id != &RAW_CHANNEL {
@@ -61,13 +66,13 @@ fn broadcast_message(
         for &child in children.iter() {
             let message = b"broadcast message!\r\n";
 
-            let (child_net_node, connect_to) = q_child.get(child).expect("Child node not found.");
+            let (child_net_node, client_addr) = q_child.get(child).expect("Child node not found.");
 
             let _ = child_net_node
                 .send_message_channel
                 .sender
                 .try_send(NetworkRawPacket::new(
-                    connect_to.to_string(),
+                    client_addr.to_string(),
                     Bytes::from_static(message),
                 ));
         }

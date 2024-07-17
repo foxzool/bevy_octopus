@@ -8,14 +8,14 @@ use async_std::{
 };
 use bevy::prelude::*;
 use bytes::Bytes;
-use futures::{future, AsyncReadExt};
+use futures::{AsyncReadExt, future};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
     channels::ChannelId,
     error::NetworkError,
     network_node::{
-        AsyncChannel, ConnectTo, ListenTo, NetworkEvent, NetworkNode, NetworkNodeEvent,
+        AsyncChannel, ClientAddr, ConnectTo, ListenTo, NetworkEvent, NetworkNode, NetworkNodeEvent,
         NetworkPeer, NetworkRawPacket,
     },
 };
@@ -24,10 +24,9 @@ pub struct TcpPlugin;
 
 impl Plugin for TcpPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            PostUpdate,
-            (spawn_tcp_client, spawn_tcp_server, handle_endpoint),
-        );
+        app.add_systems(PostUpdate, handle_endpoint)
+            .observe(on_listen_to)
+            .observe(on_connect_to);
     }
 }
 
@@ -131,62 +130,62 @@ async fn handle_connection(
 }
 
 /// TcpNode with local socket meas TCP server need to listen socket
-#[allow(clippy::type_complexity)]
-fn spawn_tcp_server(
+fn on_listen_to(
+    trigger: Trigger<ListenTo>,
     mut commands: Commands,
-    q_tcp_server: Query<(Entity, &NetworkNode, &ListenTo), Added<ListenTo>>,
+    q_tcp_server: Query<(Entity, &NetworkNode)>,
 ) {
-    for (e, net_node, listen_to) in q_tcp_server.iter() {
-        if !["tcp", "ssl"].contains(&listen_to.scheme()) {
-            continue;
-        }
+    let (e, net_node) = q_tcp_server.get(trigger.entity()).unwrap();
+    let listen_to = trigger.event();
 
-        let local_addr = listen_to.local_addr();
-        let event_tx = net_node.event_channel.sender.clone_async();
-        let event_tx_clone = net_node.event_channel.sender.clone_async();
-        let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
-        let tcp_node = TcpNode::new();
-        let new_connection_tx = tcp_node.new_connection_channel.sender.clone_async();
-        task::spawn(async move {
-            let tasks = vec![
-                task::spawn(TcpNode::listen(
-                    local_addr,
-                    event_tx_clone,
-                    new_connection_tx,
-                )),
-                task::spawn(async move {
-                    match shutdown_clone.recv().await {
-                        Ok(_) => Ok(()),
-                        Err(e) => Err(NetworkError::RxReceiveError(e)),
-                    }
-                }),
-            ];
-
-            match future::try_join_all(tasks).await {
-                Ok(_) => {}
-                Err(err) => {
-                    let _ = event_tx.send(NetworkEvent::Error(err)).await;
-                }
-            }
-        });
-
-        commands.entity(e).insert(tcp_node);
+    if !["tcp", "ssl"].contains(&listen_to.scheme()) {
+        return;
     }
+
+    let local_addr = listen_to.local_addr();
+    let event_tx = net_node.event_channel.sender.clone_async();
+    let event_tx_clone = net_node.event_channel.sender.clone_async();
+    let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
+    let tcp_node = TcpNode::new();
+    let new_connection_tx = tcp_node.new_connection_channel.sender.clone_async();
+    task::spawn(async move {
+        let tasks = vec![
+            task::spawn(TcpNode::listen(
+                local_addr,
+                event_tx_clone,
+                new_connection_tx,
+            )),
+            task::spawn(async move {
+                match shutdown_clone.recv().await {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(NetworkError::RxReceiveError(e)),
+                }
+            }),
+        ];
+
+        match future::try_join_all(tasks).await {
+            Ok(_) => {}
+            Err(err) => {
+                let _ = event_tx.send(NetworkEvent::Error(err)).await;
+            }
+        }
+    });
+
+    commands.entity(e).insert(tcp_node);
 }
 
-#[allow(clippy::type_complexity)]
-fn spawn_tcp_client(
-    q_tcp_client: Query<
-        (Entity, &NetworkNode, &ConnectTo),
-        (Added<ConnectTo>, Without<NetworkPeer>),
-    >,
+fn on_connect_to(
+    trigger: Trigger<ConnectTo>,
+    q_tcp_client: Query<(&NetworkNode, &ClientAddr), Without<NetworkPeer>>,
 ) {
-    for (_e, net_node, connect_to) in q_tcp_client.iter() {
-        if !["tcp", "ssl"].contains(&connect_to.scheme()) {
-            continue;
+    if let Ok((net_node, client_addr)) = q_tcp_client.get(trigger.entity()) {
+        if !["tcp", "ssl"].contains(&client_addr.scheme()) {
+            return;
         }
 
-        let addr = connect_to.peer_addr();
+        debug!("try connect to {}", client_addr.to_string());
+
+        let addr = client_addr.peer_addr();
         let recv_tx = net_node.recv_message_channel.sender.clone_async();
         let message_rx = net_node.send_message_channel.receiver.clone_async();
         let event_tx = net_node.event_channel.sender.clone_async();
@@ -210,6 +209,8 @@ fn spawn_tcp_client(
             }
         });
     }
+
+
 }
 
 fn handle_endpoint(
@@ -231,16 +232,14 @@ fn handle_endpoint(
             task::spawn(async move {
                 handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
             });
-            let peer = NetworkPeer {};
+            let peer = NetworkPeer;
 
-            debug!("new client {:?} connected {:?}", peer_str, child_tcp_client);
+            let peer_entity = commands
+                .entity(child_tcp_client)
+                .insert((new_net_node, *channel_id, ClientAddr::new(&peer_str), peer))
+                .id();
 
-            commands.entity(child_tcp_client).insert((
-                ConnectTo::new(&peer_str),
-                new_net_node,
-                *channel_id,
-                peer,
-            ));
+            debug!("new client connected {:?}", peer_entity);
 
             // Add the client to the server's children
             commands.entity(entity).add_child(child_tcp_client);

@@ -22,8 +22,7 @@ fn main() {
             (
                 client_send_raw_message_to_channel,
                 send_json_message,
-                send_bincode_message,
-                send_channel_message,
+                send_bincode_message
             )
                 .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
@@ -37,14 +36,14 @@ fn main() {
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        ConnectTo::new("tcp://127.0.0.1:5003"),
+        ClientAddr::new("tcp://127.0.0.1:5003"),
     ));
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        ConnectTo::new("tcp://127.0.0.1:5004"),
+        ClientAddr::new("tcp://127.0.0.1:5004"),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        ConnectTo::new("tcp://127.0.0.1:5005"),
+        ClientAddr::new("tcp://127.0.0.1:5005"),
     ));
 }

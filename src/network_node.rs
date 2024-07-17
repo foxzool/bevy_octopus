@@ -4,16 +4,19 @@ use std::{
 };
 
 use bevy::{
-    ecs::world::CommandQueue,
+    ecs::{
+        component::{ComponentHooks, StorageType},
+        world::CommandQueue,
+    },
     hierarchy::DespawnRecursiveExt,
     prelude::{
-        Added, Bundle, Commands, Component, Deref, Entity, Event, EventWriter, Or, Query, Reflect,
-        ResMut, Resource,
+        Bundle, Commands, Component, Deref, Entity, Event, EventWriter, Query, Reflect, ResMut,
+        Resource,
     },
     tasks::block_on,
 };
 use bytes::Bytes;
-use kanal::{unbounded, Receiver, Sender};
+use kanal::{Receiver, Sender, unbounded};
 use url::Url;
 
 use crate::{error::NetworkError, prelude::ChannelId};
@@ -45,7 +48,7 @@ impl Debug for NetworkRawPacket {
     }
 }
 
-#[derive(Component, Deref, Clone, Debug)]
+#[derive(Event, Deref, Clone, Debug)]
 pub struct ListenTo(pub Url);
 
 impl ListenTo {
@@ -62,7 +65,7 @@ impl ListenTo {
     }
 }
 
-#[derive(Component, Deref, Clone, Debug)]
+#[derive(Event, Deref, Clone, Debug)]
 pub struct ConnectTo(pub Url);
 
 impl ConnectTo {
@@ -92,6 +95,20 @@ impl NetworkBundle {
             network_node: NetworkNode::default(),
         }
     }
+
+    pub fn new_server(channel_id: ChannelId, server: impl ToString) -> Self {
+        Self {
+            channel_id,
+            network_node: NetworkNode::new_server(server),
+        }
+    }
+
+    pub fn new_client(channel_id: ChannelId, client: impl ToString) -> Self {
+        Self {
+            channel_id,
+            network_node: NetworkNode::new_client(client),
+        }
+    }
 }
 
 #[derive(Component, Default)]
@@ -106,12 +123,51 @@ pub struct NetworkNode {
     pub shutdown_channel: AsyncChannel<()>,
     /// Whether the node is running or not
     pub running: bool,
+    pub server_addr: Option<String>,
+    pub client_addr: Option<String>,
     pub max_packet_size: usize,
     pub listen_to: Option<ListenTo>,
     pub connect_to: Option<ConnectTo>,
 }
 
+// impl Component for NetworkNode {
+//     const STORAGE_TYPE: StorageType = StorageType::Table;
+//
+//     fn register_component_hooks(hooks: &mut ComponentHooks) {
+//         hooks.on_add(|mut world, targeted_entity, _component_id| {
+//             let net_node = world.get::<NetworkNode>(targeted_entity).unwrap();
+//             if let Some(server_addr) = &net_node.server_addr {
+//                 world.trigger_targets(ListenTo::new(server_addr), targeted_entity);
+//             }
+//             if let Some(client_addr) = &net_node.client_addr {
+//                 world.trigger_targets(ConnectTo::new(client_addr), targeted_entity);
+//             }
+//         });
+//     }
+// }
+
 impl NetworkNode {
+    pub fn new_server(server: impl ToString) -> Self {
+        Self {
+            server_addr: Some(server.to_string()),
+            ..Default::default()
+        }
+    }
+
+    pub fn new_client(client: impl ToString) -> Self {
+        Self {
+            client_addr: Some(client.to_string()),
+            ..Default::default()
+        }
+    }
+
+    pub fn new_server_and_client(server: impl ToString, client: impl ToString) -> Self {
+        Self {
+            server_addr: Some(server.to_string()),
+            client_addr: Some(client.to_string()),
+            ..Default::default()
+        }
+    }
     pub fn start(&mut self) {
         self.running = true;
     }
@@ -120,25 +176,25 @@ impl NetworkNode {
         self.running = false;
     }
 
-    pub fn send(&self, bytes: &[u8]) {
-        match self.connect_to.as_ref() {
-            None => {
-                let _ =
-                    self.event_channel
-                        .sender
-                        .try_send(NetworkEvent::Error(NetworkError::Custom(
-                            "No connection".to_string(),
-                        )));
-            }
-            Some(connect_to) => {
-                let addr = connect_to.to_string();
-                let _ = self
-                    .send_message_channel
-                    .sender
-                    .try_send(NetworkRawPacket::new(addr, Bytes::copy_from_slice(bytes)));
-            }
-        }
-    }
+    // pub fn send(&self, bytes: &[u8]) {
+    //     match self.connect_to.as_ref() {
+    //         None => {
+    //             let _ =
+    //                 self.event_channel
+    //                     .sender
+    //                     .try_send(NetworkEvent::Error(NetworkError::Custom(
+    //                         "No connection".to_string(),
+    //                     )));
+    //         }
+    //         Some(connect_to) => {
+    //             let addr = connect_to.to_string();
+    //             let _ = self
+    //                 .send_message_channel
+    //                 .sender
+    //                 .try_send(NetworkRawPacket::new(addr, Bytes::copy_from_slice(bytes)));
+    //         }
+    //     }
+    // }
 
     /// Send text message
     pub fn send_text(&self, text: String) {
@@ -186,25 +242,66 @@ impl Display for NetworkNode {
     }
 }
 
-#[allow(clippy::type_complexity)]
-pub(crate) fn update_network_node(
-    mut q_net: Query<
-        (&mut NetworkNode, Option<&ListenTo>, Option<&ConnectTo>),
-        Or<(Added<NetworkNode>, Added<NetworkNode>)>,
-    >,
-) {
-    for (mut net_node, opt_listen_to, opt_connect_to) in q_net.iter_mut() {
-        if let Some(listen_to) = opt_listen_to {
-            if net_node.listen_to.is_none() {
-                net_node.listen_to = Some(listen_to.clone());
-            }
-        }
-        if let Some(connect_to) = opt_connect_to {
-            if net_node.connect_to.is_none() {
-                net_node.connect_to = Some(connect_to.clone());
-            }
-        }
+#[derive(Debug, Deref)]
+pub struct ServerAddr(pub Url);
+
+impl Component for ServerAddr {
+    const STORAGE_TYPE: StorageType = StorageType::Table;
+
+    fn register_component_hooks(hooks: &mut ComponentHooks) {
+        hooks.on_insert(|mut world, targeted_entity, _component_id| {
+            let server_addr = world.get::<ServerAddr>(targeted_entity).unwrap();
+            world.trigger_targets(ListenTo(server_addr.0.clone()), targeted_entity);
+        });
     }
+}
+
+impl ServerAddr {
+    pub fn new(addr: impl ToString) -> Self {
+        Self(addr.to_string().parse().unwrap())
+    }
+}
+
+#[derive(Debug, Deref)]
+pub struct ClientAddr(pub Url);
+
+impl Component for ClientAddr {
+    const STORAGE_TYPE: StorageType = StorageType::Table;
+
+    fn register_component_hooks(hooks: &mut ComponentHooks) {
+        hooks.on_insert(|mut world, targeted_entity, _component_id| {
+            let client_addr = world.get::<ClientAddr>(targeted_entity).unwrap();
+            world.trigger_targets(ConnectTo(client_addr.0.clone()), targeted_entity);
+        });
+    }
+}
+
+impl ClientAddr {
+    pub fn new(addr: impl ToString) -> Self {
+        Self(addr.to_string().parse().unwrap())
+    }
+
+    pub fn peer_addr(&self) -> SocketAddr {
+        let url_str = self.0.to_string();
+        let arr: Vec<&str> = url_str.split("//").collect();
+        let s = arr[1].split('/').collect::<Vec<&str>>()[0];
+        s.to_socket_addrs().unwrap().next().unwrap()
+    }
+}
+
+pub(crate) fn update_network_node(// mut ev_listen: EventWriter<ListenTo>,
+    // mut ev_connect: EventWriter<ConnectTo>,
+    // q_net: Query<&NetworkNode, Added<NetworkNode>>,
+) {
+    // for net_node in q_net.iter() {
+    //     if let Some(server_addr) = &net_node.server_addr {
+    //         ev_listen.send(ListenTo::new(server_addr));
+    //     }
+    //
+    //     if let Some(client_addr) = &net_node.client_addr {
+    //         ev_connect.send(ConnectTo::new(client_addr));
+    //     }
+    // }
 }
 
 /// A network peer on server
@@ -260,34 +357,56 @@ pub enum NetworkEvent {
     Error(NetworkError),
 }
 
+#[derive(Debug, Component)]
+pub struct Reconnect {
+    /// Delay in seconds
+    pub delay: f64,
+    pub max_retries: usize,
+    pub retries: usize,
+}
+
+impl Default for Reconnect {
+    fn default() -> Self {
+        Self {
+            delay: 1.0,
+            max_retries: usize::MAX,
+            retries: 0,
+        }
+    }
+}
+
 /// send network node error channel to events
 pub(crate) fn network_node_event(
     mut commands: Commands,
-    mut q_net: Query<(Entity, &ChannelId, &mut NetworkNode, Option<&ConnectTo>)>,
+    mut q_net: Query<(
+        Entity,
+        &ChannelId,
+        &mut NetworkNode,
+        Option<&ClientAddr>,
+        Option<&NetworkPeer>,
+    )>,
     mut node_events: EventWriter<NetworkNodeEvent>,
 ) {
-    for (entity, channel_id, net_node, opt_connect_to) in q_net.iter_mut() {
+    for (entity, channel_id, net_node, opt_client_addr, opt_network_peer) in q_net.iter_mut() {
         while let Ok(Some(event)) = net_node.event_channel.receiver.try_recv() {
             match event {
                 NetworkEvent::Listen => {}
                 NetworkEvent::Connected => {}
                 NetworkEvent::Disconnected => {
-                    if let Some(connect_to) = opt_connect_to {
-                        commands
-                            .entity(entity)
-                            .remove::<ConnectTo>()
-                            .insert(connect_to.clone());
+                    if opt_network_peer.is_some() {
+                        commands.entity(entity).despawn_recursive();
+                    } else if let Some(client_addr) = opt_client_addr {
+                        commands.trigger_targets(ConnectTo(client_addr.0.clone()), entity);
                     } else {
                         commands.entity(entity).despawn_recursive();
                     }
                 }
                 NetworkEvent::Error(ref network_error) => {
                     if let NetworkError::Connection(_) = network_error {
-                        if let Some(connect_to) = opt_connect_to {
-                            commands
-                                .entity(entity)
-                                .remove::<ConnectTo>()
-                                .insert(connect_to.clone());
+                        if opt_network_peer.is_some() {
+                            commands.entity(entity).despawn_recursive();
+                        } else if let Some(client_addr) = opt_client_addr {
+                            commands.trigger_targets(ConnectTo(client_addr.0.clone()), entity);
                         } else {
                             commands.entity(entity).despawn_recursive();
                         }

@@ -15,6 +15,7 @@ use crate::{
     error::NetworkError,
     network_node::{ConnectTo, ListenTo, NetworkEvent, NetworkNode, NetworkPeer, NetworkRawPacket},
 };
+
 pub struct UdpPlugin;
 
 impl Plugin for UdpPlugin {
@@ -224,7 +225,7 @@ fn spawn_udp_socket(
         });
 
         if remote_addr.is_some() {
-            let peer = NetworkPeer {};
+            let peer = NetworkPeer;
             commands.entity(entity).insert(peer);
         }
     }
