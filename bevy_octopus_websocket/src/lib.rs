@@ -16,14 +16,9 @@ pub struct WebsocketPlugin;
 
 impl Plugin for WebsocketPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            PostUpdate,
-            (
-                spawn_websocket_server,
-                spawn_websocket_client,
-                handle_endpoint,
-            ),
-        );
+        app.add_systems(PostUpdate, (handle_endpoint,))
+            .observe(on_connect_to)
+            .observe(on_listen_to);
     }
 }
 
@@ -71,13 +66,15 @@ impl WebsocketNode {
     }
 }
 
-fn spawn_websocket_server(
+fn on_listen_to(
+    trigger: Trigger<ListenTo>,
     mut commands: Commands,
-    q_ws_server: Query<(Entity, &NetworkNode, &ListenTo), Added<ListenTo>>,
+    q_ws_server: Query<(Entity, &NetworkNode)>,
 ) {
-    for (e, net_node, listen_to) in q_ws_server.iter() {
+    if let Ok((e, net_node)) = q_ws_server.get(trigger.entity()) {
+        let listen_to = trigger.event();
         if !["ws", "wss"].contains(&listen_to.scheme()) {
-            continue;
+            return;
         }
 
         let local_addr = listen_to.local_addr();
@@ -104,14 +101,15 @@ fn spawn_websocket_server(
 }
 
 #[allow(clippy::type_complexity)]
-fn spawn_websocket_client(
-    q_ws_client: Query<(&NetworkNode, &ConnectTo), (Added<ConnectTo>, Without<NetworkPeer>)>,
+fn on_connect_to(
+    trigger: Trigger<ConnectTo>,
+    q_ws_client: Query<(&NetworkNode, &RemoteAddr), Without<NetworkPeer>>,
 ) {
-    for (net_node, connect_to) in q_ws_client.iter() {
-        if !["ws", "wss"].contains(&connect_to.scheme()) {
-            continue;
+    if let Ok((net_node, remote_addr)) = q_ws_client.get(trigger.entity()) {
+        if !["ws", "wss"].contains(&remote_addr.scheme()) {
+            return;
         }
-
+        let connect_to = trigger.event();
         let remote_addr = connect_to.to_string();
 
         let recv_tx = net_node.recv_message_channel.sender.clone_async();

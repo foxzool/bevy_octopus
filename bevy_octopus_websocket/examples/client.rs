@@ -36,18 +36,18 @@ fn main() {
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        ConnectTo::new("wss://echo.websocket.org"),
+        RemoteAddr::new("wss://echo.websocket.org"),
     ));
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        ConnectTo::new("ws://127.0.0.1:7003"),
+        RemoteAddr::new("ws://127.0.0.1:7003"),
     ));
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        ConnectTo::new("ws://127.0.0.1:7004"),
+        RemoteAddr::new("ws://127.0.0.1:7004"),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        ConnectTo::new("ws://127.0.0.1:7005"),
+        RemoteAddr::new("ws://127.0.0.1:7005"),
     ));
 }

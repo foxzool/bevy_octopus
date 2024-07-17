@@ -4,9 +4,9 @@ use bevy::{
 };
 
 use crate::{
-    channels::{ChannelId, ChannelPacket, send_channel_message_system},
+    channels::{send_channel_message_system, ChannelId, ChannelPacket},
     network_node::{
-        CommandQueueTasks, ConnectTo, handle_command_queue_tasks, ListenTo, network_node_event,
+        handle_command_queue_tasks, network_node_event, CommandQueueTasks, ConnectTo, ListenTo,
         NetworkNodeEvent,
     },
     scheduler::NetworkSet,

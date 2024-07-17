@@ -85,8 +85,7 @@ fn send_broadcast_messages(
             net_node.send_bytes_to(
                 format!(
                     "broadcast message from {} with send_to {}",
-                    local_addr.0,
-                    remote_addr.to_string()
+                    local_addr.0, **remote_addr
                 )
                 .as_bytes(),
                 remote_addr.to_string(),

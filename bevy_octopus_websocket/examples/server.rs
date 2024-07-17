@@ -24,8 +24,7 @@ fn main() {
         )
         .add_systems(
             Update,
-            (broadcast_message, send_channel_message, send_channel_packet)
-                .run_if(on_timer(Duration::from_secs_f64(1.0))),
+            (broadcast_message, send_channel_packet).run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
         .run();
 }
@@ -33,15 +32,15 @@ fn main() {
 fn setup_server(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        ListenTo::new("ws://0.0.0.0:7003"),
+        ServerAddr::new("ws://0.0.0.0:7003"),
     ));
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        ListenTo::new("ws://0.0.0.0:7004"),
+        ServerAddr::new("ws://0.0.0.0:7004"),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        ListenTo::new("ws://0.0.0.0:7005"),
+        ServerAddr::new("ws://0.0.0.0:7005"),
     ));
 }
 

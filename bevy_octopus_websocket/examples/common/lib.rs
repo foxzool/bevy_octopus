@@ -60,41 +60,27 @@ pub fn handle_message_events(
 pub fn handle_raw_packet(q_server: Query<(&ChannelId, &NetworkNode)>) {
     for (channel_id, net_node) in q_server.iter() {
         while let Ok(Some(packet)) = net_node.recv_message_channel.receiver.try_recv() {
-            info!("{} {} Received: {:?}", channel_id, net_node, packet.bytes);
+            info!("{} Received: {:?}", channel_id, packet.bytes);
         }
     }
 }
 
-pub fn send_json_message(q_nodes: Query<(&NetworkNode, &ChannelId)>) {
-    for (node, channel_id) in q_nodes.iter() {
-        if channel_id == &JSON_CHANNEL {
-            let player_info = PlayerInformation {
-                health: 100,
-                position: (1, 2, 3),
-            };
-            node.send(serde_json::to_string(&player_info).unwrap().as_bytes());
-        }
-    }
+pub fn send_json_message(mut channel_messages: EventWriter<ChannelSendMessage<PlayerInformation>>) {
+    channel_messages.send(ChannelSendMessage {
+        channel_id: JSON_CHANNEL,
+        message: PlayerInformation {
+            health: 100,
+            position: (1, 2, 3),
+        },
+    });
 }
 
 /// send bincode message
-pub fn send_bincode_message(q_nodes: Query<(&NetworkNode, &ChannelId)>) {
-    for (node, channel_id) in q_nodes.iter() {
-        if channel_id == &BINCODE_CHANNEL {
-            let player_info = PlayerInformation {
-                health: 200,
-                position: (4, 5, 6),
-            };
-            node.send(&bincode::serialize(&player_info).unwrap());
-        }
-    }
-}
-
-pub fn send_channel_message(
+pub fn send_bincode_message(
     mut channel_messages: EventWriter<ChannelSendMessage<PlayerInformation>>,
 ) {
     channel_messages.send(ChannelSendMessage {
-        channel_id: JSON_CHANNEL,
+        channel_id: BINCODE_CHANNEL,
         message: PlayerInformation {
             health: 300,
             position: (4, 5, 6),
@@ -103,10 +89,13 @@ pub fn send_channel_message(
 }
 
 /// send raw message to server
-pub fn send_raw_message_to_channel(q_client: Query<(&NetworkNode, &ChannelId)>) {
-    for (node, channel_id) in q_client.iter() {
+pub fn send_raw_message_to_channel(q_client: Query<(&NetworkNode, &ChannelId, &RemoteAddr)>) {
+    for (node, channel_id, remote_addr) in q_client.iter() {
         if channel_id == &RAW_CHANNEL {
-            node.send(format!("raw packet from {} to {}", node, channel_id).as_bytes());
+            node.send_bytes_to(
+                format!("raw packet to {}", channel_id).as_bytes(),
+                remote_addr.to_string(),
+            );
         }
     }
 }

@@ -16,7 +16,7 @@ use bevy::{
     tasks::block_on,
 };
 use bytes::Bytes;
-use kanal::{Receiver, Sender, unbounded};
+use kanal::{unbounded, Receiver, Sender};
 use url::Url;
 
 use crate::{error::NetworkError, prelude::ChannelId};
@@ -265,6 +265,7 @@ impl Default for Reconnect {
 }
 
 /// send network node error channel to events
+#[allow(clippy::type_complexity)]
 pub(crate) fn network_node_event(
     mut commands: Commands,
     mut q_net: Query<(

@@ -14,8 +14,7 @@ use kanal::{AsyncReceiver, AsyncSender};
 use crate::{
     error::NetworkError,
     network_node::{
-        ListenTo, NetworkEvent, NetworkNode, NetworkPeer, NetworkRawPacket, RemoteAddr,
-        ServerAddr,
+        ListenTo, NetworkEvent, NetworkNode, NetworkPeer, NetworkRawPacket, RemoteAddr, ServerAddr,
     },
 };
 
