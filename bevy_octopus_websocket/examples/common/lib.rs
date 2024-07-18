@@ -46,7 +46,7 @@ pub fn on_node_event(trigger: Trigger<NetworkEvent>) {
 }
 
 pub fn handle_message_events(
-    mut ev_channels: EventReader<ChannelReceivedMessage<PlayerInformation>>,
+    mut ev_channels: EventReader<ReceiveChannelMessage<PlayerInformation>>,
 ) {
     for event in ev_channels.read() {
         info!("{} Received: {:?}", event.channel_id, &event.message);
@@ -61,8 +61,8 @@ pub fn handle_raw_packet(q_server: Query<(&ChannelId, &NetworkNode)>) {
     }
 }
 
-pub fn send_json_message(mut channel_messages: EventWriter<ChannelSendMessage<PlayerInformation>>) {
-    channel_messages.send(ChannelSendMessage {
+pub fn send_json_message(mut channel_messages: EventWriter<SendChannelMessage<PlayerInformation>>) {
+    channel_messages.send(SendChannelMessage {
         channel_id: JSON_CHANNEL,
         message: PlayerInformation {
             health: 100,
@@ -73,9 +73,9 @@ pub fn send_json_message(mut channel_messages: EventWriter<ChannelSendMessage<Pl
 
 /// send bincode message
 pub fn send_bincode_message(
-    mut channel_messages: EventWriter<ChannelSendMessage<PlayerInformation>>,
+    mut channel_messages: EventWriter<SendChannelMessage<PlayerInformation>>,
 ) {
-    channel_messages.send(ChannelSendMessage {
+    channel_messages.send(SendChannelMessage {
         channel_id: BINCODE_CHANNEL,
         message: PlayerInformation {
             health: 300,

@@ -10,7 +10,7 @@ pub use bincode::BincodeTransformer;
 pub use serde_json::JsonTransformer;
 
 use crate::{
-    channels::{ChannelId, ChannelReceivedMessage, ChannelSendMessage},
+    channels::{ChannelId, ReceiveChannelMessage, SendChannelMessage},
     error::NetworkError,
     network_node::{NetworkEvent, NetworkNode, NetworkRawPacket, RemoteAddr},
 };
@@ -98,7 +98,7 @@ impl NetworkMessageTransformer for App {
             self.add_systems(PostUpdate, encode_system::<M, T>);
         }
 
-        self.add_event::<ChannelReceivedMessage<M>>();
+        self.add_event::<ReceiveChannelMessage<M>>();
 
         self
     }
@@ -134,7 +134,7 @@ impl NetworkMessageTransformer for App {
             self.add_systems(PostUpdate, spawn_decoder_marker::<M, T>);
         }
 
-        self.add_event::<ChannelSendMessage<M>>();
+        self.add_event::<SendChannelMessage<M>>();
 
         self
     }
@@ -206,7 +206,7 @@ fn encode_system<
     M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
     T: Transformer + bevy::prelude::Resource,
 >(
-    mut message_ev: EventReader<ChannelSendMessage<M>>,
+    mut message_ev: EventReader<SendChannelMessage<M>>,
     transformer: Res<T>,
     query: Query<(&ChannelId, &NetworkNode, &RemoteAddr), With<EncoderMarker<M, T>>>,
 ) {
@@ -249,7 +249,7 @@ fn decode_system<
     M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
     T: Transformer + bevy::prelude::Resource,
 >(
-    mut channel_message: EventWriter<ChannelReceivedMessage<M>>,
+    mut channel_message: EventWriter<ReceiveChannelMessage<M>>,
     mut commands: Commands,
     transformer: Res<T>,
     query: Query<(Entity, &ChannelId, &NetworkNode), With<DecoderMarker<M, T>>>,
@@ -277,7 +277,7 @@ fn decode_system<
                 messages
                     .into_iter()
                     .map(Result::unwrap)
-                    .map(|m| ChannelReceivedMessage::new(*channel_id, m))
+                    .map(|m| ReceiveChannelMessage::new(*channel_id, m))
                     .collect::<Vec<_>>(),
             );
             for error in errors.into_iter().map(Result::unwrap_err) {
