@@ -75,7 +75,7 @@ pub(crate) fn send_channel_message_system(
             if channel_id == &channel_ev.channel_id {
                 let _ = net_node.send_message_channel.sender.send(NetworkRawPacket {
                     bytes: channel_ev.bytes.clone(),
-                    addr: "".to_string(),
+                    addr: None,
                     text: channel_ev.text.clone(),
                 });
             }

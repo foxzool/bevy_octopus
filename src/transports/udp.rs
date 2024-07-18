@@ -1,21 +1,18 @@
-use std::{
-    io,
-    net::{Ipv4Addr, Ipv6Addr, SocketAddr},
-    sync::Arc,
-    time::Duration,
+use crate::{
+    error::NetworkError,
+    network_node::{ListenTo, NetworkEvent, NetworkNode, NetworkPeer, NetworkRawPacket},
+    prelude::{Client, NetworkAddress, Server},
 };
-
 use async_std::{future::timeout, net::UdpSocket, task};
 use bevy::prelude::*;
 use bytes::Bytes;
 use futures::future;
 use kanal::{AsyncReceiver, AsyncSender};
-
-use crate::{
-    error::NetworkError,
-    network_node::{
-        ListenTo, NetworkEvent, NetworkNode, NetworkPeer, NetworkRawPacket, RemoteAddr, ServerAddr,
-    },
+use std::{
+    io,
+    net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
+    sync::Arc,
+    time::Duration,
 };
 
 pub struct UdpPlugin;
@@ -26,8 +23,33 @@ impl Plugin for UdpPlugin {
     }
 }
 
-#[derive(Component, Deref, DerefMut)]
-pub struct UdpNode(pub UdpSocket);
+#[derive(Debug, Clone)]
+pub struct UdpAddress {
+    pub socket_addr: SocketAddr,
+}
+
+impl UdpAddress {
+    pub fn new(address: impl ToSocketAddrs) -> Self {
+        let socket_addr = address.to_socket_addrs().unwrap().next().unwrap();
+        Self { socket_addr }
+    }
+}
+
+impl NetworkAddress for UdpAddress {
+    fn to_string(&self) -> String {
+        self.socket_addr.to_string()
+    }
+
+    fn from_string(s: &str) -> Result<Self, String>
+    where
+        Self: Sized,
+    {
+        match s.parse() {
+            Ok(socket_addr) => Ok(Self { socket_addr }),
+            Err(e) => Err(e.to_string()),
+        }
+    }
+}
 
 #[derive(Component)]
 pub struct UdpBroadcast;
@@ -62,21 +84,33 @@ async fn recv_loop(
 
 async fn send_loop(
     socket: Arc<UdpSocket>,
+    to_socket: Option<SocketAddr>,
     message_receiver: AsyncReceiver<NetworkRawPacket>,
 ) -> Result<(), NetworkError> {
     while let Ok(packet) = message_receiver.recv().await {
         trace!(
-            "{} Sending {} bytes to {:?}",
+            "{} Sending {} bytes",
             socket.local_addr().unwrap(),
             packet.bytes.len(),
-            packet.addr,
         );
-        let arr: Vec<&str> = packet.addr.split("//").collect();
-        let s = arr[1].split('/').collect::<Vec<&str>>()[0];
+
+        let to_socket = match (to_socket, packet.addr) {
+            (Some(_), Some(packet_socket)) => packet_socket,
+            (None, Some(packet_socket)) => packet_socket,
+            (Some(socket), None) => socket,
+            (None, None) => continue,
+        };
 
         let max_retries = 5;
         let timeout_duration = Duration::from_secs(1);
-        send_data(&socket, s, &packet.bytes, max_retries, timeout_duration).await?;
+        send_data(
+            &socket,
+            to_socket,
+            &packet.bytes,
+            max_retries,
+            timeout_duration,
+        )
+        .await?;
     }
 
     Ok(())
@@ -84,7 +118,7 @@ async fn send_loop(
 
 async fn send_data(
     socket: &UdpSocket,
-    addr: &str,
+    addr: SocketAddr,
     data: &[u8],
     max_retries: usize,
     timeout_duration: Duration,
@@ -168,9 +202,9 @@ async fn listen(
         socket.set_broadcast(true)?;
     }
 
-    if let Some(remote_addr) = bind {
-        socket.connect(remote_addr).await?;
-    }
+    // if let Some(remote_addr) = bind {
+    //     socket.connect(remote_addr).await?;
+    // }
     if let Some(multi_v4) = opt_v4 {
         debug!(
             "Joining multicast group {:?} on interface {:?}",
@@ -194,7 +228,7 @@ async fn listen(
     event_tx.send(NetworkEvent::Listen).await?;
 
     let tasks = vec![
-        task::spawn(send_loop(socket.clone(), send_rx)),
+        task::spawn(send_loop(socket.clone(), bind, send_rx)),
         task::spawn(recv_loop(socket, recv_tx, 65_507)),
     ];
 
@@ -211,8 +245,8 @@ fn on_listen_to(
     q_udp: Query<
         (
             &NetworkNode,
-            &ServerAddr,
-            Option<&RemoteAddr>,
+            &Server<UdpAddress>,
+            Option<&Client<UdpAddress>>,
             Option<&UdpBroadcast>,
             Option<&MulticastV4Setting>,
             Option<&MulticastV6Setting>,
@@ -223,13 +257,9 @@ fn on_listen_to(
     if let Ok((net_node, server_addr, opt_remote_addr, opt_broadcast, opt_v4, opt_v6)) =
         q_udp.get(trigger.entity())
     {
-        if "udp" != server_addr.scheme() {
-            return;
-        }
+        let local_addr = server_addr.socket_addr;
 
-        let local_addr = server_addr.local_addr();
-
-        let remote_addr = opt_remote_addr.map(|remote_addr| remote_addr.peer_addr());
+        let remote_addr = opt_remote_addr.map(|remote_addr| remote_addr.socket_addr);
 
         let has_broadcast = opt_broadcast.is_some();
         let opt_v4 = opt_v4.cloned();

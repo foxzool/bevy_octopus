@@ -64,10 +64,13 @@ pub fn handle_message_events(
     }
 }
 
-pub fn handle_raw_packet(q_server: Query<(&ChannelId, &NetworkNode)>) {
-    for (channel_id, net_node) in q_server.iter() {
+pub fn handle_raw_packet(q_server: Query<(Entity, &ChannelId, &NetworkNode)>) {
+    for (entity, channel_id, net_node) in q_server.iter() {
         while let Ok(Some(packet)) = net_node.recv_message_channel.receiver.try_recv() {
-            info!("{} Received bytes: {:?}", channel_id, packet.bytes);
+            info!(
+                "{} {} Received bytes: {:?}",
+                channel_id, entity, packet.bytes
+            );
         }
     }
 }
@@ -102,7 +105,12 @@ pub fn client_send_raw_message_to_channel<T: NetworkAddress + 'static>(
     for (node, channel_id, remote_addr) in q_client.iter() {
         if channel_id == &RAW_CHANNEL {
             node.send_bytes_to(
-                format!("raw packet from {} to {}", channel_id, remote_addr.0.to_string()).as_bytes(),
+                format!(
+                    "raw packet from {} to {}",
+                    channel_id,
+                    remote_addr.0.to_string()
+                )
+                .as_bytes(),
                 remote_addr.to_string(),
             );
         }

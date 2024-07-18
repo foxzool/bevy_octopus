@@ -2,12 +2,11 @@ use std::{net::Ipv4Addr, time::Duration};
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
+use crate::common::*;
 use bevy_octopus::{
     prelude::*,
-    transports::udp::{MulticastV4Setting, UdpBroadcast},
+    transports::udp::{MulticastV4Setting, UdpAddress, UdpBroadcast},
 };
-
-use crate::common::*;
 
 #[path = "../common/lib.rs"]
 mod common;
@@ -38,14 +37,14 @@ fn setup_server(mut commands: Commands) {
     // broadcast udp receiver
     commands.spawn((
         NetworkBundle::new(BROADCAST_CHANNEL),
-        ServerAddr::new("udp://0.0.0.0:60002"),
+        Server(UdpAddress::new("0.0.0.0:60002")),
         UdpBroadcast,
     ));
 
     // multicast udp receiver
     commands.spawn((
         NetworkBundle::new(MULTICAST_CHANNEL),
-        ServerAddr::new("udp://0.0.0.0:60003"),
+        Server(UdpAddress::new("0.0.0.0:60003")),
         MulticastV4Setting::new(Ipv4Addr::new(239, 1, 2, 3), Ipv4Addr::UNSPECIFIED),
     ));
 }
@@ -53,43 +52,54 @@ fn setup_server(mut commands: Commands) {
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(BROADCAST_CHANNEL),
-        ServerAddr::new("udp://0.0.0.0:0"),
-        RemoteAddr::new("udp://255.255.255.255:60002"),
+        Server(UdpAddress::new("0.0.0.0:0")),
+        Client(UdpAddress::new("255.255.255.255:60002")),
         UdpBroadcast,
         BroadcastMarker,
     ));
 
     commands.spawn((
         NetworkBundle::new(BROADCAST_CHANNEL),
-        ServerAddr::new("udp://0.0.0.0:0"),
+        Server(UdpAddress::new("0.0.0.0:0")),
         UdpBroadcast,
         BroadcastMarker,
     ));
 
     commands.spawn((
         NetworkBundle::new(MULTICAST_CHANNEL),
-        ServerAddr::new("udp://0.0.0.0:60005"),
+        Server(UdpAddress::new("0.0.0.0:60005")),
         MulticastV4Setting::new(Ipv4Addr::new(239, 1, 2, 3), Ipv4Addr::UNSPECIFIED),
         MulticastMarker,
     ));
 }
 
 fn send_broadcast_messages(
-    q_client: Query<(&NetworkNode, &ServerAddr, Option<&RemoteAddr>), With<BroadcastMarker>>,
+    q_client: Query<
+        (
+            &NetworkNode,
+            &Server<UdpAddress>,
+            Option<&Client<UdpAddress>>,
+        ),
+        With<BroadcastMarker>,
+    >,
 ) {
     for (net_node, local_addr, opt_remote_addr) in q_client.iter() {
         if let Some(remote_addr) = opt_remote_addr {
             net_node.send_bytes_to(
                 format!(
                     "broadcast message from {} with send_to {}",
-                    local_addr.0, **remote_addr
+                    local_addr.socket_addr, remote_addr.socket_addr
                 )
                 .as_bytes(),
                 remote_addr.to_string(),
             );
         } else {
             net_node.send_bytes_to(
-                format!("broadcast message from {} with send_to", local_addr.0).as_bytes(),
+                format!(
+                    "broadcast message from {} with send_to",
+                    local_addr.socket_addr
+                )
+                .as_bytes(),
                 "udp://255.255.255.255:60002",
             );
         }
@@ -97,18 +107,25 @@ fn send_broadcast_messages(
 }
 
 fn send_multicast_messages(
-    q_client: Query<(&NetworkNode, &ServerAddr, Option<&RemoteAddr>), With<MulticastMarker>>,
+    q_client: Query<
+        (
+            &NetworkNode,
+            &Server<UdpAddress>,
+            Option<&Client<UdpAddress>>,
+        ),
+        With<MulticastMarker>,
+    >,
 ) {
     for (net_node, local_addr, opt_remote_addr) in q_client.iter() {
         if let Some(remote_addr) = opt_remote_addr {
             net_node.send_bytes_to(
-                format!("multicast message from {}", local_addr.0).as_bytes(),
+                format!("multicast message from {}", local_addr.socket_addr).as_bytes(),
                 remote_addr.to_string(),
             );
         } else {
             net_node.send_bytes_to(
-                format!("multicast message from {}", local_addr.0).as_bytes(),
-                "udp://239.1.2.3:60003",
+                format!("multicast message from {}", local_addr.socket_addr).as_bytes(),
+                "239.1.2.3:60003",
             );
         }
     }

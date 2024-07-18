@@ -1,8 +1,7 @@
 use bevy::prelude::*;
 
-use bevy_octopus::prelude::*;
-
 use crate::common::*;
+use bevy_octopus::{prelude::*, transports::udp::UdpAddress};
 
 #[path = "../common/lib.rs"]
 mod common;
@@ -21,14 +20,14 @@ fn main() {
 fn setup_server(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        ServerAddr::new("udp://127.0.0.1:6001"),
+        Server(UdpAddress::new("127.0.0.1:6001")),
     ));
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        ServerAddr::new("udp://127.0.0.1:6002"),
+        Server(UdpAddress::new("127.0.0.1:6002")),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        ServerAddr::new("udp://127.0.0.1:6003"),
+        Server(UdpAddress::new("127.0.0.1:6003")),
     ));
 }

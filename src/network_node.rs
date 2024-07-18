@@ -50,15 +50,15 @@ impl<T: NetworkAddress + 'static> Component for Server<T> {
 /// [`NetworkRawPacket`]s are raw packets that are sent over the network.
 #[derive(Clone)]
 pub struct NetworkRawPacket {
-    pub addr: String,
+    pub addr: Option<SocketAddr>,
     pub bytes: Bytes,
     pub text: Option<String>,
 }
 
 impl NetworkRawPacket {
-    pub fn new(addr: impl ToString, bytes: Bytes) -> NetworkRawPacket {
+    pub fn new(addr: impl ToSocketAddrs, bytes: Bytes) -> NetworkRawPacket {
         NetworkRawPacket {
-            addr: addr.to_string(),
+            addr: Some(addr.to_socket_addrs().unwrap().next().unwrap()),
             bytes,
             text: None,
         }
@@ -148,16 +148,16 @@ impl NetworkNode {
     }
 
     /// Send text message
-    pub fn send_text_to(&self, text: String, remote_addr: impl ToString) {
-        let addr = remote_addr.to_string();
+    pub fn send_text_to(&self, text: String, remote_addr: impl ToSocketAddrs) {
+        let addr = remote_addr.to_socket_addrs().unwrap().next().unwrap();
         let _ = self.send_message_channel.sender.try_send(NetworkRawPacket {
-            addr,
+            addr: Some(addr),
             bytes: Bytes::new(),
             text: Some(text),
         });
     }
 
-    pub fn send_bytes_to(&self, bytes: &[u8], addr: impl ToString) {
+    pub fn send_bytes_to(&self, bytes: &[u8], addr: impl ToSocketAddrs) {
         let _ = self
             .send_message_channel
             .sender
