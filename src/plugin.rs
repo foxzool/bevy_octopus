@@ -1,16 +1,16 @@
 use bevy::{
-    app::{App, Last, Plugin, PostUpdate, PreUpdate},
-    prelude::{IntoSystemConfigs, IntoSystemSetConfigs},
+    app::{App, Plugin, PostUpdate, PreUpdate},
+    prelude::{IntoSystemConfigs, IntoSystemSetConfigs, Update},
 };
 
 use crate::{
-    channels::{send_channel_message_system, ChannelId, ChannelPacket},
-    network_node::{
-        handle_command_queue_tasks, network_node_event, CommandQueueTasks, ConnectTo, ListenTo,
-    },
+    channels::{ChannelId, ChannelPacket, send_channel_message_system},
+    network_node::{ConnectTo, handle_reconnect_timer, ListenTo, network_node_event},
+    prelude::client_reconnect,
     scheduler::NetworkSet,
     transformer::{DecoderChannels, EncoderChannels},
 };
+use crate::network_node::cleanup_client_session;
 
 pub struct OctopusPlugin;
 
@@ -19,7 +19,6 @@ impl Plugin for OctopusPlugin {
         let app = register_reflect_types(app);
         app.init_resource::<EncoderChannels>()
             .init_resource::<DecoderChannels>()
-            .init_resource::<CommandQueueTasks>()
             .add_event::<ChannelPacket>()
             .add_event::<ConnectTo>()
             .add_event::<ListenTo>()
@@ -33,7 +32,9 @@ impl Plugin for OctopusPlugin {
                 PostUpdate,
                 send_channel_message_system.in_set(NetworkSet::Send),
             )
-            .add_systems(Last, handle_command_queue_tasks);
+            .add_systems(Update, handle_reconnect_timer)
+            .observe(cleanup_client_session)
+            .observe(client_reconnect);
 
         #[cfg(feature = "udp")]
         app.add_plugins(crate::transports::udp::UdpPlugin);

@@ -4,18 +4,11 @@ use std::{
 };
 
 use bevy::{
-    ecs::{
-        component::{ComponentHooks, StorageType},
-        world::CommandQueue,
-    },
-    hierarchy::DespawnRecursiveExt,
-    prelude::{
-        Bundle, Commands, Component, Deref, Entity, Event, Query, Reflect, ResMut, Resource,
-    },
-    tasks::block_on,
+    ecs::component::{ComponentHooks, StorageType},
+    prelude::*,
 };
 use bytes::Bytes;
-use kanal::{unbounded, Receiver, Sender};
+use kanal::{Receiver, Sender, unbounded};
 use url::Url;
 
 use crate::{error::NetworkError, prelude::ChannelId};
@@ -85,6 +78,7 @@ impl ConnectTo {
 pub struct NetworkBundle {
     pub channel_id: ChannelId,
     pub network_node: NetworkNode,
+    pub reconnect: ReconnectSetting,
 }
 
 impl NetworkBundle {
@@ -92,6 +86,7 @@ impl NetworkBundle {
         Self {
             channel_id,
             network_node: NetworkNode::default(),
+            reconnect: ReconnectSetting::default(),
         }
     }
 }
@@ -196,19 +191,6 @@ impl RemoteAddr {
 #[derive(Component)]
 pub struct NetworkPeer;
 
-#[derive(Resource, Default)]
-pub(crate) struct CommandQueueTasks {
-    pub tasks: AsyncChannel<CommandQueue>,
-}
-
-pub(crate) fn handle_command_queue_tasks(task: ResMut<CommandQueueTasks>, mut commands: Commands) {
-    while let Ok(Some(mut commands_queue)) = task.tasks.receiver.try_recv() {
-        block_on(async {
-            commands.append(&mut commands_queue);
-        });
-    }
-}
-
 #[derive(Reflect, Clone)]
 pub struct AsyncChannel<T> {
     pub sender: Sender<T>,
@@ -239,17 +221,17 @@ pub enum NetworkEvent {
 }
 
 #[derive(Debug, Component)]
-pub struct Reconnect {
+pub struct ReconnectSetting {
     /// Delay in seconds
-    pub delay: f64,
+    pub delay: f32,
     pub max_retries: usize,
     pub retries: usize,
 }
 
-impl Default for Reconnect {
+impl Default for ReconnectSetting {
     fn default() -> Self {
         Self {
-            delay: 1.0,
+            delay: 2.0,
             max_retries: usize::MAX,
             retries: 0,
         }
@@ -260,44 +242,79 @@ impl Default for Reconnect {
 #[allow(clippy::type_complexity)]
 pub(crate) fn network_node_event(
     mut commands: Commands,
-    mut q_net: Query<(
-        Entity,
-        &mut NetworkNode,
-        Option<&RemoteAddr>,
-        Option<&NetworkPeer>,
-    )>,
+    mut q_net: Query<(Entity, &mut NetworkNode)>,
 ) {
-    for (entity, mut net_node, opt_remote_addr, opt_network_peer) in q_net.iter_mut() {
+    for (entity, mut net_node) in q_net.iter_mut() {
         while let Ok(Some(event)) = net_node.event_channel.receiver.try_recv() {
             match event {
-                NetworkEvent::Listen => {
+                NetworkEvent::Listen | NetworkEvent::Connected => {
                     net_node.start();
                 }
-                NetworkEvent::Connected => {}
-                NetworkEvent::Disconnected => {
+                NetworkEvent::Disconnected | NetworkEvent::Error(_) => {
                     net_node.stop();
-                    if opt_network_peer.is_some() {
-                        commands.entity(entity).despawn_recursive();
-                    } else if let Some(remote_addr) = opt_remote_addr {
-                        commands.trigger_targets(ConnectTo(remote_addr.0.clone()), entity);
-                    } else {
-                        commands.entity(entity).despawn_recursive();
-                    }
-                }
-                NetworkEvent::Error(ref network_error) => {
-                    net_node.stop();
-                    if let NetworkError::Connection(_) = network_error {
-                        if opt_network_peer.is_some() {
-                            commands.entity(entity).despawn_recursive();
-                        } else if let Some(remote_addr) = opt_remote_addr {
-                            commands.trigger_targets(ConnectTo(remote_addr.0.clone()), entity);
-                        } else {
-                            commands.entity(entity).despawn_recursive();
-                        }
-                    }
                 }
             }
             commands.trigger_targets(event, vec![entity]);
+        }
+    }
+}
+
+pub(crate) fn client_reconnect(
+    trigger: Trigger<NetworkEvent>,
+    mut commands: Commands,
+    mut q_net: Query<&mut ReconnectSetting, Without<NetworkPeer>>,
+) {
+    if let Ok(mut reconnect) = q_net.get_mut(trigger.entity()) {
+        let event = trigger.event();
+        if reconnect.retries < reconnect.max_retries {
+            reconnect.retries += 1;
+        } else {
+            return;
+        }
+        match event {
+            NetworkEvent::Listen | NetworkEvent::Connected => reconnect.retries = 0,
+            NetworkEvent::Disconnected | NetworkEvent::Error(NetworkError::Connection(_)) => {
+                commands
+                    .entity(trigger.entity())
+                    .insert(ReconnectTimer(Timer::from_seconds(
+                        reconnect.delay,
+                        TimerMode::Once,
+                    )));
+            }
+            _ => {}
+        }
+    }
+}
+
+#[derive(Component, Deref, DerefMut)]
+pub struct ReconnectTimer(pub Timer);
+
+pub(crate) fn handle_reconnect_timer(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut q_reconnect: Query<(Entity, &RemoteAddr, &mut ReconnectTimer)>,
+) {
+    for (entity, remote_addr, mut timer) in q_reconnect.iter_mut() {
+        if timer.tick(time.delta()).just_finished() {
+            commands.entity(entity).remove::<ReconnectTimer>();
+            commands.trigger_targets(ConnectTo(remote_addr.0.clone()), entity);
+        }
+    }
+}
+
+pub(crate) fn cleanup_client_session(
+    trigger: Trigger<NetworkEvent>,
+    mut commands: Commands,
+    q_net: Query<Entity, With<NetworkPeer>>,
+) {
+    if let Ok(entity) = q_net.get(trigger.entity()) {
+        let event = trigger.event();
+
+        match event {
+            NetworkEvent::Disconnected | NetworkEvent::Error(NetworkError::Connection(_)) => {
+                commands.entity(entity).despawn_recursive();
+            }
+            _ => {}
         }
     }
 }
