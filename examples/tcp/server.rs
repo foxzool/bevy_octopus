@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use bytes::Bytes;
 
-use bevy_octopus::prelude::*;
+use bevy_octopus::{prelude::*, transports::tcp::TcpAddress};
 
 use crate::common::*;
 
@@ -21,7 +21,8 @@ fn main() {
         .add_systems(Update, (handle_raw_packet, handle_message_events))
         .add_systems(
             Update,
-            (broadcast_message, send_channel_packet).run_if(on_timer(Duration::from_secs_f64(1.0))),
+            (broadcast_message, send_json_message, send_channel_packet)
+                .run_if(on_timer(Duration::from_secs_f64(1.0))),
         )
         .run();
 }
@@ -29,15 +30,15 @@ fn main() {
 fn setup_server(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        ServerAddr::new("tcp://0.0.0.0:5003"),
+        Server(TcpAddress::new("0.0.0.0:5003")),
     ));
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        ServerAddr::new("tcp://0.0.0.0:5004"),
+        Server(TcpAddress::new("0.0.0.0:5004")),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        ServerAddr::new("tcp://0.0.0.0:5005"),
+        Server(TcpAddress::new("0.0.0.0:5005")),
     ));
 }
 
@@ -48,8 +49,8 @@ fn send_channel_packet(mut channel_events: EventWriter<ChannelPacket>) {
 
 /// handle send message to connected clients
 fn broadcast_message(
-    q_net_node: Query<(&ChannelId, &NetworkNode, &Children), With<ServerAddr>>,
-    q_child: Query<(&NetworkNode, &RemoteAddr)>,
+    q_net_node: Query<(&ChannelId, &NetworkNode, &Children), With<Server<TcpAddress>>>,
+    q_child: Query<(&NetworkNode, &Client<TcpAddress>)>,
 ) {
     for (channel_id, _net, children) in q_net_node.iter() {
         if channel_id != &RAW_CHANNEL {

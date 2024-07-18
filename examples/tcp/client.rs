@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
-use bevy_octopus::prelude::*;
+use bevy_octopus::{prelude::*, transports::tcp::TcpAddress};
 
 use crate::common::*;
 
@@ -20,7 +20,7 @@ fn main() {
         .add_systems(
             Update,
             (
-                client_send_raw_message_to_channel,
+                client_send_raw_message_to_channel::<TcpAddress>,
                 send_json_message,
                 send_bincode_message,
             )
@@ -33,14 +33,14 @@ fn main() {
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        RemoteAddr::new("tcp://127.0.0.1:5003"),
+        Client(TcpAddress::new("127.0.0.1:5003")),
     ));
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        RemoteAddr::new("tcp://127.0.0.1:5004"),
+        Client(TcpAddress::new("127.0.0.1:5004")),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        RemoteAddr::new("tcp://127.0.0.1:5005"),
+        Client(TcpAddress::new("127.0.0.1:5005")),
     ));
 }

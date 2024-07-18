@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::net::{SocketAddr, ToSocketAddrs};
 
 use async_std::{
     io::WriteExt,
@@ -8,15 +8,16 @@ use async_std::{
 };
 use bevy::prelude::*;
 use bytes::Bytes;
-use futures::{future, AsyncReadExt};
+use futures::{AsyncReadExt, future};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
     channels::ChannelId,
+    client::Client,
     error::NetworkError,
     network_node::{
-        AsyncChannel, ConnectTo, ListenTo, NetworkEvent, NetworkNode, NetworkPeer,
-        NetworkRawPacket, RemoteAddr,
+        AsyncChannel, ConnectTo, ListenTo, NetworkAddress, NetworkAddressRegister, NetworkEvent,
+        NetworkNode, NetworkPeer, NetworkRawPacket, Server,
     },
 };
 
@@ -24,9 +25,35 @@ pub struct TcpPlugin;
 
 impl Plugin for TcpPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, handle_endpoint)
+        app.register_network_address::<TcpAddress>()
+            .add_systems(PostUpdate, handle_endpoint)
             .observe(on_listen_to)
             .observe(on_connect_to);
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TcpAddress {
+    pub socket_addr: SocketAddr,
+}
+
+impl TcpAddress {
+    pub fn new(address: impl ToSocketAddrs) -> Self {
+        let socket_addr = address.to_socket_addrs().unwrap().next().unwrap();
+        Self { socket_addr }
+    }
+}
+
+impl NetworkAddress for TcpAddress {
+    fn to_string(&self) -> String {
+        self.socket_addr.to_string()
+    }
+
+    fn from_string(s: &str) -> Result<Self, String> {
+        match s.parse() {
+            Ok(socket_addr) => Ok(Self { socket_addr }),
+            Err(e) => Err(e.to_string()),
+        }
     }
 }
 
@@ -79,7 +106,7 @@ async fn handle_connection(
     debug!("TCP local {} connected to remote {}", local_addr, addr);
 
     let (mut reader, mut writer) = stream.split();
-
+    let _ = event_tx.send(NetworkEvent::Connected).await;
     let event_tx_clone = event_tx.clone();
     let read_task = async move {
         let mut buffer = vec![0; 1024];
@@ -133,16 +160,10 @@ async fn handle_connection(
 fn on_listen_to(
     trigger: Trigger<ListenTo>,
     mut commands: Commands,
-    q_tcp_server: Query<(Entity, &NetworkNode)>,
+    q_tcp_server: Query<(Entity, &NetworkNode, &Server<TcpAddress>)>,
 ) {
-    if let Ok((e, net_node)) = q_tcp_server.get(trigger.entity()) {
-        let listen_to = trigger.event();
-
-        if !["tcp", "ssl"].contains(&listen_to.scheme()) {
-            return;
-        }
-
-        let local_addr = listen_to.local_addr();
+    if let Ok((e, net_node, server)) = q_tcp_server.get(trigger.entity()) {
+        let local_addr = server.socket_addr;
         let event_tx = net_node.event_channel.sender.clone_async();
         let event_tx_clone = net_node.event_channel.sender.clone_async();
         let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
@@ -174,16 +195,12 @@ fn on_listen_to(
 
 fn on_connect_to(
     trigger: Trigger<ConnectTo>,
-    q_tcp_client: Query<(&NetworkNode, &RemoteAddr), Without<NetworkPeer>>,
+    q_tcp_client: Query<(&NetworkNode, &Client<TcpAddress>), Without<NetworkPeer>>,
 ) {
     if let Ok((net_node, remote_addr)) = q_tcp_client.get(trigger.entity()) {
-        if !["tcp", "ssl"].contains(&remote_addr.scheme()) {
-            return;
-        }
-
         debug!("try connect to {}", remote_addr.to_string());
 
-        let addr = remote_addr.peer_addr();
+        let addr = remote_addr.socket_addr;
         let recv_tx = net_node.recv_message_channel.sender.clone_async();
         let message_rx = net_node.send_message_channel.receiver.clone_async();
         let event_tx = net_node.event_channel.sender.clone_async();
@@ -222,7 +239,7 @@ fn handle_endpoint(
             let message_rx = new_net_node.send_message_channel.receiver.clone_async();
             let event_tx = new_net_node.event_channel.sender.clone_async();
             let shutdown_rx = new_net_node.shutdown_channel.receiver.clone_async();
-            let peer_str = format!("tcp://{}", tcp_stream.peer_addr().unwrap());
+            let peer_socket = tcp_stream.peer_addr().unwrap();
             task::spawn(async move {
                 handle_connection(tcp_stream, recv_tx, message_rx, event_tx, shutdown_rx).await;
             });
@@ -231,7 +248,7 @@ fn handle_endpoint(
             commands.entity(peer_entity).insert((
                 new_net_node,
                 *channel_id,
-                RemoteAddr::new(&peer_str),
+                Client(TcpAddress::new(peer_socket)),
                 peer,
             ));
 
@@ -239,7 +256,7 @@ fn handle_endpoint(
 
             // Add the client to the server's children
             commands.entity(entity).add_child(peer_entity);
-            commands.trigger_targets(NetworkEvent::Connected, vec![peer_entity]);
+            // commands.trigger_targets(NetworkEvent::Connected, vec![peer_entity]);
         }
     }
 }

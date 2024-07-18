@@ -1,3 +1,4 @@
+use crate::client::Client;
 use std::{
     fmt::Debug,
     net::{SocketAddr, ToSocketAddrs},
@@ -8,10 +9,43 @@ use bevy::{
     prelude::*,
 };
 use bytes::Bytes;
-use kanal::{Receiver, Sender, unbounded};
+use kanal::{unbounded, Receiver, Sender};
 use url::Url;
 
 use crate::{error::NetworkError, prelude::ChannelId};
+
+pub trait NetworkAddress: Debug + Clone + Send + Sync {
+    fn to_string(&self) -> String;
+    fn from_string(s: &str) -> Result<Self, String>
+    where
+        Self: Sized;
+}
+
+pub trait NetworkAddressRegister {
+    fn register_network_address<T: NetworkAddress + 'static>(&mut self) -> &mut Self;
+}
+
+impl NetworkAddressRegister for App {
+    fn register_network_address<T: NetworkAddress + 'static>(&mut self) -> &mut Self {
+        self.add_systems(Update, handle_reconnect_timer::<T>);
+
+        self
+    }
+}
+
+#[derive(Deref)]
+pub struct Server<T: NetworkAddress>(pub T);
+
+impl<T: NetworkAddress + 'static> Component for Server<T> {
+    const STORAGE_TYPE: StorageType = StorageType::Table;
+
+    fn register_component_hooks(hooks: &mut ComponentHooks) {
+        hooks.on_insert(|mut world, targeted_entity, _component_id| {
+            let server_addr = world.get::<Server<T>>(targeted_entity).unwrap();
+            world.trigger_targets(ListenTo::new(&server_addr.0.to_string()), targeted_entity);
+        });
+    }
+}
 
 /// [`NetworkRawPacket`]s are raw packets that are sent over the network.
 #[derive(Clone)]
@@ -41,12 +75,11 @@ impl Debug for NetworkRawPacket {
 }
 
 #[derive(Event, Deref, Clone, Debug)]
-pub struct ListenTo(pub Url);
+pub struct ListenTo(pub String);
 
 impl ListenTo {
     pub fn new(url_str: &str) -> Self {
-        let url = Url::parse(url_str).expect("url format error");
-        Self(url)
+        Self(url_str.to_string())
     }
 
     pub fn local_addr(&self) -> SocketAddr {
@@ -58,12 +91,11 @@ impl ListenTo {
 }
 
 #[derive(Event, Deref, Clone, Debug)]
-pub struct ConnectTo(pub Url);
+pub struct ConnectTo(pub String);
 
 impl ConnectTo {
     pub fn new(url_str: &str) -> Self {
-        let url = Url::parse(url_str).expect("url format error");
-        Self(url)
+        Self(url_str.to_string())
     }
 
     pub fn peer_addr(&self) -> SocketAddr {
@@ -142,7 +174,7 @@ impl Component for ServerAddr {
     fn register_component_hooks(hooks: &mut ComponentHooks) {
         hooks.on_insert(|mut world, targeted_entity, _component_id| {
             let server_addr = world.get::<ServerAddr>(targeted_entity).unwrap();
-            world.trigger_targets(ListenTo(server_addr.0.clone()), targeted_entity);
+            world.trigger_targets(ListenTo(server_addr.0.to_string()), targeted_entity);
         });
     }
 }
@@ -169,7 +201,7 @@ impl Component for RemoteAddr {
     fn register_component_hooks(hooks: &mut ComponentHooks) {
         hooks.on_insert(|mut world, targeted_entity, _component_id| {
             let remote_addr = world.get::<RemoteAddr>(targeted_entity).unwrap();
-            world.trigger_targets(ConnectTo(remote_addr.0.clone()), targeted_entity);
+            world.trigger_targets(ConnectTo(remote_addr.0.to_string()), targeted_entity);
         });
     }
 }
@@ -289,15 +321,15 @@ pub(crate) fn client_reconnect(
 #[derive(Component, Deref, DerefMut)]
 pub struct ReconnectTimer(pub Timer);
 
-pub(crate) fn handle_reconnect_timer(
+pub(crate) fn handle_reconnect_timer<T: NetworkAddress + 'static>(
     mut commands: Commands,
     time: Res<Time>,
-    mut q_reconnect: Query<(Entity, &RemoteAddr, &mut ReconnectTimer)>,
+    mut q_reconnect: Query<(Entity, &Client<T>, &mut ReconnectTimer)>,
 ) {
     for (entity, remote_addr, mut timer) in q_reconnect.iter_mut() {
         if timer.tick(time.delta()).just_finished() {
             commands.entity(entity).remove::<ReconnectTimer>();
-            commands.trigger_targets(ConnectTo(remote_addr.0.clone()), entity);
+            commands.trigger_targets(ConnectTo(remote_addr.0.to_string()), entity);
         }
     }
 }

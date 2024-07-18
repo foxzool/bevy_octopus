@@ -11,8 +11,9 @@ pub use serde_json::JsonTransformer;
 
 use crate::{
     channels::{ChannelId, ReceiveChannelMessage, SendChannelMessage},
+    client::ClientTag,
     error::NetworkError,
-    network_node::{NetworkEvent, NetworkNode, NetworkRawPacket, RemoteAddr},
+    network_node::{NetworkEvent, NetworkNode, NetworkRawPacket},
 };
 
 #[cfg(feature = "bincode")]
@@ -208,10 +209,10 @@ fn encode_system<
 >(
     mut message_ev: EventReader<SendChannelMessage<M>>,
     transformer: Res<T>,
-    query: Query<(&ChannelId, &NetworkNode, &RemoteAddr), With<EncoderMarker<M, T>>>,
+    query: Query<(&ChannelId, &NetworkNode), (With<EncoderMarker<M, T>>, With<ClientTag>)>,
 ) {
     for message in message_ev.read() {
-        for (channel_id, net_node, remote_addr) in query.iter() {
+        for (channel_id, net_node) in query.iter() {
             if channel_id != &message.channel_id || !net_node.running {
                 continue;
             }
@@ -228,7 +229,7 @@ fn encode_system<
                         .send_message_channel
                         .sender
                         .send(NetworkRawPacket::new(
-                            remote_addr.to_string(),
+                            "".to_string(),
                             Bytes::from_iter(bytes),
                         ));
                 }

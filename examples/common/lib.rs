@@ -96,13 +96,13 @@ pub fn send_bincode_message(
 }
 
 /// client send raw message to server
-pub fn client_send_raw_message_to_channel(
-    q_client: Query<(&NetworkNode, &ChannelId, &RemoteAddr)>,
+pub fn client_send_raw_message_to_channel<T: NetworkAddress + 'static>(
+    q_client: Query<(&NetworkNode, &ChannelId, &Client<T>)>,
 ) {
     for (node, channel_id, remote_addr) in q_client.iter() {
         if channel_id == &RAW_CHANNEL {
             node.send_bytes_to(
-                format!("raw packet from {} to {}", channel_id, **remote_addr).as_bytes(),
+                format!("raw packet from {} to {:?}", channel_id, remote_addr.0).as_bytes(),
                 remote_addr.to_string(),
             );
         }

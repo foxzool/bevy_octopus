@@ -6,10 +6,7 @@ use bevy::{
 };
 use bytes::Bytes;
 
-use crate::{
-    network_node::{NetworkNode, NetworkRawPacket},
-    prelude::RemoteAddr,
-};
+use crate::network_node::{NetworkNode, NetworkRawPacket};
 
 /// Channel marker
 #[derive(Clone, PartialEq, Eq, Hash, Default, Component, Reflect, Copy, Debug)]
@@ -70,20 +67,18 @@ impl<M> ReceiveChannelMessage<M> {
 }
 
 pub(crate) fn send_channel_message_system(
-    q_net: Query<(&ChannelId, &NetworkNode, &RemoteAddr)>,
+    q_net: Query<(&ChannelId, &NetworkNode)>,
     mut channel_events: EventReader<ChannelPacket>,
 ) {
     for channel_ev in channel_events.read() {
-        q_net
-            .par_iter()
-            .for_each(|(channel_id, net_node, remote_addr)| {
-                if channel_id == &channel_ev.channel_id {
-                    let _ = net_node.send_message_channel.sender.send(NetworkRawPacket {
-                        bytes: channel_ev.bytes.clone(),
-                        addr: remote_addr.to_string(),
-                        text: channel_ev.text.clone(),
-                    });
-                }
-            });
+        q_net.par_iter().for_each(|(channel_id, net_node)| {
+            if channel_id == &channel_ev.channel_id {
+                let _ = net_node.send_message_channel.sender.send(NetworkRawPacket {
+                    bytes: channel_ev.bytes.clone(),
+                    addr: "".to_string(),
+                    text: channel_ev.text.clone(),
+                });
+            }
+        });
     }
 }

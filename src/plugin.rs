@@ -1,16 +1,16 @@
 use bevy::{
     app::{App, Plugin, PostUpdate, PreUpdate},
-    prelude::{IntoSystemConfigs, IntoSystemSetConfigs, Update},
+    prelude::{IntoSystemConfigs, IntoSystemSetConfigs},
 };
 
 use crate::{
-    channels::{ChannelId, ChannelPacket, send_channel_message_system},
-    network_node::{ConnectTo, handle_reconnect_timer, ListenTo, network_node_event},
+    channels::{send_channel_message_system, ChannelId, ChannelPacket},
+    client,
+    network_node::{cleanup_client_session, network_node_event, ConnectTo, ListenTo},
     prelude::client_reconnect,
     scheduler::NetworkSet,
     transformer::{DecoderChannels, EncoderChannels},
 };
-use crate::network_node::cleanup_client_session;
 
 pub struct OctopusPlugin;
 
@@ -32,7 +32,7 @@ impl Plugin for OctopusPlugin {
                 PostUpdate,
                 send_channel_message_system.in_set(NetworkSet::Send),
             )
-            .add_systems(Update, handle_reconnect_timer)
+            .add_plugins(client::plugin)
             .observe(cleanup_client_session)
             .observe(client_reconnect);
 
