@@ -223,7 +223,7 @@ impl RemoteAddr {
 #[derive(Component)]
 pub struct NetworkPeer;
 
-#[derive(Reflect, Clone)]
+#[derive(Reflect, Debug, Clone)]
 pub struct AsyncChannel<T> {
     pub sender: Sender<T>,
     pub receiver: Receiver<T>,

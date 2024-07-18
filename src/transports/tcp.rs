@@ -35,12 +35,16 @@ impl Plugin for TcpPlugin {
 #[derive(Debug, Clone)]
 pub struct TcpAddress {
     pub socket_addr: SocketAddr,
+    new_connection_channel: AsyncChannel<TcpStream>,
 }
 
 impl TcpAddress {
     pub fn new(address: impl ToSocketAddrs) -> Self {
         let socket_addr = address.to_socket_addrs().unwrap().next().unwrap();
-        Self { socket_addr }
+        Self {
+            socket_addr,
+            new_connection_channel: Default::default(),
+        }
     }
 }
 
@@ -51,47 +55,32 @@ impl NetworkAddress for TcpAddress {
 
     fn from_string(s: &str) -> Result<Self, String> {
         match s.parse() {
-            Ok(socket_addr) => Ok(Self { socket_addr }),
+            Ok(socket_addr) => Ok(Self {
+                socket_addr,
+                new_connection_channel: Default::default(),
+            }),
             Err(e) => Err(e.to_string()),
         }
     }
 }
 
-#[derive(Component)]
-pub struct TcpNode {
-    new_connection_channel: AsyncChannel<TcpStream>,
-}
+async fn listen(
+    addr: SocketAddr,
+    event_tx: AsyncSender<NetworkEvent>,
+    new_connection_tx: AsyncSender<TcpStream>,
+) -> Result<(), NetworkError> {
+    let listener = TcpListener::bind(addr).await?;
+    debug!("TCP Server listening on {}", addr);
+    event_tx.send(NetworkEvent::Listen).await?;
+    let mut incoming = listener.incoming();
 
-impl Default for TcpNode {
-    fn default() -> Self {
-        Self::new()
+    while let Some(stream) = incoming.next().await {
+        let stream = stream?;
+        stream.set_nodelay(true).expect("set_nodelay call failed");
+        new_connection_tx.send(stream).await.unwrap();
     }
-}
 
-impl TcpNode {
-    pub fn new() -> Self {
-        Self {
-            new_connection_channel: AsyncChannel::new(),
-        }
-    }
-    pub async fn listen(
-        addr: SocketAddr,
-        event_tx: AsyncSender<NetworkEvent>,
-        new_connection_tx: AsyncSender<TcpStream>,
-    ) -> Result<(), NetworkError> {
-        let listener = TcpListener::bind(addr).await?;
-        debug!("TCP Server listening on {}", addr);
-        event_tx.send(NetworkEvent::Listen).await?;
-        let mut incoming = listener.incoming();
-
-        while let Some(stream) = incoming.next().await {
-            let stream = stream?;
-            stream.set_nodelay(true).expect("set_nodelay call failed");
-            new_connection_tx.send(stream).await.unwrap();
-        }
-
-        Ok(())
-    }
+    Ok(())
 }
 
 async fn handle_connection(
@@ -159,23 +148,17 @@ async fn handle_connection(
 /// TcpNode with local socket meas TCP server need to listen socket
 fn on_listen_to(
     trigger: Trigger<ListenTo>,
-    mut commands: Commands,
-    q_tcp_server: Query<(Entity, &NetworkNode, &Server<TcpAddress>)>,
+    q_tcp_server: Query<(&NetworkNode, &Server<TcpAddress>)>,
 ) {
-    if let Ok((e, net_node, server)) = q_tcp_server.get(trigger.entity()) {
+    if let Ok((net_node, server)) = q_tcp_server.get(trigger.entity()) {
         let local_addr = server.socket_addr;
         let event_tx = net_node.event_channel.sender.clone_async();
         let event_tx_clone = net_node.event_channel.sender.clone_async();
         let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
-        let tcp_node = TcpNode::new();
-        let new_connection_tx = tcp_node.new_connection_channel.sender.clone_async();
+        let new_connection_tx = server.new_connection_channel.sender.clone_async();
         task::spawn(async move {
             let tasks = vec![
-                task::spawn(TcpNode::listen(
-                    local_addr,
-                    event_tx_clone,
-                    new_connection_tx,
-                )),
+                task::spawn(listen(local_addr, event_tx_clone, new_connection_tx)),
                 task::spawn(async move {
                     match shutdown_clone.recv().await {
                         Ok(_) => Ok(()),
@@ -188,8 +171,6 @@ fn on_listen_to(
                 let _ = event_tx.send(NetworkEvent::Error(err)).await;
             }
         });
-
-        commands.entity(e).insert(tcp_node);
     }
 }
 
@@ -228,7 +209,7 @@ fn on_connect_to(
 
 fn handle_endpoint(
     mut commands: Commands,
-    q_tcp_server: Query<(Entity, &TcpNode, &NetworkNode, &ChannelId)>,
+    q_tcp_server: Query<(Entity, &Server<TcpAddress>, &NetworkNode, &ChannelId)>,
 ) {
     for (entity, tcp_node, net_node, channel_id) in q_tcp_server.iter() {
         while let Ok(Some(tcp_stream)) = tcp_node.new_connection_channel.receiver.try_recv() {
