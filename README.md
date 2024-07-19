@@ -1,6 +1,12 @@
+[![crates.io](https://img.shields.io/crates/v/bevy_octopus)](https://crates.io/crates/bevy_octopus)
+[![MIT/Apache 2.0](https://img.shields.io/badge/license-MIT%2FApache-blue.svg)](https://github.com/Seldom-SE/seldom_pixel#license)
+[![crates.io](https://img.shields.io/crates/d/bevy_octopus)](https://crates.io/crates/bevy_octopus)
+[![CI](https://github.com/foxzool/bevy_octopus/workflows/CI/badge.svg)](https://github.com/foxzool/bevy_octopus/actions)
+[![Documentation](https://docs.rs/bevy_octopus/badge.svg)](https://docs.rs/bevy_octopus)
+
 # bevy_octopus
 
-A Low leveling ECS driven network plugin for Bevy.
+A Low-level ECS-driven network plugin for Bevy.
 
 ## Features
 
@@ -8,11 +14,11 @@ A Low leveling ECS driven network plugin for Bevy.
 
 Every network node is a component, so you can easily manage network entities with Bevy ECS.
 
-App can be a server or client or both.
+Apps can be many servers and many clients at the same time.
 
 ### Flexible network protocol decoder
 
-You can define your own network protocol decoder.
+You can define channel transformers for data serialization and deserialization.
 
 ### UDP Communication Types
 
@@ -23,14 +29,15 @@ multicast. [example](https://github.com/foxzool/bevy_octopus/blob/main/examples/
 
 ## Supported Network Protocol
 
-- [x] UDP
-- [x] TCP
-- [x] WebSocket
-- [x] WebSocket SSL
+| Protocol  | Server | Client | Sever with SSL | Client with SSL |
+|-----------|--------|--------|----------------|-----------------|
+| UDP       | ✅      | ✅      | ✘              | ✘               |
+| TCP       | ✅      | ✅      | ☐              | ☐               |
+| Websocket | ✅      | ✅      | ☐              | ☐               |
 
 ## Network Components
 
-|                | ServerAddr | RemoteAddr | NetworkPeer |
+|                | ServerNode | ClientNode | NetworkPeer |
 |----------------|------------|------------|-------------|
 | server         | ✓          |            |             |
 | client         |            | ✓          |             |
