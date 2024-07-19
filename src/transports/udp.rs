@@ -71,7 +71,11 @@ async fn recv_loop(
                     len,
                     from_addr
                 );
-                let _ = recv_tx.send(NetworkRawPacket::new(from_addr, bytes)).await;
+                let _ = recv_tx.send(NetworkRawPacket {
+                    addr: Some(from_addr),
+                    bytes,
+                    text: None,
+                }).await;
             }
             #[cfg(target_os = "windows")]
             Err(ref e) if e.kind() == io::ErrorKind::ConnectionReset => {

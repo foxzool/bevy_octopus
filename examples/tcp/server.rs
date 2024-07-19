@@ -50,7 +50,7 @@ fn send_channel_packet(mut channel_events: EventWriter<ChannelPacket>) {
 /// handle send message to connected clients
 fn broadcast_message(
     q_net_node: Query<(&ChannelId, &NetworkNode, &Children), With<Server<TcpAddress>>>,
-    q_child: Query<(&NetworkNode, &Client<TcpAddress>)>,
+    q_child: Query<&NetworkNode, With<Client<TcpAddress>>>,
 ) {
     for (channel_id, _net, children) in q_net_node.iter() {
         if channel_id != &RAW_CHANNEL {
@@ -59,15 +59,16 @@ fn broadcast_message(
         for &child in children.iter() {
             let message = b"broadcast message!\r\n";
 
-            let (child_net_node, remote_addr) = q_child.get(child).expect("Child node not found.");
+            let child_net_node = q_child.get(child).expect("Child node not found.");
 
             let _ = child_net_node
                 .send_message_channel
                 .sender
-                .try_send(NetworkRawPacket::new(
-                    remote_addr.to_string(),
-                    Bytes::from_static(message),
-                ));
+                .try_send(NetworkRawPacket {
+                    addr: None,
+                    bytes: Bytes::from_static(message),
+                    text: None,
+                });
         }
     }
 }

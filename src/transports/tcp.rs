@@ -8,7 +8,7 @@ use async_std::{
 };
 use bevy::prelude::*;
 use bytes::Bytes;
-use futures::{future, AsyncReadExt};
+use futures::{AsyncReadExt, future};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
@@ -109,13 +109,19 @@ async fn handle_connection(
                 Ok(n) => {
                     let data = buffer[..n].to_vec();
                     trace!("{} read {} bytes from {}", local_addr, n, addr);
-                    recv_tx
-                        .send(NetworkRawPacket::new(addr, Bytes::from_iter(data)))
-                        .await
-                        .unwrap();
+                    let _ = recv_tx
+                        .send(NetworkRawPacket {
+                            addr: Some(addr),
+                            bytes: Bytes::from_iter(data),
+                            text: None,
+                        })
+                        .await;
                 }
                 Err(e) => {
                     trace!("Failed to read data from socket: {}", e);
+                    let _ = event_tx_clone
+                        .send(NetworkEvent::Error(NetworkError::Custom(e.to_string())))
+                        .await;
                     let _ = event_tx_clone.send(NetworkEvent::Disconnected).await;
                     break;
                 }
@@ -128,6 +134,9 @@ async fn handle_connection(
             trace!("write {} bytes to {} ", data.bytes.len(), addr);
             if let Err(e) = writer.write_all(&data.bytes).await {
                 trace!("Failed to write data to socket: {}", e);
+                let _ = event_tx
+                    .send(NetworkEvent::Error(NetworkError::Custom(e.to_string())))
+                    .await;
                 let _ = event_tx.send(NetworkEvent::Disconnected).await;
                 break;
             }

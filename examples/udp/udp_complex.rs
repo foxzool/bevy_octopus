@@ -73,6 +73,7 @@ fn setup_clients(mut commands: Commands) {
     ));
 }
 
+#[allow(clippy::type_complexity)]
 fn send_broadcast_messages(
     q_client: Query<
         (
@@ -100,12 +101,13 @@ fn send_broadcast_messages(
                     local_addr.socket_addr
                 )
                 .as_bytes(),
-                "udp://255.255.255.255:60002",
+                "255.255.255.255:60002",
             );
         }
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn send_multicast_messages(
     q_client: Query<
         (

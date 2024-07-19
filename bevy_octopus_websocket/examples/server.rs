@@ -1,9 +1,9 @@
 use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
-use bytes::Bytes;
 
 use bevy_octopus::prelude::*;
+use bevy_octopus_websocket::WebsocketAddress;
 
 use crate::common::*;
 
@@ -29,15 +29,15 @@ fn main() {
 fn setup_server(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        ServerAddr::new("ws://0.0.0.0:7003"),
+        Server(WebsocketAddress::new("127.0.0.1:7003")),
     ));
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        ServerAddr::new("ws://0.0.0.0:7004"),
+        Server(WebsocketAddress::new("127.0.0.1:7004")),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        ServerAddr::new("ws://0.0.0.0:7005"),
+        Server(WebsocketAddress::new("127.0.0.1:7005")),
     ));
 }
 
@@ -48,25 +48,26 @@ fn send_channel_packet(mut channel_events: EventWriter<ChannelPacket>) {
 
 /// handle send message to connected websocket clients
 fn broadcast_message(
-    q_net_node: Query<(&ChannelId, &NetworkNode, &Children), Without<NetworkPeer>>,
-    q_child: Query<(&NetworkNode, &ConnectTo)>,
+    q_net_node: Query<(&ChannelId, &NetworkNode, &Children), With<Server<WebsocketAddress>>>,
+    q_child: Query<&NetworkNode, With<Client<WebsocketAddress>>>,
 ) {
     for (channel_id, _net, children) in q_net_node.iter() {
         if channel_id != &RAW_CHANNEL {
             continue;
         }
         for &child in children.iter() {
-            let message = b"broadcast message!\r\n";
+            let message = "server broadcast message!\r\n";
 
-            let (child_net_node, connect_to) = q_child.get(child).expect("Child node not found.");
+            let child_net_node = q_child.get(child).expect("Child node not found.");
 
             let _ = child_net_node
                 .send_message_channel
                 .sender
-                .try_send(NetworkRawPacket::new(
-                    connect_to.to_string(),
-                    Bytes::from_static(message),
-                ));
+                .try_send(NetworkRawPacket {
+                    addr: None,
+                    bytes: Default::default(),
+                    text: Some(message.to_string()),
+                });
         }
     }
 }

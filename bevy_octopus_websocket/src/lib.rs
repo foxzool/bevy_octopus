@@ -16,37 +16,56 @@ pub struct WebsocketPlugin;
 
 impl Plugin for WebsocketPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, handle_endpoint)
+        app.register_network_address::<WebsocketAddress>()
+            .add_systems(PostUpdate, handle_endpoint)
             .observe(on_connect_to)
             .observe(on_listen_to);
     }
 }
 
-#[derive(Component)]
-pub struct WebsocketNode {
+#[derive(Component, Debug, Clone)]
+pub struct WebsocketAddress {
+    pub url: String,
     new_connection_channel: AsyncChannel<(TcpStream, SocketAddr)>,
 }
 
-impl Default for WebsocketNode {
-    fn default() -> Self {
-        Self::new()
+impl NetworkAddress for WebsocketAddress {
+    fn to_string(&self) -> String {
+        self.url.to_string()
+    }
+
+    fn from_string(s: &str) -> Result<Self, String>
+    where
+        Self: Sized,
+    {
+        match s.parse() {
+            Ok(socket_address) => Ok(Self {
+                url: socket_address,
+                new_connection_channel: Default::default(),
+            }),
+            Err(e) => Err(e.to_string()),
+        }
     }
 }
 
-impl WebsocketNode {
-    pub fn new() -> Self {
+impl WebsocketAddress {
+    pub fn new(socket: impl ToString) -> Self {
         Self {
+            url: socket.to_string(),
             new_connection_channel: AsyncChannel::new(),
         }
     }
     pub async fn listen(
         addr: SocketAddr,
+        event_tx: AsyncSender<NetworkEvent>,
         new_connection_tx: AsyncSender<(TcpStream, SocketAddr)>,
     ) -> Result<(), NetworkError> {
         let server = async move {
             let listener = TcpListener::bind(addr).await?;
 
             debug!("Websocket Server listening on {}", addr);
+            let _ = event_tx.send(NetworkEvent::Connected).await;
+
             while let Ok((tcp_stream, peer_addr)) = listener.accept().await {
                 tcp_stream
                     .set_nodelay(true)
@@ -68,23 +87,21 @@ impl WebsocketNode {
 
 fn on_listen_to(
     trigger: Trigger<ListenTo>,
-    mut commands: Commands,
-    q_ws_server: Query<(Entity, &NetworkNode)>,
+    q_ws_server: Query<(&NetworkNode, &Server<WebsocketAddress>)>,
 ) {
-    if let Ok((e, net_node)) = q_ws_server.get(trigger.entity()) {
-        let listen_to = trigger.event();
-        if !["ws", "wss"].contains(&listen_to.scheme()) {
-            return;
-        }
-
-        let local_addr = listen_to.local_addr();
+    if let Ok((net_node, server_node)) = q_ws_server.get(trigger.entity()) {
+        let local_addr = server_node.url.parse().expect("Invalid address");
         let event_tx = net_node.event_channel.sender.clone_async();
         let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
-        let ws_node = WebsocketNode::new();
-        let new_connection_tx = ws_node.new_connection_channel.sender.clone_async();
+        let event_tx_clone = event_tx.clone();
+        let new_connection_tx = server_node.new_connection_channel.sender.clone_async();
         async_std::task::spawn(async move {
             let tasks = vec![
-                async_std::task::spawn(WebsocketNode::listen(local_addr, new_connection_tx)),
+                async_std::task::spawn(WebsocketAddress::listen(
+                    local_addr,
+                    event_tx_clone,
+                    new_connection_tx,
+                )),
                 async_std::task::spawn(async move {
                     let _ = shutdown_clone.recv().await;
                     Ok(())
@@ -95,34 +112,26 @@ fn on_listen_to(
                 let _ = event_tx.send(NetworkEvent::Error(err)).await;
             }
         });
-
-        commands.entity(e).insert(ws_node);
     }
 }
 
 #[allow(clippy::type_complexity)]
 fn on_connect_to(
     trigger: Trigger<ConnectTo>,
-    q_ws_client: Query<(&NetworkNode, &RemoteAddr), Without<NetworkPeer>>,
+    q_ws_client: Query<(&NetworkNode, &Client<WebsocketAddress>), Without<NetworkPeer>>,
 ) {
     if let Ok((net_node, remote_addr)) = q_ws_client.get(trigger.entity()) {
-        if !["ws", "wss"].contains(&remote_addr.scheme()) {
-            return;
-        }
-        let connect_to = trigger.event();
-        let remote_addr = connect_to.to_string();
-
+        let url = remote_addr.url.clone();
+        debug!("try connect to {}", url);
         let recv_tx = net_node.recv_message_channel.sender.clone_async();
         let message_rx = net_node.send_message_channel.receiver.clone_async();
         let event_tx = net_node.event_channel.sender.clone_async();
         let shutdown_rx = net_node.shutdown_channel.receiver.clone_async();
 
-        let url_str = connect_to.0.to_string();
         async_std::task::spawn(async move {
             let tasks = vec![
                 task::spawn(handle_client_conn(
-                    url_str,
-                    remote_addr,
+                    url,
                     recv_tx,
                     message_rx,
                     event_tx.clone(),
@@ -141,7 +150,6 @@ fn on_connect_to(
 
 async fn handle_client_conn(
     url: String,
-    addr: String,
     recv_tx: AsyncSender<NetworkRawPacket>,
     message_rx: AsyncReceiver<NetworkRawPacket>,
     event_tx: AsyncSender<NetworkEvent>,
@@ -151,6 +159,7 @@ async fn handle_client_conn(
         .map_err(|e| NetworkError::Connection(e.to_string()))?;
 
     let _ = event_tx.send(NetworkEvent::Connected).await;
+    let event_tx_clone = event_tx.clone();
 
     let (mut writer, read) = ws_stream.0.split();
 
@@ -160,12 +169,19 @@ async fn handle_client_conn(
                 Ok(message) => {
                     let data = message.into_data();
                     recv_tx
-                        .send(NetworkRawPacket::new(addr.clone(), Bytes::from_iter(data)))
+                        .send(NetworkRawPacket {
+                            addr: None,
+                            bytes: Bytes::from_iter(data),
+                            text: None,
+                        })
                         .await
                         .unwrap();
                 }
                 Err(err) => {
-                    error!("{} websocket error {:?}", addr, err);
+                    let _ = event_tx_clone
+                        .send(NetworkEvent::Error(NetworkError::Custom(err.to_string())))
+                        .await;
+                    let _ = event_tx_clone.send(NetworkEvent::Disconnected).await;
                 }
             }
         })
@@ -173,17 +189,18 @@ async fn handle_client_conn(
 
     let write_task = async move {
         while let Ok(data) = message_rx.recv().await {
-            trace!("write {} bytes to {} ", data.bytes.len(), data.addr);
+            trace!("write {} bytes ", data.bytes.len());
             let message = if let Some(text) = data.text {
                 Message::Text(text)
             } else {
                 Message::binary(data.bytes)
             };
 
-            if let Err(e) = writer.send(message).await {
+            if let Err(err) = writer.send(message).await {
                 let _ = event_tx
-                    .send(NetworkEvent::Error(NetworkError::Custom(e.to_string())))
+                    .send(NetworkEvent::Error(NetworkError::Custom(err.to_string())))
                     .await;
+                let _ = event_tx.send(NetworkEvent::Disconnected).await;
 
                 break;
             }
@@ -214,7 +231,11 @@ async fn server_handle_conn(
                 Ok(message) => {
                     let data = message.into_data();
                     let _ = recv_tx
-                        .send(NetworkRawPacket::new(addr.clone(), Bytes::from_iter(data)))
+                        .send(NetworkRawPacket {
+                            addr: None,
+                            bytes: Bytes::from_iter(data),
+                            text: None,
+                        })
                         .await;
                 }
                 Err(err) => {
@@ -247,7 +268,7 @@ async fn server_handle_conn(
 
 fn handle_endpoint(
     mut commands: Commands,
-    q_ws_server: Query<(Entity, &WebsocketNode, &NetworkNode, &ChannelId)>,
+    q_ws_server: Query<(Entity, &Server<WebsocketAddress>, &NetworkNode, &ChannelId)>,
 ) {
     for (entity, ws_node, net_node, channel_id) in q_ws_server.iter() {
         while let Ok(Some((tcp_stream, socket))) =
@@ -286,7 +307,7 @@ fn handle_endpoint(
             );
             let url_str = format!("ws://{}", socket);
             commands.entity(child_ws_client).insert((
-                ConnectTo::new(&url_str),
+                Client(WebsocketAddress::new(&url_str)),
                 new_net_node,
                 *channel_id,
                 peer,

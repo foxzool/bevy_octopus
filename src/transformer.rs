@@ -225,13 +225,11 @@ fn encode_system<
             );
             match transformer.encode(&message.message) {
                 Ok(bytes) => {
-                    let _ = net_node
-                        .send_message_channel
-                        .sender
-                        .send(NetworkRawPacket::new(
-                            "".to_string(),
-                            Bytes::from_iter(bytes),
-                        ));
+                    let _ = net_node.send_message_channel.sender.send(NetworkRawPacket {
+                        addr: None,
+                        bytes: Bytes::from_iter(bytes),
+                        text: None,
+                    });
                 }
 
                 Err(e) => {

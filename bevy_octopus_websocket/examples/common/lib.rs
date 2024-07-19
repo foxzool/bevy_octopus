@@ -7,7 +7,7 @@ use bevy::{
 use serde::{Deserialize, Serialize};
 
 use bevy_octopus::prelude::*;
-use bevy_octopus_websocket::WebsocketPlugin;
+use bevy_octopus_websocket::{WebsocketAddress, WebsocketPlugin};
 
 /// shared app setup
 pub fn shared_setup(app: &mut App) {
@@ -85,13 +85,12 @@ pub fn send_bincode_message(
 }
 
 /// send raw message to server
-pub fn send_raw_message_to_channel(q_client: Query<(&NetworkNode, &ChannelId, &RemoteAddr)>) {
-    for (node, channel_id, remote_addr) in q_client.iter() {
+pub fn send_raw_message_to_channel(
+    q_client: Query<(&NetworkNode, &ChannelId), With<Client<WebsocketAddress>>>,
+) {
+    for (node, channel_id) in q_client.iter() {
         if channel_id == &RAW_CHANNEL {
-            node.send_bytes_to(
-                format!("raw packet to {}", channel_id).as_bytes(),
-                remote_addr.to_string(),
-            );
+            node.send_bytes(format!("raw packet to {}", channel_id).as_bytes());
         }
     }
 }

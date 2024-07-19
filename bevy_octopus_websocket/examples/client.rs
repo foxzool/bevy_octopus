@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
 use bevy_octopus::prelude::*;
-
+use bevy_octopus_websocket::WebsocketAddress;
 use crate::common::*;
 
 #[path = "./common/lib.rs"]
@@ -33,18 +33,18 @@ fn main() {
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        RemoteAddr::new("wss://echo.websocket.org"),
+        Client(WebsocketAddress::new("wss://echo.websocket.org")),
     ));
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        RemoteAddr::new("ws://127.0.0.1:7003"),
+        Client(WebsocketAddress::new("ws://127.0.0.1:7003")),
     ));
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        RemoteAddr::new("ws://127.0.0.1:7004"),
+        Client(WebsocketAddress::new("ws://127.0.0.1:7004")),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        RemoteAddr::new("ws://127.0.0.1:7005"),
+        Client(WebsocketAddress::new("ws://127.0.0.1:7005")),
     ));
 }

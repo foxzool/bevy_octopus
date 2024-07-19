@@ -1,4 +1,3 @@
-use crate::client::Client;
 use std::{
     fmt::Debug,
     net::{SocketAddr, ToSocketAddrs},
@@ -12,7 +11,7 @@ use bytes::Bytes;
 use kanal::{unbounded, Receiver, Sender};
 use url::Url;
 
-use crate::{error::NetworkError, prelude::ChannelId};
+use crate::{client::Client, error::NetworkError, prelude::ChannelId};
 
 pub trait NetworkAddress: Debug + Clone + Send + Sync {
     fn to_string(&self) -> String;
@@ -53,16 +52,6 @@ pub struct NetworkRawPacket {
     pub addr: Option<SocketAddr>,
     pub bytes: Bytes,
     pub text: Option<String>,
-}
-
-impl NetworkRawPacket {
-    pub fn new(addr: impl ToSocketAddrs, bytes: Bytes) -> NetworkRawPacket {
-        NetworkRawPacket {
-            addr: Some(addr.to_socket_addrs().unwrap().next().unwrap()),
-            bytes,
-            text: None,
-        }
-    }
 }
 
 impl Debug for NetworkRawPacket {
@@ -158,10 +147,19 @@ impl NetworkNode {
     }
 
     pub fn send_bytes_to(&self, bytes: &[u8], addr: impl ToSocketAddrs) {
-        let _ = self
-            .send_message_channel
-            .sender
-            .try_send(NetworkRawPacket::new(addr, Bytes::copy_from_slice(bytes)));
+        let _ = self.send_message_channel.sender.try_send(NetworkRawPacket {
+            addr: Some(addr.to_socket_addrs().unwrap().next().unwrap()),
+            bytes: Bytes::copy_from_slice(bytes),
+            text: None,
+        });
+    }
+
+    pub fn send_bytes(&self, bytes: &[u8]) {
+        let _ = self.send_message_channel.sender.try_send(NetworkRawPacket {
+            addr: None,
+            bytes: Bytes::copy_from_slice(bytes),
+            text: None,
+        });
     }
 }
 
