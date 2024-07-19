@@ -6,9 +6,9 @@ use bevy::{
 use crate::{
     channels::{send_channel_message_system, ChannelId, ChannelPacket},
     client,
-    network_node::{cleanup_client_session, network_node_event, ConnectTo, ListenTo},
-    prelude::client_reconnect,
+    network_node::network_node_event,
     scheduler::NetworkSet,
+    server::StartServer,
     transformer::{DecoderChannels, EncoderChannels},
 };
 
@@ -20,8 +20,7 @@ impl Plugin for OctopusPlugin {
         app.init_resource::<EncoderChannels>()
             .init_resource::<DecoderChannels>()
             .add_event::<ChannelPacket>()
-            .add_event::<ConnectTo>()
-            .add_event::<ListenTo>()
+            .add_event::<StartServer>()
             .configure_sets(
                 PreUpdate,
                 (NetworkSet::Receive, NetworkSet::Decoding).chain(),
@@ -32,9 +31,7 @@ impl Plugin for OctopusPlugin {
                 PostUpdate,
                 send_channel_message_system.in_set(NetworkSet::Send),
             )
-            .add_plugins(client::plugin)
-            .observe(cleanup_client_session)
-            .observe(client_reconnect);
+            .add_plugins(client::plugin);
 
         #[cfg(feature = "udp")]
         app.add_plugins(crate::transports::udp::UdpPlugin);

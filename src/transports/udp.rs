@@ -1,13 +1,3 @@
-use crate::{
-    error::NetworkError,
-    network_node::{ListenTo, NetworkEvent, NetworkNode, NetworkPeer, NetworkRawPacket},
-    prelude::{Client, NetworkAddress, Server},
-};
-use async_std::{future::timeout, net::UdpSocket, task};
-use bevy::prelude::*;
-use bytes::Bytes;
-use futures::future;
-use kanal::{AsyncReceiver, AsyncSender};
 use std::{
     io,
     net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs},
@@ -15,11 +5,24 @@ use std::{
     time::Duration,
 };
 
+use async_std::{future::timeout, net::UdpSocket, task};
+use bevy::prelude::*;
+use bytes::Bytes;
+use futures::future;
+use kanal::{AsyncReceiver, AsyncSender};
+
+use crate::{
+    error::NetworkError,
+    network_node::{NetworkEvent, NetworkNode, NetworkPeer, NetworkRawPacket},
+    prelude::{ClientNode, NetworkAddress, ServerNode},
+    server::StartServer,
+};
+
 pub struct UdpPlugin;
 
 impl Plugin for UdpPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(on_listen_to);
+        app.observe(on_start_server);
     }
 }
 
@@ -71,11 +74,13 @@ async fn recv_loop(
                     len,
                     from_addr
                 );
-                let _ = recv_tx.send(NetworkRawPacket {
-                    addr: Some(from_addr),
-                    bytes,
-                    text: None,
-                }).await;
+                let _ = recv_tx
+                    .send(NetworkRawPacket {
+                        addr: Some(from_addr),
+                        bytes,
+                        text: None,
+                    })
+                    .await;
             }
             #[cfg(target_os = "windows")]
             Err(ref e) if e.kind() == io::ErrorKind::ConnectionReset => {
@@ -244,13 +249,13 @@ async fn listen(
 }
 
 #[allow(clippy::type_complexity)]
-fn on_listen_to(
-    trigger: Trigger<ListenTo>,
+fn on_start_server(
+    trigger: Trigger<StartServer>,
     q_udp: Query<
         (
             &NetworkNode,
-            &Server<UdpAddress>,
-            Option<&Client<UdpAddress>>,
+            &ServerNode<UdpAddress>,
+            Option<&ClientNode<UdpAddress>>,
             Option<&UdpBroadcast>,
             Option<&MulticastV4Setting>,
             Option<&MulticastV6Setting>,

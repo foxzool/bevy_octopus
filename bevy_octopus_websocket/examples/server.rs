@@ -29,15 +29,15 @@ fn main() {
 fn setup_server(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        Server(WebsocketAddress::new("127.0.0.1:7003")),
+        ServerNode(WebsocketAddress::new("127.0.0.1:7003")),
     ));
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        Server(WebsocketAddress::new("127.0.0.1:7004")),
+        ServerNode(WebsocketAddress::new("127.0.0.1:7004")),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        Server(WebsocketAddress::new("127.0.0.1:7005")),
+        ServerNode(WebsocketAddress::new("127.0.0.1:7005")),
     ));
 }
 
@@ -48,8 +48,8 @@ fn send_channel_packet(mut channel_events: EventWriter<ChannelPacket>) {
 
 /// handle send message to connected websocket clients
 fn broadcast_message(
-    q_net_node: Query<(&ChannelId, &NetworkNode, &Children), With<Server<WebsocketAddress>>>,
-    q_child: Query<&NetworkNode, With<Client<WebsocketAddress>>>,
+    q_net_node: Query<(&ChannelId, &NetworkNode, &Children), With<ServerNode<WebsocketAddress>>>,
+    q_child: Query<&NetworkNode, With<ClientNode<WebsocketAddress>>>,
 ) {
     for (channel_id, _net, children) in q_net_node.iter() {
         if channel_id != &RAW_CHANNEL {

@@ -16,10 +16,9 @@ pub struct WebsocketPlugin;
 
 impl Plugin for WebsocketPlugin {
     fn build(&self, app: &mut App) {
-        app.register_network_address::<WebsocketAddress>()
-            .add_systems(PostUpdate, handle_endpoint)
-            .observe(on_connect_to)
-            .observe(on_listen_to);
+        app.add_systems(PostUpdate, handle_endpoint)
+            .observe(on_start_client)
+            .observe(on_start_server);
     }
 }
 
@@ -85,9 +84,9 @@ impl WebsocketAddress {
     }
 }
 
-fn on_listen_to(
-    trigger: Trigger<ListenTo>,
-    q_ws_server: Query<(&NetworkNode, &Server<WebsocketAddress>)>,
+fn on_start_server(
+    trigger: Trigger<StartServer>,
+    q_ws_server: Query<(&NetworkNode, &ServerNode<WebsocketAddress>)>,
 ) {
     if let Ok((net_node, server_node)) = q_ws_server.get(trigger.entity()) {
         let local_addr = server_node.url.parse().expect("Invalid address");
@@ -116,9 +115,9 @@ fn on_listen_to(
 }
 
 #[allow(clippy::type_complexity)]
-fn on_connect_to(
-    trigger: Trigger<ConnectTo>,
-    q_ws_client: Query<(&NetworkNode, &Client<WebsocketAddress>), Without<NetworkPeer>>,
+fn on_start_client(
+    trigger: Trigger<StartClient>,
+    q_ws_client: Query<(&NetworkNode, &ClientNode<WebsocketAddress>), Without<NetworkPeer>>,
 ) {
     if let Ok((net_node, remote_addr)) = q_ws_client.get(trigger.entity()) {
         let url = remote_addr.url.clone();
@@ -268,7 +267,12 @@ async fn server_handle_conn(
 
 fn handle_endpoint(
     mut commands: Commands,
-    q_ws_server: Query<(Entity, &Server<WebsocketAddress>, &NetworkNode, &ChannelId)>,
+    q_ws_server: Query<(
+        Entity,
+        &ServerNode<WebsocketAddress>,
+        &NetworkNode,
+        &ChannelId,
+    )>,
 ) {
     for (entity, ws_node, net_node, channel_id) in q_ws_server.iter() {
         while let Ok(Some((tcp_stream, socket))) =
@@ -307,7 +311,7 @@ fn handle_endpoint(
             );
             let url_str = format!("ws://{}", socket);
             commands.entity(child_ws_client).insert((
-                Client(WebsocketAddress::new(&url_str)),
+                ClientNode(WebsocketAddress::new(&url_str)),
                 new_net_node,
                 *channel_id,
                 peer,

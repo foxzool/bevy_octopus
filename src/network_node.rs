@@ -3,47 +3,17 @@ use std::{
     net::{SocketAddr, ToSocketAddrs},
 };
 
-use bevy::{
-    ecs::component::{ComponentHooks, StorageType},
-    prelude::*,
-};
+use bevy::prelude::*;
 use bytes::Bytes;
 use kanal::{unbounded, Receiver, Sender};
-use url::Url;
 
-use crate::{client::Client, error::NetworkError, prelude::ChannelId};
+use crate::{error::NetworkError, prelude::ChannelId};
 
 pub trait NetworkAddress: Debug + Clone + Send + Sync {
     fn to_string(&self) -> String;
     fn from_string(s: &str) -> Result<Self, String>
     where
         Self: Sized;
-}
-
-pub trait NetworkAddressRegister {
-    fn register_network_address<T: NetworkAddress + 'static>(&mut self) -> &mut Self;
-}
-
-impl NetworkAddressRegister for App {
-    fn register_network_address<T: NetworkAddress + 'static>(&mut self) -> &mut Self {
-        self.add_systems(Update, handle_reconnect_timer::<T>);
-
-        self
-    }
-}
-
-#[derive(Deref)]
-pub struct Server<T: NetworkAddress>(pub T);
-
-impl<T: NetworkAddress + 'static> Component for Server<T> {
-    const STORAGE_TYPE: StorageType = StorageType::Table;
-
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_insert(|mut world, targeted_entity, _component_id| {
-            let server_addr = world.get::<Server<T>>(targeted_entity).unwrap();
-            world.trigger_targets(ListenTo::new(&server_addr.0.to_string()), targeted_entity);
-        });
-    }
 }
 
 /// [`NetworkRawPacket`]s are raw packets that are sent over the network.
@@ -60,38 +30,6 @@ impl Debug for NetworkRawPacket {
             .field("addr", &self.addr)
             .field("len", &self.bytes.len())
             .finish()
-    }
-}
-
-#[derive(Event, Deref, Clone, Debug)]
-pub struct ListenTo(pub String);
-
-impl ListenTo {
-    pub fn new(url_str: &str) -> Self {
-        Self(url_str.to_string())
-    }
-
-    pub fn local_addr(&self) -> SocketAddr {
-        let url_str = self.0.to_string();
-        let arr: Vec<&str> = url_str.split("//").collect();
-        let s = arr[1].split('/').collect::<Vec<&str>>()[0];
-        s.to_socket_addrs().unwrap().next().unwrap()
-    }
-}
-
-#[derive(Event, Deref, Clone, Debug)]
-pub struct ConnectTo(pub String);
-
-impl ConnectTo {
-    pub fn new(url_str: &str) -> Self {
-        Self(url_str.to_string())
-    }
-
-    pub fn peer_addr(&self) -> SocketAddr {
-        let url_str = self.0.to_string();
-        let arr: Vec<&str> = url_str.split("//").collect();
-        let s = arr[1].split('/').collect::<Vec<&str>>()[0];
-        s.to_socket_addrs().unwrap().next().unwrap()
     }
 }
 
@@ -163,60 +101,6 @@ impl NetworkNode {
     }
 }
 
-#[derive(Debug, Deref)]
-pub struct ServerAddr(pub Url);
-
-impl Component for ServerAddr {
-    const STORAGE_TYPE: StorageType = StorageType::Table;
-
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_insert(|mut world, targeted_entity, _component_id| {
-            let server_addr = world.get::<ServerAddr>(targeted_entity).unwrap();
-            world.trigger_targets(ListenTo(server_addr.0.to_string()), targeted_entity);
-        });
-    }
-}
-
-impl ServerAddr {
-    pub fn new(addr: impl ToString) -> Self {
-        Self(addr.to_string().parse().unwrap())
-    }
-
-    pub fn local_addr(&self) -> SocketAddr {
-        let url_str = self.0.to_string();
-        let arr: Vec<&str> = url_str.split("//").collect();
-        let s = arr[1].split('/').collect::<Vec<&str>>()[0];
-        s.to_socket_addrs().unwrap().next().unwrap()
-    }
-}
-
-#[derive(Debug, Deref)]
-pub struct RemoteAddr(pub Url);
-
-impl Component for RemoteAddr {
-    const STORAGE_TYPE: StorageType = StorageType::Table;
-
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_insert(|mut world, targeted_entity, _component_id| {
-            let remote_addr = world.get::<RemoteAddr>(targeted_entity).unwrap();
-            world.trigger_targets(ConnectTo(remote_addr.0.to_string()), targeted_entity);
-        });
-    }
-}
-
-impl RemoteAddr {
-    pub fn new(addr: impl ToString) -> Self {
-        Self(addr.to_string().parse().unwrap())
-    }
-
-    pub fn peer_addr(&self) -> SocketAddr {
-        let url_str = self.0.to_string();
-        let arr: Vec<&str> = url_str.split("//").collect();
-        let s = arr[1].split('/').collect::<Vec<&str>>()[0];
-        s.to_socket_addrs().unwrap().next().unwrap()
-    }
-}
-
 /// A network peer on server
 #[derive(Component)]
 pub struct NetworkPeer;
@@ -285,66 +169,6 @@ pub(crate) fn network_node_event(
                 }
             }
             commands.trigger_targets(event, vec![entity]);
-        }
-    }
-}
-
-pub(crate) fn client_reconnect(
-    trigger: Trigger<NetworkEvent>,
-    mut commands: Commands,
-    mut q_net: Query<&mut ReconnectSetting, Without<NetworkPeer>>,
-) {
-    if let Ok(mut reconnect) = q_net.get_mut(trigger.entity()) {
-        let event = trigger.event();
-        if reconnect.retries < reconnect.max_retries {
-            reconnect.retries += 1;
-        } else {
-            return;
-        }
-        match event {
-            NetworkEvent::Listen | NetworkEvent::Connected => reconnect.retries = 0,
-            NetworkEvent::Disconnected | NetworkEvent::Error(NetworkError::Connection(_)) => {
-                commands
-                    .entity(trigger.entity())
-                    .insert(ReconnectTimer(Timer::from_seconds(
-                        reconnect.delay,
-                        TimerMode::Once,
-                    )));
-            }
-            _ => {}
-        }
-    }
-}
-
-#[derive(Component, Deref, DerefMut)]
-pub struct ReconnectTimer(pub Timer);
-
-pub(crate) fn handle_reconnect_timer<T: NetworkAddress + 'static>(
-    mut commands: Commands,
-    time: Res<Time>,
-    mut q_reconnect: Query<(Entity, &Client<T>, &mut ReconnectTimer)>,
-) {
-    for (entity, remote_addr, mut timer) in q_reconnect.iter_mut() {
-        if timer.tick(time.delta()).just_finished() {
-            commands.entity(entity).remove::<ReconnectTimer>();
-            commands.trigger_targets(ConnectTo(remote_addr.0.to_string()), entity);
-        }
-    }
-}
-
-pub(crate) fn cleanup_client_session(
-    trigger: Trigger<NetworkEvent>,
-    mut commands: Commands,
-    q_net: Query<Entity, With<NetworkPeer>>,
-) {
-    if let Ok(entity) = q_net.get(trigger.entity()) {
-        let event = trigger.event();
-
-        match event {
-            NetworkEvent::Disconnected | NetworkEvent::Error(NetworkError::Connection(_)) => {
-                commands.entity(entity).despawn_recursive();
-            }
-            _ => {}
         }
     }
 }

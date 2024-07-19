@@ -33,14 +33,14 @@ fn main() {
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        Client(TcpAddress::new("127.0.0.1:5003")),
+        ClientNode(TcpAddress::new("127.0.0.1:5003")),
     ));
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        Client(TcpAddress::new("127.0.0.1:5004")),
+        ClientNode(TcpAddress::new("127.0.0.1:5004")),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        Client(TcpAddress::new("127.0.0.1:5005")),
+        ClientNode(TcpAddress::new("127.0.0.1:5005")),
     ));
 }

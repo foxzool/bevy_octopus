@@ -86,7 +86,7 @@ pub fn send_bincode_message(
 
 /// send raw message to server
 pub fn send_raw_message_to_channel(
-    q_client: Query<(&NetworkNode, &ChannelId), With<Client<WebsocketAddress>>>,
+    q_client: Query<(&NetworkNode, &ChannelId), With<ClientNode<WebsocketAddress>>>,
 ) {
     for (node, channel_id) in q_client.iter() {
         if channel_id == &RAW_CHANNEL {

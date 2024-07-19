@@ -100,7 +100,7 @@ pub fn send_bincode_message(
 
 /// client send raw message to server
 pub fn client_send_raw_message_to_channel<T: NetworkAddress + 'static>(
-    q_client: Query<(&NetworkNode, &ChannelId, &Client<T>)>,
+    q_client: Query<(&NetworkNode, &ChannelId, &ClientNode<T>)>,
 ) {
     for (node, channel_id, remote_addr) in q_client.iter() {
         if channel_id == &RAW_CHANNEL {

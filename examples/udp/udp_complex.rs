@@ -37,14 +37,14 @@ fn setup_server(mut commands: Commands) {
     // broadcast udp receiver
     commands.spawn((
         NetworkBundle::new(BROADCAST_CHANNEL),
-        Server(UdpAddress::new("0.0.0.0:60002")),
+        ServerNode(UdpAddress::new("0.0.0.0:60002")),
         UdpBroadcast,
     ));
 
     // multicast udp receiver
     commands.spawn((
         NetworkBundle::new(MULTICAST_CHANNEL),
-        Server(UdpAddress::new("0.0.0.0:60003")),
+        ServerNode(UdpAddress::new("0.0.0.0:60003")),
         MulticastV4Setting::new(Ipv4Addr::new(239, 1, 2, 3), Ipv4Addr::UNSPECIFIED),
     ));
 }
@@ -52,22 +52,22 @@ fn setup_server(mut commands: Commands) {
 fn setup_clients(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(BROADCAST_CHANNEL),
-        Server(UdpAddress::new("0.0.0.0:0")),
-        Client(UdpAddress::new("255.255.255.255:60002")),
+        ServerNode(UdpAddress::new("0.0.0.0:0")),
+        ClientNode(UdpAddress::new("255.255.255.255:60002")),
         UdpBroadcast,
         BroadcastMarker,
     ));
 
     commands.spawn((
         NetworkBundle::new(BROADCAST_CHANNEL),
-        Server(UdpAddress::new("0.0.0.0:0")),
+        ServerNode(UdpAddress::new("0.0.0.0:0")),
         UdpBroadcast,
         BroadcastMarker,
     ));
 
     commands.spawn((
         NetworkBundle::new(MULTICAST_CHANNEL),
-        Server(UdpAddress::new("0.0.0.0:60005")),
+        ServerNode(UdpAddress::new("0.0.0.0:60005")),
         MulticastV4Setting::new(Ipv4Addr::new(239, 1, 2, 3), Ipv4Addr::UNSPECIFIED),
         MulticastMarker,
     ));
@@ -78,8 +78,8 @@ fn send_broadcast_messages(
     q_client: Query<
         (
             &NetworkNode,
-            &Server<UdpAddress>,
-            Option<&Client<UdpAddress>>,
+            &ServerNode<UdpAddress>,
+            Option<&ClientNode<UdpAddress>>,
         ),
         With<BroadcastMarker>,
     >,
@@ -112,8 +112,8 @@ fn send_multicast_messages(
     q_client: Query<
         (
             &NetworkNode,
-            &Server<UdpAddress>,
-            Option<&Client<UdpAddress>>,
+            &ServerNode<UdpAddress>,
+            Option<&ClientNode<UdpAddress>>,
         ),
         With<MulticastMarker>,
     >,

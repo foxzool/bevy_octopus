@@ -8,27 +8,26 @@ use async_std::{
 };
 use bevy::prelude::*;
 use bytes::Bytes;
-use futures::{AsyncReadExt, future};
+use futures::{future, AsyncReadExt};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
     channels::ChannelId,
-    client::Client,
+    client::{ClientNode, StartClient},
     error::NetworkError,
     network_node::{
-        AsyncChannel, ConnectTo, ListenTo, NetworkAddress, NetworkAddressRegister, NetworkEvent,
-        NetworkNode, NetworkPeer, NetworkRawPacket, Server,
+        AsyncChannel, NetworkAddress, NetworkEvent, NetworkNode, NetworkPeer, NetworkRawPacket,
     },
+    server::{ServerNode, StartServer},
 };
 
 pub struct TcpPlugin;
 
 impl Plugin for TcpPlugin {
     fn build(&self, app: &mut App) {
-        app.register_network_address::<TcpAddress>()
-            .add_systems(PostUpdate, handle_endpoint)
-            .observe(on_listen_to)
-            .observe(on_connect_to);
+        app.add_systems(PostUpdate, handle_endpoint)
+            .observe(on_start_server)
+            .observe(on_start_client);
     }
 }
 
@@ -155,9 +154,9 @@ async fn handle_connection(
 }
 
 /// TcpNode with local socket meas TCP server need to listen socket
-fn on_listen_to(
-    trigger: Trigger<ListenTo>,
-    q_tcp_server: Query<(&NetworkNode, &Server<TcpAddress>)>,
+fn on_start_server(
+    trigger: Trigger<StartServer>,
+    q_tcp_server: Query<(&NetworkNode, &ServerNode<TcpAddress>)>,
 ) {
     if let Ok((net_node, server)) = q_tcp_server.get(trigger.entity()) {
         let local_addr = server.socket_addr;
@@ -183,9 +182,9 @@ fn on_listen_to(
     }
 }
 
-fn on_connect_to(
-    trigger: Trigger<ConnectTo>,
-    q_tcp_client: Query<(&NetworkNode, &Client<TcpAddress>), Without<NetworkPeer>>,
+fn on_start_client(
+    trigger: Trigger<StartClient>,
+    q_tcp_client: Query<(&NetworkNode, &ClientNode<TcpAddress>), Without<NetworkPeer>>,
 ) {
     if let Ok((net_node, remote_addr)) = q_tcp_client.get(trigger.entity()) {
         debug!("try connect to {}", remote_addr.to_string());
@@ -218,7 +217,7 @@ fn on_connect_to(
 
 fn handle_endpoint(
     mut commands: Commands,
-    q_tcp_server: Query<(Entity, &Server<TcpAddress>, &NetworkNode, &ChannelId)>,
+    q_tcp_server: Query<(Entity, &ServerNode<TcpAddress>, &NetworkNode, &ChannelId)>,
 ) {
     for (entity, tcp_node, net_node, channel_id) in q_tcp_server.iter() {
         while let Ok(Some(tcp_stream)) = tcp_node.new_connection_channel.receiver.try_recv() {
@@ -238,7 +237,7 @@ fn handle_endpoint(
             commands.entity(peer_entity).insert((
                 new_net_node,
                 *channel_id,
-                Client(TcpAddress::new(peer_socket)),
+                ClientNode(TcpAddress::new(peer_socket)),
                 peer,
             ));
 

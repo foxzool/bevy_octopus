@@ -20,14 +20,14 @@ fn main() {
 fn setup_server(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        Server(UdpAddress::new("127.0.0.1:6001")),
+        ServerNode(UdpAddress::new("127.0.0.1:6001")),
     ));
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        Server(UdpAddress::new("127.0.0.1:6002")),
+        ServerNode(UdpAddress::new("127.0.0.1:6002")),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        Server(UdpAddress::new("127.0.0.1:6003")),
+        ServerNode(UdpAddress::new("127.0.0.1:6003")),
     ));
 }

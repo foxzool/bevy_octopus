@@ -30,15 +30,15 @@ fn main() {
 fn setup_server(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(RAW_CHANNEL),
-        Server(TcpAddress::new("0.0.0.0:5003")),
+        ServerNode(TcpAddress::new("0.0.0.0:5003")),
     ));
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
-        Server(TcpAddress::new("0.0.0.0:5004")),
+        ServerNode(TcpAddress::new("0.0.0.0:5004")),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
-        Server(TcpAddress::new("0.0.0.0:5005")),
+        ServerNode(TcpAddress::new("0.0.0.0:5005")),
     ));
 }
 
@@ -49,8 +49,8 @@ fn send_channel_packet(mut channel_events: EventWriter<ChannelPacket>) {
 
 /// handle send message to connected clients
 fn broadcast_message(
-    q_net_node: Query<(&ChannelId, &NetworkNode, &Children), With<Server<TcpAddress>>>,
-    q_child: Query<&NetworkNode, With<Client<TcpAddress>>>,
+    q_net_node: Query<(&ChannelId, &NetworkNode, &Children), With<ServerNode<TcpAddress>>>,
+    q_child: Query<&NetworkNode, With<ClientNode<TcpAddress>>>,
 ) {
     for (channel_id, _net, children) in q_net_node.iter() {
         if channel_id != &RAW_CHANNEL {
