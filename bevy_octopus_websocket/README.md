@@ -8,3 +8,7 @@
 
 WebSocket transport for [bevy_octopus](https://crates.io/crates/bevy_octopus).
 
+## Supported Versions
+| bevy | bevy_octopus_websocket |
+|------|------------------------|
+| 0.14 | 0.1                    |
