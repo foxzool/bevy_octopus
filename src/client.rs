@@ -5,7 +5,7 @@ use bevy::{
 
 use crate::{
     error::NetworkError,
-    network_node::{NetworkAddress, NetworkEvent, NetworkPeer, ReconnectSetting},
+    network_node::{NetworkAddress, NetworkEvent, NetworkPeer},
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -34,6 +34,24 @@ impl<T: NetworkAddress + 'static> Component for ClientNode<T> {
 
 #[derive(Event, Clone)]
 pub struct StartClient;
+
+#[derive(Debug, Component)]
+pub struct ReconnectSetting {
+    /// Delay in seconds
+    pub delay: f32,
+    pub max_retries: usize,
+    pub retries: usize,
+}
+
+impl Default for ReconnectSetting {
+    fn default() -> Self {
+        Self {
+            delay: 2.0,
+            max_retries: usize::MAX,
+            retries: 0,
+        }
+    }
+}
 
 pub(crate) fn client_reconnect(
     trigger: Trigger<NetworkEvent>,

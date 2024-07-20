@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use bytes::Bytes;
 use kanal::{unbounded, Receiver, Sender};
 
-use crate::{error::NetworkError, prelude::ChannelId};
+use crate::{client::ReconnectSetting, error::NetworkError, prelude::ChannelId};
 
 pub trait NetworkAddress: Debug + Clone + Send + Sync {
     fn to_string(&self) -> String;
@@ -132,24 +132,6 @@ pub enum NetworkEvent {
     Connected,
     Disconnected,
     Error(NetworkError),
-}
-
-#[derive(Debug, Component)]
-pub struct ReconnectSetting {
-    /// Delay in seconds
-    pub delay: f32,
-    pub max_retries: usize,
-    pub retries: usize,
-}
-
-impl Default for ReconnectSetting {
-    fn default() -> Self {
-        Self {
-            delay: 2.0,
-            max_retries: usize::MAX,
-            retries: 0,
-        }
-    }
 }
 
 /// send network node error channel to events

@@ -211,24 +211,21 @@ async fn listen(
         socket.set_broadcast(true)?;
     }
 
-    // if let Some(remote_addr) = bind {
-    //     socket.connect(remote_addr).await?;
-    // }
     if let Some(multi_v4) = opt_v4 {
-        debug!(
+        info!(
             "Joining multicast group {:?} on interface {:?}",
             multi_v4.multi_addr, multi_v4.interface
         );
         socket.join_multicast_v4(multi_v4.multi_addr, multi_v4.interface)?;
     } else if let Some(multi_v6) = opt_v6 {
-        debug!(
+        info!(
             "Joining multicast group {:?} on interface {:?}",
             multi_v6.multi_addr, multi_v6.interface
         );
         socket.join_multicast_v6(&multi_v6.multi_addr, multi_v6.interface)?;
     }
 
-    debug!(
+    info!(
         "UDP listening on {} peer: {:?}",
         socket.local_addr().unwrap(),
         socket.peer_addr().ok()

@@ -2,8 +2,9 @@ use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
-use crate::common::*;
 use bevy_octopus::{prelude::*, transports::udp::UdpAddress};
+
+use crate::common::*;
 
 #[path = "../common/lib.rs"]
 mod common;
@@ -28,7 +29,7 @@ fn setup_clients(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
         ServerNode(UdpAddress::new("0.0.0.0:0")),
-        ClientNode(UdpAddress::new("127.0.0.1:6002")),
+        ClientNode(UdpAddress::new("127.0.0.1:4002")),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),

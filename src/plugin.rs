@@ -1,15 +1,15 @@
 use bevy::{
     app::{App, Plugin, PostUpdate, PreUpdate},
-    prelude::{IntoSystemConfigs, IntoSystemSetConfigs},
+    prelude::{IntoSystemConfigs, IntoSystemSetConfigs, SystemSet},
 };
 
 use crate::{
     channels::{send_channel_message_system, ChannelId, ChannelPacket},
     client,
     network_node::network_node_event,
-    scheduler::NetworkSet,
     server::StartServer,
     transformer::{DecoderChannels, EncoderChannels},
+    transports::{tcp::TcpPlugin, udp::UdpPlugin},
 };
 
 pub struct OctopusPlugin;
@@ -33,12 +33,16 @@ impl Plugin for OctopusPlugin {
             )
             .add_plugins(client::plugin);
 
-        #[cfg(feature = "udp")]
-        app.add_plugins(crate::transports::udp::UdpPlugin);
-
-        #[cfg(feature = "tcp")]
-        app.add_plugins(crate::transports::tcp::TcpPlugin);
+        app.add_plugins(UdpPlugin).add_plugins(TcpPlugin);
     }
+}
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub enum NetworkSet {
+    Receive,
+    Decoding,
+    Encoding,
+    Send,
 }
 
 fn register_reflect_types(app: &mut App) -> &mut App {

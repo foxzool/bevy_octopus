@@ -1,6 +1,6 @@
 [package]
 name = "bevy_octopus"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["ZoOL <zhooul@gmail.com>"]
 edition = "2021"
 description = "ECS based networking library for Bevy"
@@ -16,9 +16,7 @@ documentation = "https://docs.rs/bevy_octopus"
 members = ["bevy_octopus_websocket"]
 
 [features]
-default = ["udp", "tcp"]
-udp = []
-tcp = []
+default = []
 inspect = ["bevy-inspector-egui"]
 
 
@@ -59,32 +57,31 @@ bevy = { version = "0.14.0", default-features = false, features = [
 [[example]]
 name = "udp_server"
 path = "examples/udp/server.rs"
-required-features = ["udp", "serde_json", "bincode"]
+required-features = ["serde_json", "bincode"]
 
 [[example]]
 name = "udp_client"
 path = "examples/udp/client.rs"
-required-features = ["udp", "serde_json", "bincode"]
+required-features = ["serde_json", "bincode"]
 
 [[example]]
 name = "udp_client_raw"
 path = "examples/udp/client_raw.rs"
-required-features = ["udp"]
 
 [[example]]
 name = "udp-complex"
 path = "examples/udp/udp_complex.rs"
-required-features = ["udp", "serde_json", "bincode"]
+required-features = ["serde_json", "bincode"]
 
 [[example]]
 name = "tcp_client"
 path = "examples/tcp/client.rs"
-required-features = ["tcp", "serde_json", "bincode"]
+required-features = ["serde_json", "bincode"]
 
 [[example]]
 name = "tcp_server"
 path = "examples/tcp/server.rs"
-required-features = ["tcp", "serde_json", "bincode"]
+required-features = ["serde_json", "bincode"]
 
 
 [profile.release]

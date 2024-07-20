@@ -2,6 +2,15 @@
 name = "bevy_octopus_websocket"
 version = "0.1.0"
 edition = "2021"
+authors = ["ZoOL <zhooul@gmail.com>"]
+description = "ECS based networking library for Bevy"
+readme = "README.md"
+repository = "https://github.com/foxzool/bevy_octopus"
+license = "MIT OR Apache-2.0"
+categories = ["game-development", "network-programming"]
+keywords = ["bevy", "networking", "ecs"]
+homepage = "https://github.com/foxzool/bevy_octopus"
+documentation = "https://docs.rs/bevy_octopus_websocket"
 
 [features]
 

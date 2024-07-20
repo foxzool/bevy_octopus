@@ -69,7 +69,7 @@ async fn listen(
     new_connection_tx: AsyncSender<TcpStream>,
 ) -> Result<(), NetworkError> {
     let listener = TcpListener::bind(addr).await?;
-    debug!("TCP Server listening on {}", addr);
+    info!("TCP Server listening on {}", addr);
     event_tx.send(NetworkEvent::Listen).await?;
     let mut incoming = listener.incoming();
 
@@ -91,7 +91,7 @@ async fn handle_connection(
 ) {
     let local_addr = stream.local_addr().unwrap();
     let addr = stream.peer_addr().unwrap();
-    debug!("TCP local {} connected to remote {}", local_addr, addr);
+    info!("TCP local {} connected to remote {}", local_addr, addr);
 
     let (mut reader, mut writer) = stream.split();
     let _ = event_tx.send(NetworkEvent::Connected).await;
@@ -187,7 +187,7 @@ fn on_start_client(
     q_tcp_client: Query<(&NetworkNode, &ClientNode<TcpAddress>), Without<NetworkPeer>>,
 ) {
     if let Ok((net_node, remote_addr)) = q_tcp_client.get(trigger.entity()) {
-        debug!("try connect to {}", remote_addr.to_string());
+        info!("try connect to {}", remote_addr.to_string());
 
         let addr = remote_addr.socket_addr;
         let recv_tx = net_node.recv_message_channel.sender.clone_async();
@@ -241,7 +241,7 @@ fn handle_endpoint(
                 peer,
             ));
 
-            debug!("new client connected {:?}", peer_entity);
+            info!("new client connected {:?}", peer_entity);
 
             // Add the client to the server's children
             commands.entity(entity).add_child(peer_entity);

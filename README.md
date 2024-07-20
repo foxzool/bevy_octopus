@@ -8,6 +8,81 @@
 
 A Low-level ECS-driven network plugin for Bevy.
 
+## Usage
+Add this in your Cargo.toml:
+```toml
+[dependencies]
+bevy_octopus = { version = "0.3", "features" = ["serde_json", "bincode"]} # or your custom format
+```
+
+## Example
+
+```rust,no_run 
+use bevy::prelude::*;
+use bevy_octopus::{
+    prelude::*,
+    transports::{tcp::TcpAddress, udp::UdpAddress},
+};
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PlayerInformation {
+    pub health: usize,
+    pub position: (u32, u32, u32),
+}
+
+const TCP_CHANNEL: ChannelId = ChannelId("tcp");
+const UDP_CHANNEL: ChannelId = ChannelId("udp");
+
+fn main() {
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_plugins(OctopusPlugin)
+        // UDP CHANNEL use json tranformer for PlayerInformation struct
+        .add_transformer::<PlayerInformation, JsonTransformer>(UDP_CHANNEL)
+        // TCP_CHANNEL use json tranformer for PlayerInformation struct
+        .add_transformer::<PlayerInformation, BincodeTransformer>(TCP_CHANNEL)
+        .add_systems(Startup, setup)
+        .add_systems(Update, resend_udp_to_tcp)
+        .observe(on_node_event)
+        .run();
+}
+
+fn setup(mut commands: Commands) {
+    // tcp client
+    commands.spawn((
+        NetworkBundle::new(TCP_CHANNEL),
+        ClientNode(TcpAddress::new("127.0.0.1:4321")),
+    ));
+
+    // udp server
+    commands.spawn((
+        NetworkBundle::new(UDP_CHANNEL),
+        ServerNode(UdpAddress::new("127.0.0.1:4002")),
+    ));
+}
+
+pub fn on_node_event(trigger: Trigger<NetworkEvent>) {
+    info!("{:?} trigger {:?}", trigger.entity(), trigger.event());
+}
+
+pub fn resend_udp_to_tcp(
+    mut channel_recviced: EventReader<ReceiveChannelMessage<PlayerInformation>>,
+    mut ev_send: EventWriter<SendChannelMessage<PlayerInformation>>,
+) {
+    for event in channel_recviced.read() {
+        info!("recevice {:?}", event.message);
+        if event.channel_id == UDP_CHANNEL {
+            ev_send.send(SendChannelMessage {
+                channel_id: TCP_CHANNEL,
+                message: event.message.clone(),
+            });
+        }
+    }
+}
+
+```
+
 ## Features
 
 ### ECS driven network
