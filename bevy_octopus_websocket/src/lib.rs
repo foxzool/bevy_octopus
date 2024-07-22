@@ -178,7 +178,7 @@ async fn handle_client_conn(
                 }
                 Err(err) => {
                     let _ = event_tx_clone
-                        .send(NetworkEvent::Error(NetworkError::Custom(err.to_string())))
+                        .send(NetworkEvent::Error(NetworkError::Common(err.to_string())))
                         .await;
                     let _ = event_tx_clone.send(NetworkEvent::Disconnected).await;
                 }
@@ -197,7 +197,7 @@ async fn handle_client_conn(
 
             if let Err(err) = writer.send(message).await {
                 let _ = event_tx
-                    .send(NetworkEvent::Error(NetworkError::Custom(err.to_string())))
+                    .send(NetworkEvent::Error(NetworkError::Common(err.to_string())))
                     .await;
                 let _ = event_tx.send(NetworkEvent::Disconnected).await;
 
@@ -253,7 +253,7 @@ async fn server_handle_conn(
             };
             if let Err(e) = writer.send(message).await {
                 let _ = event_tx
-                    .send(NetworkEvent::Error(NetworkError::Custom(e.to_string())))
+                    .send(NetworkEvent::Error(NetworkError::Common(e.to_string())))
                     .await;
 
                 break;

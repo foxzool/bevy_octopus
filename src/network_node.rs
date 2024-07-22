@@ -1,11 +1,13 @@
+use bevy::{
+    ecs::component::{ComponentHooks, StorageType},
+    prelude::*,
+};
+use bytes::Bytes;
+use kanal::{unbounded, Receiver, Sender};
 use std::{
     fmt::Debug,
     net::{SocketAddr, ToSocketAddrs},
 };
-
-use bevy::prelude::*;
-use bytes::Bytes;
-use kanal::{unbounded, Receiver, Sender};
 
 use crate::{client::ReconnectSetting, error::NetworkError, prelude::ChannelId};
 
@@ -50,19 +52,34 @@ impl NetworkBundle {
     }
 }
 
-#[derive(Component, Default)]
+#[derive(Default, Reflect)]
 pub struct NetworkNode {
     /// Channel for receiving messages
+    #[reflect(ignore)]
     pub recv_message_channel: AsyncChannel<NetworkRawPacket>,
     /// Channel for sending messages for peer
+    #[reflect(ignore)]
     pub send_message_channel: AsyncChannel<NetworkRawPacket>,
     /// Channel for events
+    #[reflect(ignore)]
     pub event_channel: AsyncChannel<NetworkEvent>,
     /// Channel for shutdown
+    #[reflect(ignore)]
     pub shutdown_channel: AsyncChannel<()>,
     /// Whether the node is running or not
     pub running: bool,
-    pub max_packet_size: usize,
+}
+
+impl Component for NetworkNode {
+    const STORAGE_TYPE: StorageType = StorageType::Table;
+
+    fn register_component_hooks(hooks: &mut ComponentHooks) {
+        hooks.on_remove(|world, entity, _component_id| {
+            if let Some(node) = world.get::<NetworkNode>(entity) {
+                node.shutdown_channel.sender.try_send(()).unwrap();
+            }
+        });
+    }
 }
 
 impl NetworkNode {

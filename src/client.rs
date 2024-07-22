@@ -9,7 +9,8 @@ use crate::{
 };
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_event::<StartClient>()
+    app.register_type::<ReconnectSetting>()
+        .add_event::<StartClient>()
         .add_systems(Update, handle_reconnect_timer)
         .observe(cleanup_client_session)
         .observe(client_reconnect);
@@ -35,7 +36,8 @@ impl<T: NetworkAddress + 'static> Component for ClientNode<T> {
 #[derive(Event, Clone)]
 pub struct StartClient;
 
-#[derive(Debug, Component)]
+#[derive(Debug, Component, Reflect)]
+#[reflect(Component)]
 pub struct ReconnectSetting {
     /// Delay in seconds
     pub delay: f32,

@@ -9,10 +9,12 @@
 A Low-level ECS-driven network plugin for Bevy.
 
 ## Usage
+
 Add this in your Cargo.toml:
+
 ```toml
 [dependencies]
-bevy_octopus = { version = "0.3", "features" = ["serde_json", "bincode"]} # or your custom format
+bevy_octopus = { version = "0.3", "features" = ["serde_json", "bincode"] } # or your custom format
 ```
 
 ## Example
@@ -97,8 +99,8 @@ You can define channel transformers for data serialization and deserialization.
 
 ### UDP Communication Types
 
-Support UDP [unicast](https://github.com/foxzool/bevy_octopus/blob/main/examples/udp_send_and_recv.rs), broadcast,
-multicast. [example](https://github.com/foxzool/bevy_octopus/blob/main/examples/udp_complex.rs)
+Support UDP [unicast](https://github.com/foxzool/bevy_octopus/blob/main/examples/udp/client_raw.rs), broadcast,
+multicast. [example](https://github.com/foxzool/bevy_octopus/blob/main/examples/udp/udp_complex.rs)
 
 ### No tokio runtime
 

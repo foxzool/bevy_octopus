@@ -6,7 +6,7 @@ use bevy::{
 use crate::{
     channels::{send_channel_message_system, ChannelId, ChannelPacket},
     client,
-    network_node::network_node_event,
+    network_node::{network_node_event, NetworkNode},
     server::StartServer,
     transformer::{DecoderChannels, EncoderChannels},
     transports::{tcp::TcpPlugin, udp::UdpPlugin},
@@ -47,4 +47,6 @@ pub enum NetworkSet {
 
 fn register_reflect_types(app: &mut App) -> &mut App {
     app.register_type::<ChannelId>()
+        .register_type::<NetworkNode>()
+        .register_type::<&'static str>()
 }

@@ -31,6 +31,7 @@ kanal = "0.1.0-pre8"
 
 [dev-dependencies]
 serde = { version = "1.0.130", features = ["serde_derive"] }
+bevy_octopus = { version = "0.3.0", path = "..", features = ["serde_json", "bincode"] }
 bincode = { version = "1.3.3" }
 serde_json = { version = "1.0.68" }
 

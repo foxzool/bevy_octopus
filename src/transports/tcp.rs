@@ -70,7 +70,7 @@ async fn listen(
 ) -> Result<(), NetworkError> {
     let listener = TcpListener::bind(addr).await?;
     info!("TCP Server listening on {}", addr);
-    event_tx.send(NetworkEvent::Listen).await?;
+    let _ = event_tx.send(NetworkEvent::Listen).await;
     let mut incoming = listener.incoming();
 
     while let Some(stream) = incoming.next().await {
@@ -119,7 +119,7 @@ async fn handle_connection(
                 Err(e) => {
                     trace!("Failed to read data from socket: {}", e);
                     let _ = event_tx_clone
-                        .send(NetworkEvent::Error(NetworkError::Custom(e.to_string())))
+                        .send(NetworkEvent::Error(NetworkError::Common(e.to_string())))
                         .await;
                     let _ = event_tx_clone.send(NetworkEvent::Disconnected).await;
                     break;
@@ -134,7 +134,7 @@ async fn handle_connection(
             if let Err(e) = writer.write_all(&data.bytes).await {
                 trace!("Failed to write data to socket: {}", e);
                 let _ = event_tx
-                    .send(NetworkEvent::Error(NetworkError::Custom(e.to_string())))
+                    .send(NetworkEvent::Error(NetworkError::Common(e.to_string())))
                     .await;
                 let _ = event_tx.send(NetworkEvent::Disconnected).await;
                 break;
@@ -170,7 +170,7 @@ fn on_start_server(
                 task::spawn(async move {
                     match shutdown_clone.recv().await {
                         Ok(_) => Ok(()),
-                        Err(e) => Err(NetworkError::RxReceiveError(e)),
+                        Err(e) => Err(NetworkError::Common(e.to_string())),
                     }
                 }),
             ];

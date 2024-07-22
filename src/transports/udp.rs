@@ -231,7 +231,7 @@ async fn listen(
         socket.peer_addr().ok()
     );
 
-    event_tx.send(NetworkEvent::Listen).await?;
+    let _ = event_tx.send(NetworkEvent::Listen).await;
 
     let tasks = vec![
         task::spawn(send_loop(socket.clone(), bind, send_rx)),
@@ -291,7 +291,7 @@ fn on_start_server(
                 task::spawn(async move {
                     match shutdown_rx.recv().await {
                         Ok(_) => Ok(()),
-                        Err(e) => Err(NetworkError::RxReceiveError(e)),
+                        Err(e) => Err(NetworkError::Common(e.to_string())),
                     }
                 }),
             ];
