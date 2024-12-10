@@ -22,7 +22,7 @@ pub fn shared_setup(app: &mut App) {
         },
     ))
     .add_plugins(OctopusPlugin)
-    .observe(on_node_event);
+    .add_observer(on_node_event);
 }
 
 #[cfg(feature = "inspect")]
@@ -34,7 +34,7 @@ pub fn shared_setup(app: &mut App) {
     }))
     .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
     .add_plugins(OctopusPlugin)
-    .observe(on_node_event);
+    .add_observer(on_node_event);
 }
 
 /// this channel is sending and receiving raw packet

@@ -17,7 +17,7 @@ documentation = "https://docs.rs/bevy_octopus_websocket"
 
 
 [dependencies]
-bevy_octopus = { version = "0.3.0", path = ".." }
+bevy_octopus = { version = "0.4.0", path = ".." }
 bevy = { version = "0.14.0", default-features = false, features = [] }
 async-std = "1.12.0"
 async-tungstenite = { version = "0.27.0", features = ["async-std-runtime", "async-tls"] }
@@ -31,7 +31,7 @@ kanal = "0.1.0-pre8"
 
 [dev-dependencies]
 serde = { version = "1.0.130", features = ["serde_derive"] }
-bevy_octopus = { version = "0.3.0", path = "..", features = ["serde_json", "bincode"] }
+bevy_octopus = { version = "0.4.0", path = "..", features = ["serde_json", "bincode"] }
 bincode = { version = "1.3.3" }
 serde_json = { version = "1.0.68" }
 

@@ -26,8 +26,8 @@ pub struct TcpPlugin;
 impl Plugin for TcpPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PostUpdate, handle_endpoint)
-            .observe(on_start_server)
-            .observe(on_start_client);
+            .add_observer(on_start_server)
+            .add_observer(on_start_client);
     }
 }
 

@@ -12,8 +12,8 @@ pub(super) fn plugin(app: &mut App) {
     app.register_type::<ReconnectSetting>()
         .add_event::<StartClient>()
         .add_systems(Update, handle_reconnect_timer)
-        .observe(cleanup_client_session)
-        .observe(client_reconnect);
+        .add_observer(cleanup_client_session)
+        .add_observer(client_reconnect);
 }
 
 #[derive(Component)]

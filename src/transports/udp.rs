@@ -22,7 +22,7 @@ pub struct UdpPlugin;
 
 impl Plugin for UdpPlugin {
     fn build(&self, app: &mut App) {
-        app.observe(on_start_server);
+        app.add_observer(on_start_server);
     }
 }
 
