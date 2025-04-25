@@ -1,11 +1,10 @@
-use bevy::{
-    ecs::component::{ComponentHooks, StorageType},
-    prelude::*,
-};
-
 use crate::{
     error::NetworkError,
     network_node::{NetworkAddress, NetworkEvent, NetworkPeer},
+};
+use bevy::{
+    ecs::component::{ComponentHooks, HookContext, Immutable, StorageType},
+    prelude::*,
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -24,15 +23,15 @@ pub struct ClientNode<T: NetworkAddress>(pub T);
 
 impl<T: NetworkAddress + 'static> Component for ClientNode<T> {
     const STORAGE_TYPE: StorageType = StorageType::Table;
+    type Mutability = Immutable;
 
     fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_insert(|mut world, targeted_entity, _component_id| {
-            world.commands().entity(targeted_entity).insert(ClientTag);
-            world.trigger_targets(StartClient, targeted_entity);
+        hooks.on_insert(|mut world, HookContext { entity, .. }| {
+            world.commands().entity(entity).insert(ClientTag);
+            world.trigger_targets(StartClient, entity);
         });
     }
 }
-
 #[derive(Event, Clone)]
 pub struct StartClient;
 
@@ -60,7 +59,7 @@ pub(crate) fn client_reconnect(
     mut commands: Commands,
     mut q_net: Query<&mut ReconnectSetting, Without<NetworkPeer>>,
 ) {
-    if let Ok(mut reconnect) = q_net.get_mut(trigger.entity()) {
+    if let Ok(mut reconnect) = q_net.get_mut(trigger.target()) {
         let event = trigger.event();
         if reconnect.retries < reconnect.max_retries {
             reconnect.retries += 1;
@@ -71,7 +70,7 @@ pub(crate) fn client_reconnect(
             NetworkEvent::Listen | NetworkEvent::Connected => reconnect.retries = 0,
             NetworkEvent::Disconnected | NetworkEvent::Error(NetworkError::Connection(_)) => {
                 commands
-                    .entity(trigger.entity())
+                    .entity(trigger.target())
                     .insert(ReconnectTimer(Timer::from_seconds(
                         reconnect.delay,
                         TimerMode::Once,
@@ -103,12 +102,12 @@ pub(crate) fn cleanup_client_session(
     mut commands: Commands,
     q_net: Query<Entity, With<NetworkPeer>>,
 ) {
-    if let Ok(entity) = q_net.get(trigger.entity()) {
+    if let Ok(entity) = q_net.get(trigger.target()) {
         let event = trigger.event();
 
         match event {
             NetworkEvent::Disconnected | NetworkEvent::Error(NetworkError::Connection(_)) => {
-                commands.entity(entity).despawn_recursive();
+                commands.entity(entity).despawn();
             }
             _ => {}
         }

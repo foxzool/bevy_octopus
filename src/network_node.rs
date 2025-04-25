@@ -1,15 +1,14 @@
+use crate::{client::ReconnectSetting, error::NetworkError, prelude::ChannelId};
 use bevy::{
-    ecs::component::{ComponentHooks, StorageType},
+    ecs::component::{ComponentHooks, HookContext, Mutable, StorageType},
     prelude::*,
 };
 use bytes::Bytes;
-use kanal::{unbounded, Receiver, Sender};
+use kanal::{Receiver, Sender, unbounded};
 use std::{
     fmt::Debug,
     net::{SocketAddr, ToSocketAddrs},
 };
-
-use crate::{client::ReconnectSetting, error::NetworkError, prelude::ChannelId};
 
 pub trait NetworkAddress: Debug + Clone + Send + Sync {
     fn to_string(&self) -> String;
@@ -73,8 +72,9 @@ pub struct NetworkNode {
 impl Component for NetworkNode {
     const STORAGE_TYPE: StorageType = StorageType::Table;
 
+    type Mutability = Mutable;
     fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_remove(|world, entity, _component_id| {
+        hooks.on_remove(|world, HookContext { entity, .. }| {
             if let Some(node) = world.get::<NetworkNode>(entity) {
                 node.shutdown_channel.sender.try_send(()).unwrap();
             }

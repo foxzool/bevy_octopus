@@ -261,7 +261,7 @@ fn on_start_server(
     >,
 ) {
     if let Ok((net_node, server_addr, opt_remote_addr, opt_broadcast, opt_v4, opt_v6)) =
-        q_udp.get(trigger.entity())
+        q_udp.get(trigger.target())
     {
         let local_addr = server_addr.socket_addr;
 

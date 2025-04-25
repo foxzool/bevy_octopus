@@ -2,7 +2,7 @@ use std::{any::TypeId, collections::HashMap, fmt::Debug, marker::PhantomData};
 
 use bevy::{prelude::*, reflect::GetTypeRegistration};
 use bytes::Bytes;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[cfg(feature = "bincode")]
 pub use bincode::BincodeTransformer;
@@ -272,7 +272,7 @@ fn decode_system<
                 errors.len(),
                 std::any::type_name::<M>(),
             );
-            channel_message.send_batch(
+            channel_message.write_batch(
                 messages
                     .into_iter()
                     .map(Result::unwrap)

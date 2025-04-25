@@ -44,7 +44,7 @@ fn setup_server(mut commands: Commands) {
 
 /// broadcast message to all connected clients in channel
 fn send_channel_packet(mut channel_events: EventWriter<ChannelPacket>) {
-    channel_events.send(ChannelPacket::new(RAW_CHANNEL, b"channel 1 message\r\n"));
+    channel_events.write(ChannelPacket::new(RAW_CHANNEL, b"channel 1 message\r\n"));
 }
 
 /// handle send message to connected clients
@@ -56,7 +56,7 @@ fn broadcast_message(
         if channel_id != &RAW_CHANNEL {
             continue;
         }
-        for &child in children.iter() {
+        for child in children.iter() {
             let message = b"broadcast message!\r\n";
 
             let child_net_node = q_child.get(child).expect("Child node not found.");

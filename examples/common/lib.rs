@@ -53,7 +53,7 @@ pub struct PlayerInformation {
 }
 
 pub fn on_node_event(trigger: Trigger<NetworkEvent>) {
-    info!("{:?} trigger {:?}", trigger.entity(), trigger.event());
+    info!("{:?} trigger {:?}", trigger.target(), trigger.event());
 }
 
 pub fn handle_message_events(
@@ -76,7 +76,7 @@ pub fn handle_raw_packet(q_server: Query<(Entity, &ChannelId, &NetworkNode)>) {
 }
 
 pub fn send_json_message(mut channel_messages: EventWriter<SendChannelMessage<PlayerInformation>>) {
-    channel_messages.send(SendChannelMessage {
+    channel_messages.write(SendChannelMessage {
         channel_id: JSON_CHANNEL,
         message: PlayerInformation {
             health: 100,
@@ -89,7 +89,7 @@ pub fn send_json_message(mut channel_messages: EventWriter<SendChannelMessage<Pl
 pub fn send_bincode_message(
     mut channel_messages: EventWriter<SendChannelMessage<PlayerInformation>>,
 ) {
-    channel_messages.send(SendChannelMessage {
+    channel_messages.write(SendChannelMessage {
         channel_id: BINCODE_CHANNEL,
         message: PlayerInformation {
             health: 300,

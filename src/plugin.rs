@@ -1,15 +1,14 @@
-use bevy::{
-    app::{App, Plugin, PostUpdate, PreUpdate},
-    prelude::{IntoSystemConfigs, IntoSystemSetConfigs, SystemSet},
-};
-
 use crate::{
-    channels::{send_channel_message_system, ChannelId, ChannelPacket},
+    channels::{ChannelId, ChannelPacket, send_channel_message_system},
     client,
-    network_node::{network_node_event, NetworkNode},
+    network_node::{NetworkNode, network_node_event},
     server::StartServer,
     transformer::{DecoderChannels, EncoderChannels},
     transports::{tcp::TcpPlugin, udp::UdpPlugin},
+};
+use bevy::{
+    app::{App, Plugin, PostUpdate, PreUpdate},
+    prelude::{IntoScheduleConfigs, SystemSet},
 };
 
 pub struct OctopusPlugin;

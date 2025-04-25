@@ -8,7 +8,7 @@ use async_std::{
 };
 use bevy::prelude::*;
 use bytes::Bytes;
-use futures::{future, AsyncReadExt};
+use futures::{AsyncReadExt, future};
 use kanal::{AsyncReceiver, AsyncSender};
 
 use crate::{
@@ -158,7 +158,7 @@ fn on_start_server(
     trigger: Trigger<StartServer>,
     q_tcp_server: Query<(&NetworkNode, &ServerNode<TcpAddress>)>,
 ) {
-    if let Ok((net_node, server)) = q_tcp_server.get(trigger.entity()) {
+    if let Ok((net_node, server)) = q_tcp_server.get(trigger.target()) {
         let local_addr = server.socket_addr;
         let event_tx = net_node.event_channel.sender.clone_async();
         let event_tx_clone = net_node.event_channel.sender.clone_async();
@@ -186,7 +186,7 @@ fn on_start_client(
     trigger: Trigger<StartClient>,
     q_tcp_client: Query<(&NetworkNode, &ClientNode<TcpAddress>), Without<NetworkPeer>>,
 ) {
-    if let Ok((net_node, remote_addr)) = q_tcp_client.get(trigger.entity()) {
+    if let Ok((net_node, remote_addr)) = q_tcp_client.get(trigger.target()) {
         info!("try connect to {}", remote_addr.to_string());
 
         let addr = remote_addr.socket_addr;

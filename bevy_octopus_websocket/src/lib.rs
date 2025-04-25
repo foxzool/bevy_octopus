@@ -17,8 +17,8 @@ pub struct WebsocketPlugin;
 impl Plugin for WebsocketPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PostUpdate, handle_endpoint)
-            .observe(on_start_client)
-            .observe(on_start_server);
+            .add_observer(on_start_client)
+            .add_observer(on_start_server);
     }
 }
 
@@ -88,7 +88,7 @@ fn on_start_server(
     trigger: Trigger<StartServer>,
     q_ws_server: Query<(&NetworkNode, &ServerNode<WebsocketAddress>)>,
 ) {
-    if let Ok((net_node, server_node)) = q_ws_server.get(trigger.entity()) {
+    if let Ok((net_node, server_node)) = q_ws_server.get(trigger.target()) {
         let local_addr = server_node.url.parse().expect("Invalid address");
         let event_tx = net_node.event_channel.sender.clone_async();
         let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
@@ -119,7 +119,7 @@ fn on_start_client(
     trigger: Trigger<StartClient>,
     q_ws_client: Query<(&NetworkNode, &ClientNode<WebsocketAddress>), Without<NetworkPeer>>,
 ) {
-    if let Ok((net_node, remote_addr)) = q_ws_client.get(trigger.entity()) {
+    if let Ok((net_node, remote_addr)) = q_ws_client.get(trigger.target()) {
         let url = remote_addr.url.clone();
         debug!("try connect to {}", url);
         let recv_tx = net_node.recv_message_channel.sender.clone_async();
