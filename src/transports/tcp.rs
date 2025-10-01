@@ -155,10 +155,11 @@ async fn handle_connection(
 
 /// TcpNode with local socket meas TCP server need to listen socket
 fn on_start_server(
-    trigger: Trigger<StartServer>,
+    on: On<StartServer>,
     q_tcp_server: Query<(&NetworkNode, &ServerNode<TcpAddress>)>,
 ) {
-    if let Ok((net_node, server)) = q_tcp_server.get(trigger.target()) {
+    let ev = on.event();
+    if let Ok((net_node, server)) = q_tcp_server.get(ev.entity) {
         let local_addr = server.socket_addr;
         let event_tx = net_node.event_channel.sender.clone_async();
         let event_tx_clone = net_node.event_channel.sender.clone_async();
@@ -183,10 +184,11 @@ fn on_start_server(
 }
 
 fn on_start_client(
-    trigger: Trigger<StartClient>,
+    on: On<StartClient>,
     q_tcp_client: Query<(&NetworkNode, &ClientNode<TcpAddress>), Without<NetworkPeer>>,
 ) {
-    if let Ok((net_node, remote_addr)) = q_tcp_client.get(trigger.target()) {
+    let ev = on.event();
+    if let Ok((net_node, remote_addr)) = q_tcp_client.get(ev.entity) {
         info!("try connect to {}", remote_addr.to_string());
 
         let addr = remote_addr.socket_addr;

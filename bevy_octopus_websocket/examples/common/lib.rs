@@ -41,12 +41,13 @@ pub struct PlayerInformation {
     pub position: (u32, u32, u32),
 }
 
-pub fn on_node_event(trigger: Trigger<NetworkEvent>) {
-    info!("{:?} trigger {:?}", trigger.target(), trigger.event());
+pub fn on_node_event(on: On<NodeEvent>) {
+    let e = on.event();
+    info!("{:?} trigger {:?}", e.entity, e.event);
 }
 
 pub fn handle_message_events(
-    mut ev_channels: EventReader<ReceiveChannelMessage<PlayerInformation>>,
+    mut ev_channels: MessageReader<ReceiveChannelMessage<PlayerInformation>>,
 ) {
     for event in ev_channels.read() {
         info!("{} Received: {:?}", event.channel_id, &event.message);
@@ -61,7 +62,9 @@ pub fn handle_raw_packet(q_server: Query<(&ChannelId, &NetworkNode)>) {
     }
 }
 
-pub fn send_json_message(mut channel_messages: EventWriter<SendChannelMessage<PlayerInformation>>) {
+pub fn send_json_message(
+    mut channel_messages: MessageWriter<SendChannelMessage<PlayerInformation>>,
+) {
     channel_messages.write(SendChannelMessage {
         channel_id: JSON_CHANNEL,
         message: PlayerInformation {
@@ -73,7 +76,7 @@ pub fn send_json_message(mut channel_messages: EventWriter<SendChannelMessage<Pl
 
 /// send bincode message
 pub fn send_bincode_message(
-    mut channel_messages: EventWriter<SendChannelMessage<PlayerInformation>>,
+    mut channel_messages: MessageWriter<SendChannelMessage<PlayerInformation>>,
 ) {
     channel_messages.write(SendChannelMessage {
         channel_id: BINCODE_CHANNEL,

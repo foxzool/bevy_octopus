@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use bevy::{
     ecs::reflect::ReflectComponent,
-    prelude::{Component, Event, EventReader, Query, Reflect},
+    prelude::{Component, Message, MessageReader, Query, Reflect},
 };
 use bytes::Bytes;
 
@@ -19,7 +19,7 @@ impl Display for ChannelId {
     }
 }
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct ChannelPacket {
     pub channel_id: ChannelId,
     pub bytes: Bytes,
@@ -36,7 +36,7 @@ impl ChannelPacket {
     }
 }
 
-#[derive(Event, Debug)]
+#[derive(Message, Debug)]
 pub struct SendChannelMessage<M> {
     pub channel_id: ChannelId,
     pub message: M,
@@ -51,7 +51,7 @@ impl<M> SendChannelMessage<M> {
     }
 }
 
-#[derive(Event, Debug)]
+#[derive(Message, Debug)]
 pub struct ReceiveChannelMessage<M> {
     pub channel_id: ChannelId,
     pub message: M,
@@ -68,7 +68,7 @@ impl<M> ReceiveChannelMessage<M> {
 
 pub(crate) fn send_channel_message_system(
     q_net: Query<(&ChannelId, &NetworkNode)>,
-    mut channel_events: EventReader<ChannelPacket>,
+    mut channel_events: MessageReader<ChannelPacket>,
 ) {
     for channel_ev in channel_events.read() {
         q_net.par_iter().for_each(|(channel_id, net_node)| {

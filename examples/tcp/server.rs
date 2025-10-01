@@ -43,7 +43,7 @@ fn setup_server(mut commands: Commands) {
 }
 
 /// broadcast message to all connected clients in channel
-fn send_channel_packet(mut channel_events: EventWriter<ChannelPacket>) {
+fn send_channel_packet(mut channel_events: MessageWriter<ChannelPacket>) {
     channel_events.write(ChannelPacket::new(RAW_CHANNEL, b"channel 1 message\r\n"));
 }
 

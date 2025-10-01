@@ -1,8 +1,5 @@
 use crate::{client::ReconnectSetting, error::NetworkError, prelude::ChannelId};
-use bevy::{
-    ecs::component::{ComponentHooks, HookContext, Mutable, StorageType},
-    prelude::*,
-};
+use bevy::{ecs::component::{Mutable, StorageType}, prelude::*};
 use bytes::Bytes;
 use kanal::{Receiver, Sender, unbounded};
 use std::{
@@ -73,12 +70,13 @@ impl Component for NetworkNode {
     const STORAGE_TYPE: StorageType = StorageType::Table;
 
     type Mutability = Mutable;
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_remove(|world, HookContext { entity, .. }| {
-            if let Some(node) = world.get::<NetworkNode>(entity) {
+
+    fn on_remove() -> Option<bevy::ecs::lifecycle::ComponentHook> {
+        Some(|world, ctx| {
+            if let Some(node) = world.get::<NetworkNode>(ctx.entity) {
                 node.shutdown_channel.sender.try_send(()).unwrap();
             }
-        });
+        })
     }
 }
 
@@ -142,13 +140,20 @@ impl<T> AsyncChannel<T> {
     }
 }
 
-#[derive(Debug, Event)]
-/// A network event originating from a network node
+#[derive(Debug)]
+/// 来自网络节点后台的原始事件（线程通道）
 pub enum NetworkEvent {
     Listen,
     Connected,
     Disconnected,
     Error(NetworkError),
+}
+
+#[derive(EntityEvent, Debug)]
+/// ECS 观察者用的实体事件，携带目标实体
+pub struct NodeEvent {
+    pub entity: Entity,
+    pub event: NetworkEvent,
 }
 
 /// send network node error channel to events
@@ -167,7 +172,7 @@ pub(crate) fn network_node_event(
                     net_node.stop();
                 }
             }
-            commands.trigger_targets(event, vec![entity]);
+            commands.trigger(NodeEvent { entity, event });
         }
     }
 }

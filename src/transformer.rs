@@ -99,7 +99,7 @@ impl NetworkMessageTransformer for App {
             self.add_systems(PostUpdate, encode_system::<M, T>);
         }
 
-        self.add_event::<ReceiveChannelMessage<M>>();
+        self.add_message::<ReceiveChannelMessage<M>>();
 
         self
     }
@@ -135,7 +135,7 @@ impl NetworkMessageTransformer for App {
             self.add_systems(PostUpdate, spawn_decoder_marker::<M, T>);
         }
 
-        self.add_event::<SendChannelMessage<M>>();
+        self.add_message::<SendChannelMessage<M>>();
 
         self
     }
@@ -207,7 +207,7 @@ fn encode_system<
     M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
     T: Transformer + bevy::prelude::Resource,
 >(
-    mut message_ev: EventReader<SendChannelMessage<M>>,
+    mut message_ev: MessageReader<SendChannelMessage<M>>,
     transformer: Res<T>,
     query: Query<(&ChannelId, &NetworkNode), (With<EncoderMarker<M, T>>, With<ClientTag>)>,
 ) {
@@ -233,9 +233,12 @@ fn encode_system<
                 }
 
                 Err(e) => {
-                    let _ = net_node.event_channel.sender.send(NetworkEvent::Error(
-                        NetworkError::SerializeError(e.to_string()),
-                    ));
+                    let _ = net_node
+                        .event_channel
+                        .sender
+                        .send(NetworkEvent::Error(NetworkError::SerializeError(
+                            e.to_string(),
+                        )));
                 }
             }
         }
@@ -248,7 +251,7 @@ fn decode_system<
     M: Serialize + DeserializeOwned + Send + Sync + Debug + 'static,
     T: Transformer + bevy::prelude::Resource,
 >(
-    mut channel_message: EventWriter<ReceiveChannelMessage<M>>,
+    mut channel_message: MessageWriter<ReceiveChannelMessage<M>>,
     mut commands: Commands,
     transformer: Res<T>,
     query: Query<(Entity, &ChannelId, &NetworkNode), With<DecoderMarker<M, T>>>,
@@ -280,7 +283,10 @@ fn decode_system<
                     .collect::<Vec<_>>(),
             );
             for error in errors.into_iter().map(Result::unwrap_err) {
-                commands.trigger_targets(NetworkEvent::Error(error), entity);
+                commands.trigger(crate::network_node::NodeEvent {
+                    entity,
+                    event: NetworkEvent::Error(error),
+                });
             }
         }
     }

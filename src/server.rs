@@ -1,8 +1,5 @@
 use crate::network_node::NetworkAddress;
-use bevy::{
-    ecs::component::{ComponentHooks, HookContext, Immutable, StorageType},
-    prelude::*,
-};
+use bevy::{ecs::component::{Immutable, StorageType}, prelude::*};
 
 #[derive(Deref)]
 pub struct ServerNode<T: NetworkAddress>(pub T);
@@ -11,12 +8,14 @@ impl<T: NetworkAddress + 'static> Component for ServerNode<T> {
     const STORAGE_TYPE: StorageType = StorageType::Table;
     type Mutability = Immutable;
 
-    fn register_component_hooks(hooks: &mut ComponentHooks) {
-        hooks.on_insert(|mut world, HookContext { entity, .. }| {
-            world.trigger_targets(StartServer, entity);
-        });
+    fn on_insert() -> Option<bevy::ecs::lifecycle::ComponentHook> {
+        Some(|mut world, ctx| {
+            world.trigger(StartServer { entity: ctx.entity });
+        })
     }
 }
 
-#[derive(Event, Clone)]
-pub struct StartServer;
+#[derive(EntityEvent, Clone)]
+pub struct StartServer {
+    pub entity: Entity,
+}

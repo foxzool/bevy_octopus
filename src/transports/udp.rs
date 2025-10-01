@@ -247,7 +247,7 @@ async fn listen(
 
 #[allow(clippy::type_complexity)]
 fn on_start_server(
-    trigger: Trigger<StartServer>,
+    on: On<StartServer>,
     q_udp: Query<
         (
             &NetworkNode,
@@ -260,8 +260,9 @@ fn on_start_server(
         Without<NetworkPeer>,
     >,
 ) {
+    let ev = on.event();
     if let Ok((net_node, server_addr, opt_remote_addr, opt_broadcast, opt_v4, opt_v6)) =
-        q_udp.get(trigger.target())
+        q_udp.get(ev.entity)
     {
         let local_addr = server_addr.socket_addr;
 

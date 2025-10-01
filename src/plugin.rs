@@ -2,7 +2,6 @@ use crate::{
     channels::{ChannelId, ChannelPacket, send_channel_message_system},
     client,
     network_node::{NetworkNode, network_node_event},
-    server::StartServer,
     transformer::{DecoderChannels, EncoderChannels},
     transports::{tcp::TcpPlugin, udp::UdpPlugin},
 };
@@ -18,8 +17,7 @@ impl Plugin for OctopusPlugin {
         let app = register_reflect_types(app);
         app.init_resource::<EncoderChannels>()
             .init_resource::<DecoderChannels>()
-            .add_event::<ChannelPacket>()
-            .add_event::<StartServer>()
+            .add_message::<ChannelPacket>()
             .configure_sets(
                 PreUpdate,
                 (NetworkSet::Receive, NetworkSet::Decoding).chain(),

@@ -85,10 +85,11 @@ impl WebsocketAddress {
 }
 
 fn on_start_server(
-    trigger: Trigger<StartServer>,
+    on: On<StartServer>,
     q_ws_server: Query<(&NetworkNode, &ServerNode<WebsocketAddress>)>,
 ) {
-    if let Ok((net_node, server_node)) = q_ws_server.get(trigger.target()) {
+    let ev = on.event();
+    if let Ok((net_node, server_node)) = q_ws_server.get(ev.entity) {
         let local_addr = server_node.url.parse().expect("Invalid address");
         let event_tx = net_node.event_channel.sender.clone_async();
         let shutdown_clone = net_node.shutdown_channel.receiver.clone_async();
@@ -116,10 +117,11 @@ fn on_start_server(
 
 #[allow(clippy::type_complexity)]
 fn on_start_client(
-    trigger: Trigger<StartClient>,
+    on: On<StartClient>,
     q_ws_client: Query<(&NetworkNode, &ClientNode<WebsocketAddress>), Without<NetworkPeer>>,
 ) {
-    if let Ok((net_node, remote_addr)) = q_ws_client.get(trigger.target()) {
+    let ev = on.event();
+    if let Ok((net_node, remote_addr)) = q_ws_client.get(ev.entity) {
         let url = remote_addr.url.clone();
         debug!("try connect to {}", url);
         let recv_tx = net_node.recv_message_channel.sender.clone_async();
@@ -319,7 +321,7 @@ fn handle_endpoint(
 
             // Add the client to the server's children
             commands.entity(entity).add_child(child_ws_client);
-            commands.trigger_targets(NetworkEvent::Connected, vec![child_ws_client]);
+            commands.trigger(NodeEvent { entity: child_ws_client, event: NetworkEvent::Connected });
         }
     }
 }
