@@ -14,7 +14,7 @@ Add this in your Cargo.toml:
 
 ```toml
 [dependencies]
-bevy_octopus = { version = "0.4", "features" = ["serde_json", "bincode"] } # or your custom format
+bevy_octopus = { version = "0.5", features = ["serde_json", "bincode"] } # or your custom format
 ```
 
 ## Example
@@ -46,7 +46,7 @@ fn main() {
         .add_transformer::<PlayerInformation, BincodeTransformer>(TCP_CHANNEL)
         .add_systems(Startup, setup)
         .add_systems(Update, resend_udp_to_tcp)
-        .observe(on_node_event)
+        .add_observer(on_node_event)
         .run();
 }
 
@@ -64,18 +64,19 @@ fn setup(mut commands: Commands) {
     ));
 }
 
-pub fn on_node_event(trigger: Trigger<NetworkEvent>) {
-    info!("{:?} trigger {:?}", trigger.entity(), trigger.event());
+pub fn on_node_event(on: On<NodeEvent>) {
+    let e = on.event();
+    info!("{:?} trigger {:?}", e.entity, e.event);
 }
 
 pub fn resend_udp_to_tcp(
-    mut channel_recviced: EventReader<ReceiveChannelMessage<PlayerInformation>>,
-    mut ev_send: EventWriter<SendChannelMessage<PlayerInformation>>,
+    mut channel_recviced: MessageReader<ReceiveChannelMessage<PlayerInformation>>,
+    mut channel_messages: MessageWriter<SendChannelMessage<PlayerInformation>>,
 ) {
     for event in channel_recviced.read() {
         info!("recevice {:?}", event.message);
         if event.channel_id == UDP_CHANNEL {
-            ev_send.send(SendChannelMessage {
+            channel_messages.write(SendChannelMessage {
                 channel_id: TCP_CHANNEL,
                 message: event.message.clone(),
             });
@@ -124,7 +125,8 @@ multicast. [example](https://github.com/foxzool/bevy_octopus/blob/main/examples/
 
 | bevy | bevy_octopus |
 |------|--------------|
-| 0.16 | 0.5          |
+| 0.17 | 0.5          |
+| 0.16 | 0.4          |
 | 0.15 | 0.4          |
 | 0.14 | 0.2 , 0.3    |
 | 0.13 | 0.1          |
