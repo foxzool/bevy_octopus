@@ -299,7 +299,8 @@ fn spawn_encoder_marker<
 ) {
     for (entity, channel_id) in q_channel.iter() {
         if let Some(channels) = mt_ids.0.get(&(TypeId::of::<M>(), TypeId::of::<T>()))
-            && channels.contains(channel_id) {
+            && channels.contains(channel_id)
+        {
             trace!(
                 "{:?} Spawning encoder marker for {} in {}",
                 entity,
@@ -323,7 +324,8 @@ fn spawn_decoder_marker<
 ) {
     for (entity, channel_id) in q_channel.iter() {
         if let Some(channels) = mt_ids.0.get(&(TypeId::of::<M>(), TypeId::of::<T>()))
-            && channels.contains(channel_id) {
+            && channels.contains(channel_id)
+        {
             trace!(
                 "{:?} Spawning decoder marker for {} in {}",
                 entity,
