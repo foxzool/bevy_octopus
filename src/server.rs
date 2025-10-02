@@ -1,5 +1,8 @@
 use crate::network_node::NetworkAddress;
-use bevy::{ecs::component::{Immutable, StorageType}, prelude::*};
+use bevy::{
+    ecs::component::{Immutable, StorageType},
+    prelude::*,
+};
 
 #[derive(Deref)]
 pub struct ServerNode<T: NetworkAddress>(pub T);

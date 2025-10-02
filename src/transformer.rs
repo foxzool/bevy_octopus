@@ -233,12 +233,9 @@ fn encode_system<
                 }
 
                 Err(e) => {
-                    let _ = net_node
-                        .event_channel
-                        .sender
-                        .send(NetworkEvent::Error(NetworkError::SerializeError(
-                            e.to_string(),
-                        )));
+                    let _ = net_node.event_channel.sender.send(NetworkEvent::Error(
+                        NetworkError::SerializeError(e.to_string()),
+                    ));
                 }
             }
         }
@@ -301,18 +298,17 @@ fn spawn_encoder_marker<
     q_channel: Query<(Entity, &ChannelId), Added<ChannelId>>,
 ) {
     for (entity, channel_id) in q_channel.iter() {
-        if let Some(channels) = mt_ids.0.get(&(TypeId::of::<M>(), TypeId::of::<T>())) {
-            if channels.contains(channel_id) {
-                trace!(
-                    "{:?} Spawning encoder marker for {} in {}",
-                    entity,
-                    T::NAME,
-                    channel_id
-                );
-                commands
-                    .entity(entity)
-                    .insert(EncoderMarker::<M, T>::default());
-            }
+        if let Some(channels) = mt_ids.0.get(&(TypeId::of::<M>(), TypeId::of::<T>()))
+            && channels.contains(channel_id) {
+            trace!(
+                "{:?} Spawning encoder marker for {} in {}",
+                entity,
+                T::NAME,
+                channel_id
+            );
+            commands
+                .entity(entity)
+                .insert(EncoderMarker::<M, T>::default());
         }
     }
 }
@@ -326,18 +322,17 @@ fn spawn_decoder_marker<
     q_channel: Query<(Entity, &ChannelId), Added<ChannelId>>,
 ) {
     for (entity, channel_id) in q_channel.iter() {
-        if let Some(channels) = mt_ids.0.get(&(TypeId::of::<M>(), TypeId::of::<T>())) {
-            if channels.contains(channel_id) {
-                trace!(
-                    "{:?} Spawning decoder marker for {} in {}",
-                    entity,
-                    T::NAME,
-                    channel_id
-                );
-                commands
-                    .entity(entity)
-                    .insert(DecoderMarker::<M, T>::default());
-            }
+        if let Some(channels) = mt_ids.0.get(&(TypeId::of::<M>(), TypeId::of::<T>()))
+            && channels.contains(channel_id) {
+            trace!(
+                "{:?} Spawning decoder marker for {} in {}",
+                entity,
+                T::NAME,
+                channel_id
+            );
+            commands
+                .entity(entity)
+                .insert(DecoderMarker::<M, T>::default());
         }
     }
 }

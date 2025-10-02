@@ -1,5 +1,8 @@
 use crate::{client::ReconnectSetting, error::NetworkError, prelude::ChannelId};
-use bevy::{ecs::component::{Mutable, StorageType}, prelude::*};
+use bevy::{
+    ecs::component::{Mutable, StorageType},
+    prelude::*,
+};
 use bytes::Bytes;
 use kanal::{Receiver, Sender, unbounded};
 use std::{

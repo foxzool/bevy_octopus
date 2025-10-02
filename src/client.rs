@@ -2,7 +2,10 @@ use crate::{
     error::NetworkError,
     network_node::{NetworkAddress, NetworkEvent, NetworkPeer, NodeEvent},
 };
-use bevy::{ecs::component::{Immutable, StorageType}, prelude::*};
+use bevy::{
+    ecs::component::{Immutable, StorageType},
+    prelude::*,
+};
 
 pub(super) fn plugin(app: &mut App) {
     app.register_type::<ReconnectSetting>()

@@ -321,7 +321,10 @@ fn handle_endpoint(
 
             // Add the client to the server's children
             commands.entity(entity).add_child(child_ws_client);
-            commands.trigger(NodeEvent { entity: child_ws_client, event: NetworkEvent::Connected });
+            commands.trigger(NodeEvent {
+                entity: child_ws_client,
+                event: NetworkEvent::Connected,
+            });
         }
     }
 }
