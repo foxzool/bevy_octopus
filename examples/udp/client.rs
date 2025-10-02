@@ -29,7 +29,7 @@ fn setup_clients(mut commands: Commands) {
     commands.spawn((
         NetworkBundle::new(JSON_CHANNEL),
         ServerNode(UdpAddress::new("0.0.0.0:0")),
-        ClientNode(UdpAddress::new("127.0.0.1:4002")),
+        ClientNode(UdpAddress::new("127.0.0.1:6002")),
     ));
     commands.spawn((
         NetworkBundle::new(BINCODE_CHANNEL),
