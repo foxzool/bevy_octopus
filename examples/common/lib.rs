@@ -32,7 +32,6 @@ pub fn shared_setup(app: &mut App) {
         filter: "bevy_octopus=debug".to_string(),
         ..default()
     }))
-    .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
     .add_plugins(OctopusPlugin)
     .add_observer(on_node_event);
 }
