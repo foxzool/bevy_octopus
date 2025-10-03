@@ -3,6 +3,17 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (without 'v' prefix)"
+        required: true
+        type: string
+      publish:
+        description: "Publish to crates.io"
+        required: false
+        default: true
+        type: boolean
 
 env:
   CARGO_TERM_COLOR: always
@@ -61,9 +72,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-release-build-
 
-      - name: Extract version from tag
+      - name: Determine version (tag or manual)
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Verify version matches Cargo.toml
         run: |
@@ -101,7 +117,7 @@ jobs:
 
           # Generate changelog from commits
           if [ -n "$PREV_TAG" ]; then
-            echo "## 🚀 bevy_mqtt v${{ steps.version.outputs.VERSION }}" > release_notes.md
+            echo "## 🚀 bevy_octopus v${{ steps.version.outputs.VERSION }}" > release_notes.md
             echo "" >> release_notes.md
 
             # Get commits since last tag and categorize them
@@ -172,7 +188,7 @@ jobs:
           else
             # Fallback for first release
             cat > release_notes.md << 'EOF'
-          ## 🚀 bevy_mqtt v${{ steps.version.outputs.VERSION }}
+          ## 🚀 bevy_octopus v${{ steps.version.outputs.VERSION }}
 
           ### What's New
           This is the initial release or a release without a previous tag for comparison.
@@ -192,26 +208,32 @@ jobs:
           ### 📦 Installation
           \`\`\`toml
           [dependencies]
-          bevy_mqtt = "${{ steps.version.outputs.VERSION }}"
+          bevy_octopus = "${{ steps.version.outputs.VERSION }}"
           \`\`\`
 
           ### 🔗 Full Changelog
-          **Full Changelog**: https://github.com/foxzool/bevy_mqtt/compare/${PREV_TAG}...v${{ steps.version.outputs.VERSION }}
+          **Full Changelog**: https://github.com/foxzool/bevy_octopus/compare/${PREV_TAG}...v${{ steps.version.outputs.VERSION }}
 
           ---
           *Built with ❤️ using Bevy ECS*
           EOF
 
+      - name: Create tag for manual run
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag -a v${{ steps.version.outputs.VERSION }} -m "chore(release): v${{ steps.version.outputs.VERSION }}" || true
+          git push origin v${{ steps.version.outputs.VERSION }} || true
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2.1.0
         with:
           tag_name: v${{ steps.version.outputs.VERSION }}
-          name: bevy_mqtt v${{ steps.version.outputs.VERSION }}
+          name: bevy_octopus v${{ steps.version.outputs.VERSION }}
           body_path: release_notes.md
           draft: false
           prerelease: ${{ steps.prerelease_check.outputs.prerelease }}
-          files: |
-            target/release/bevy_mqtt-*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -222,6 +244,7 @@ jobs:
         run: cargo build --release
 
       - name: Publish to crates.io
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
         run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
@@ -229,4 +252,4 @@ jobs:
       - name: Wait for crates.io index (with timeout)
         run: |
           echo "⏳ Waiting for crates.io to index the new version..."
-          timeout 300 bash -c 'until cargo search bevy_mqtt --limit 1 | grep -q "${{ steps.version.outputs.VERSION }}"; do sleep 10; done' || echo "⚠️ Timeout waiting for crates.io indexing, but release should still be successful"
+          timeout 300 bash -c 'until cargo search bevy_octopus --limit 1 | grep -q "${{ steps.version.outputs.VERSION }}"; do sleep 10; done' || echo "⚠️ Timeout waiting for crates.io indexing, but release should still be successful"
