@@ -144,16 +144,10 @@ jobs:
       - name: Clean up generated files before publish
         run: rm -f bevy_octopus_websocket/release_notes.md
 
+      - name: Skip crates.io publish (workspace member)
+        run: echo "⚠️  Skipping publish: bevy_octopus_websocket is a workspace member"
+        env:
+          SKIP_PUBLISH_REASON: "workspace members should be published via main project"
+
       - name: Build release artifacts
         run: cargo build --release
-
-      - name: Publish to crates.io
-        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
-        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Wait for crates.io index (with timeout)
-        run: |
-          echo "⏳ Waiting for crates.io to index new version..."
-          timeout 300 bash -c 'until cargo search bevy_octopus_websocket --limit 1 | grep -q "${{ steps.version.outputs.VERSION }}"; do sleep 10; done' || echo "⚠️ Timeout waiting for crates.io indexing, but release should still be successful"
