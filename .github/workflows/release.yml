@@ -83,7 +83,15 @@ jobs:
 
       - name: Verify version matches Cargo.toml
         run: |
-          CARGO_VERSION=$(grep '^version = ' Cargo.toml | sed 's/version = "//' | sed 's/"//g')
+          # Try to match version against workspace member or root Cargo.toml
+          if [[ "${{ steps.version.outputs.VERSION }}" == *"bevy_octopus_websocket"* ]]; then
+            CARGO_VERSION=$(grep '^version = ' bevy_octopus_websocket/Cargo.toml | sed 's/version = "//' | sed 's/"//g')
+            echo "Checking bevy_octopus_websocket version: $CARGO_VERSION"
+          else
+            CARGO_VERSION=$(grep '^version = ' Cargo.toml | sed 's/version = "//' | sed 's/"//g')
+            echo "Checking main bevy_octopus version: $CARGO_VERSION"
+          fi
+          
           if [ "$CARGO_VERSION" != "${{ steps.version.outputs.VERSION }}" ]; then
             echo "Version mismatch: tag v${{ steps.version.outputs.VERSION }} vs Cargo.toml $CARGO_VERSION"
             exit 1
