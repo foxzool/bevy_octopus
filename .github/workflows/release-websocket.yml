@@ -142,12 +142,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Clean up generated files before publish
-        run: rm -f bevy_octopus_websocket/release_notes.md
+        run: rm -f release_notes.md
 
       - name: Skip crates.io publish (workspace member)
         run: echo "⚠️  Skipping publish: bevy_octopus_websocket is a workspace member"
-        env:
-          SKIP_PUBLISH_REASON: "workspace members should be published via main project"
 
       - name: Build release artifacts
         run: cargo build --release
