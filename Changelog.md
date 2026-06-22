@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.8.0] - 2026-06-22
+
+### Changed
+- Upgrade Bevy to `0.19` (stable release).
+- Updated `bevy_octopus_websocket` bevy dependency to `0.19`.
+- Updated `bevy_octopus_websocket` internal dependency to `0.8`.
+
+### Notes
+- Supported versions mapping updated: Bevy `0.19` → `bevy_octopus` `0.8`.
+- Released `bevy_octopus_websocket 0.2.1` compatible with Bevy `0.19`; enabled crates.io publishing in its release workflow.
+
 ## [0.6.0] - 2025-10-07
 
 ### Changed
