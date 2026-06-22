@@ -111,12 +111,12 @@ jobs:
           \`\`\`toml
           [dependencies]
           bevy_octopus_websocket = "${{ steps.version.outputs.VERSION }}"
-          bevy_octopus = { version = "0.7.0", features = ["serde_json", "bincode"] }
+          bevy_octopus = { version = "0.8.0", features = ["serde_json", "bincode"] }
           \`\`\`
 
           ### ⚙️ Compatible Versions
-          - bevy_octopus: 0.7.0
-          - bevy: 0.18
+          - bevy_octopus: 0.8.0
+          - bevy: 0.19
 
           ---
           *WebSocket transport built with ❤️ using Bevy ECS*

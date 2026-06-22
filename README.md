@@ -14,7 +14,7 @@ Add this in your Cargo.toml:
 
 ```toml
 [dependencies]
-bevy_octopus = { version = "0.7", features = ["serde_json", "bincode"] } # or your custom format
+bevy_octopus = { version = "0.8", features = ["serde_json", "bincode"] } # or your custom format
 ```
 
 ## Example
@@ -125,6 +125,7 @@ multicast. [example](https://github.com/foxzool/bevy_octopus/blob/main/examples/
 
 | bevy | bevy_octopus |
 |------|--------------|
+| 0.19 | 0.8          |
 | 0.18 | 0.7          |
 | 0.17 | 0.6          |
 | 0.16 | 0.5          |
