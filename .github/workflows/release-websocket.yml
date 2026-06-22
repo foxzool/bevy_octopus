@@ -2,11 +2,11 @@ name: Release WebSocket
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["ws-v*"]
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to release (without 'v' prefix)"
+        description: "Version to release (without 'ws-v' prefix)"
         required: true
         type: string
       publish:
@@ -65,8 +65,8 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
           else
-            # Extract version from tag, filtering out websocket suffix if present
-            VERSION=${GITHUB_REF#refs/tags/v}
+            # Extract version from tag: ws-v0.2.1 -> 0.2.1
+            VERSION=${GITHUB_REF#refs/tags/ws-v}
             echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           fi
 
@@ -127,13 +127,13 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git tag -a v${{ steps.version.outputs.VERSION }} -m "chore(release): v${{ steps.version.outputs.VERSION }}" || true
-          git push origin v${{ steps.version.outputs.VERSION }} || true
+          git tag -a ws-v${{ steps.version.outputs.VERSION }} -m "chore(release): ws-v${{ steps.version.outputs.VERSION }}" || true
+          git push origin ws-v${{ steps.version.outputs.VERSION }} || true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2.1.0
         with:
-          tag_name: v${{ steps.version.outputs.VERSION }}
+          tag_name: ws-v${{ steps.version.outputs.VERSION }}
           name: bevy_octopus_websocket v${{ steps.version.outputs.VERSION }}
           body_path: bevy_octopus_websocket/release_notes.md
           draft: false
