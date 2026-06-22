@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Notes
 - Supported versions mapping updated: Bevy `0.19` → `bevy_octopus` `0.8`.
+- Released `bevy_octopus_websocket 0.2.1` compatible with Bevy `0.19`; enabled crates.io publishing in its release workflow.
 
 ## [0.6.0] - 2025-10-07
 
