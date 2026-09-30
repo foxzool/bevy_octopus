@@ -11,6 +11,7 @@ WebSocket transport for [bevy_octopus](https://crates.io/crates/bevy_octopus).
 ## Supported Versions
 | bevy | bevy_octopus_websocket |
 |------|------------------------|
+| 0.20.0-rc.2 | unreleased (this branch) |
 | 0.18 | 0.2                    |
 | 0.17 | 0.1                    |
 | 0.14 | 0.1                    |

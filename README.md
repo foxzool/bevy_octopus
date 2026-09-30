@@ -125,6 +125,7 @@ multicast. [example](https://github.com/foxzool/bevy_octopus/blob/main/examples/
 
 | bevy | bevy_octopus |
 |------|--------------|
+| 0.20.0-rc.2 | unreleased (this branch) |
 | 0.19 | 0.8          |
 | 0.18 | 0.7          |
 | 0.17 | 0.6          |
@@ -147,3 +148,7 @@ at your option. This means you can select the license you prefer.
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the
 work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any
 additional terms or conditions.
+
+### Bevy 0.20 release candidate
+
+This branch targets Bevy `=0.20.0-rc.2`. The optional `inspect` feature preserves the existing `bevy-inspector-egui` re-export, but that dependency still uses Bevy 0.17 and cannot supply inspector plugins for a Bevy 0.20 `App`. Leave `inspect` disabled until upstream provides a compatible release. Core networking, serialization, and WebSocket support use Bevy 0.20.
